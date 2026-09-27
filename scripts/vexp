@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# vexp wrapper for non-VS-Code agents (e.g. Freebuff).
+# Resolves the vexp-core binary from the newest installed VS Code extension
+# version, since the extension dir is version-suffixed (vexp.vexp-vscode-<ver>).
+# Usage: scripts/vexp <subcommand> [args...]   (same CLI as vexp-core)
+set -euo pipefail
+
+WS="${VEXP_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export VEXP_WORKSPACE="$WS"
+
+VEXP_CORE="${VEXP_CORE:-}"
+if [[ -z "$VEXP_CORE" ]]; then
+  # Prefer a vexp on PATH (standalone install), else newest VS Code extension binary.
+  if command -v vexp-core >/dev/null 2>&1; then
+    VEXP_CORE="$(command -v vexp-core)"
+  else
+    VEXP_CORE="$(ls -1d "$HOME"/.vscode/extensions/vexp.vexp-vscode-*-darwin-*/binaries/vexp-core-darwin-*/vexp-core 2>/dev/null \
+      | sort -V | tail -1 || true)"
+    if [[ -z "$VEXP_CORE" || ! -x "$VEXP_CORE" ]]; then
+      echo "error: vexp-core binary not found (no PATH entry, no VS Code extension)" >&2
+      echo "hint: install the vexp VS Code extension, or set VEXP_CORE=/path/to/vexp-core" >&2
+      exit 127
+    fi
+  fi
+fi
+export VEXP_CORE
+
+exec "$VEXP_CORE" "$@"
