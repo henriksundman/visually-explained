@@ -1,0 +1,17 @@
+/* Light theme — explicit token values so consumers can scope themes. */
+.exp-theme-light {
+  --exp-text: #1a1d23;
+  --exp-text-muted: #5c6470;
+  --exp-accent: #2563eb;
+  --exp-accent-soft: #dbeafe;
+  --exp-surface: #ffffff;
+  --exp-surface-muted: #f3f4f6;
+  --exp-border: #e5e7eb;
+  --exp-tip: #047857;
+  --exp-tip-soft: #d1fae5;
+  --exp-warning: #b45309;
+  --exp-warning-soft: #fef3c7;
+  --exp-up: #047857;
+  --exp-down: #b91c1c;
+  --exp-flat: #5c6470;
+}

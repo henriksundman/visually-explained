@@ -1,0 +1,361 @@
+/* explanations — design tokens + base structure.
+   Theme overrides live in light.css / dark.css scoped to .exp-theme-*.
+   Consumers may override any token on .exp or any wrapper element. */
+
+.exp {
+  /* palette */
+  --exp-text: #1a1d23;
+  --exp-text-muted: #5c6470;
+  --exp-accent: #2563eb;
+  --exp-accent-soft: #dbeafe;
+  --exp-surface: #ffffff;
+  --exp-surface-muted: #f3f4f6;
+  --exp-border: #e5e7eb;
+  --exp-tip: #047857;
+  --exp-tip-soft: #d1fae5;
+  --exp-warning: #b45309;
+  --exp-warning-soft: #fef3c7;
+  --exp-up: #047857;
+  --exp-down: #b91c1c;
+  --exp-flat: #5c6470;
+
+  /* shape & type */
+  --exp-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --exp-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --exp-font-size: 15px;
+  --exp-line-height: 1.55;
+  --exp-radius: 8px;
+  --exp-radius-sm: 4px;
+  --exp-gap: 12px;
+  --exp-pad: 16px;
+
+  /* base */
+  box-sizing: border-box;
+  color: var(--exp-text);
+  font-family: var(--exp-font);
+  font-size: var(--exp-font-size);
+  line-height: var(--exp-line-height);
+}
+
+.exp *,
+.exp *::before,
+.exp *::after {
+  box-sizing: inherit;
+}
+
+.exp-title {
+  margin: 0 0 6px;
+  font-size: 1.15em;
+  font-weight: 650;
+}
+
+.exp-summary {
+  margin: 0 0 var(--exp-gap);
+  color: var(--exp-text-muted);
+}
+
+.exp-block {
+  background: var(--exp-surface);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-radius);
+  padding: var(--exp-pad);
+  margin: 0 0 var(--exp-gap);
+}
+
+.exp-block:last-child {
+  margin-bottom: 0;
+}
+
+.exp-block p {
+  margin: 0 0 6px;
+}
+
+.exp-block p:last-child {
+  margin-bottom: 0;
+}
+
+.exp-text p {
+  margin: 0;
+}
+
+.exp-stack {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.exp-fallback {
+  border-style: dashed;
+  color: var(--exp-text-muted);
+}
+
+.exp-fallback-label {
+  display: inline-block;
+  font-family: var(--exp-mono);
+  font-size: 0.85em;
+  background: var(--exp-surface-muted);
+  border-radius: var(--exp-radius-sm);
+  padding: 1px 6px;
+  margin-bottom: 6px;
+}
+
+.exp-fallback-body {
+  margin: 0;
+}
+
+.exp-steps,
+.exp-example-steps,
+.exp-timeline-events,
+.exp-cause-chain,
+.exp-derivation-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Container hooks: every emitted class must exist in CSS so consumers
+   can target any part of the structure. Base chrome comes from .exp-block. */
+.exp-text,
+.exp-step-list,
+.exp-worked-example,
+.exp-derivation,
+.exp-concept,
+.exp-comparison,
+.exp-cause-effect,
+.exp-data-callout,
+.exp-timeline,
+.exp-callout {
+  min-width: 0;
+}
+
+.exp-step {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.exp-step + .exp-step {
+  border-top: 1px solid var(--exp-border);
+}
+
+.exp-step-num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--exp-accent-soft);
+  color: var(--exp-accent);
+  font-size: 0.8em;
+  font-weight: 650;
+}
+
+.exp-step-body {
+  min-width: 0;
+}
+
+.exp-step-title {
+  font-weight: 600;
+}
+
+.exp-step-detail {
+  color: var(--exp-text-muted);
+  margin: 2px 0 0;
+}
+
+.exp-example-problem {
+  font-weight: 600;
+}
+
+.exp-example-result {
+  margin-top: var(--exp-gap);
+  background: var(--exp-surface-muted);
+  border-radius: var(--exp-radius-sm);
+  padding: 8px 10px;
+}
+
+.exp-derivation-step {
+  padding: 6px 0;
+}
+
+.exp-derivation-step + .exp-derivation-step {
+  border-top: 1px solid var(--exp-border);
+}
+
+.exp-derivation-expr {
+  font-family: var(--exp-mono);
+  background: var(--exp-surface-muted);
+  border-radius: var(--exp-radius-sm);
+  padding: 2px 8px;
+  display: inline-block;
+}
+
+.exp-derivation-note {
+  color: var(--exp-text-muted);
+  margin: 4px 0 0;
+}
+
+.exp-derivation-conclusion {
+  margin: var(--exp-gap) 0 0;
+  font-weight: 600;
+}
+
+.exp-concept-term {
+  font-weight: 650;
+  font-size: 1.05em;
+}
+
+.exp-concept-definition {
+  margin: 2px 0 0;
+}
+
+.exp-concept-intuition,
+.exp-concept-analogy {
+  margin: 6px 0 0;
+  color: var(--exp-text-muted);
+}
+
+.exp-label {
+  display: inline-block;
+  font-size: 0.75em;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--exp-text-muted);
+  margin-right: 6px;
+}
+
+.exp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.exp-th,
+.exp-td {
+  text-align: left;
+  border-bottom: 1px solid var(--exp-border);
+  padding: 6px 10px 6px 0;
+}
+
+.exp-th {
+  font-weight: 650;
+  color: var(--exp-text-muted);
+  font-size: 0.9em;
+}
+
+.exp-row-th {
+  color: var(--exp-text);
+  font-weight: 600;
+}
+
+.exp-corner {
+  width: 1%;
+}
+
+.exp-cause {
+  color: var(--exp-text-muted);
+}
+
+.exp-effect {
+  font-weight: 600;
+}
+
+.exp-cause-item + .exp-cause-item {
+  border-top: 1px solid var(--exp-border);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.exp-metric {
+  font-size: 1.9em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-right: 8px;
+}
+
+.exp-metric-label {
+  color: var(--exp-text-muted);
+}
+
+.exp-delta {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  margin-left: 8px;
+}
+
+.exp-delta-up {
+  color: var(--exp-up);
+}
+
+.exp-delta-down {
+  color: var(--exp-down);
+}
+
+.exp-delta-flat {
+  color: var(--exp-flat);
+}
+
+.exp-context {
+  margin: 6px 0 0;
+  color: var(--exp-text-muted);
+}
+
+.exp-event {
+  position: relative;
+  padding: 6px 0 6px 14px;
+  border-left: 2px solid var(--exp-border);
+}
+
+.exp-event::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--exp-accent);
+}
+
+.exp-event-when {
+  font-size: 0.85em;
+  color: var(--exp-accent);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.exp-event-what {
+  font-weight: 600;
+  margin: 2px 0 0;
+}
+
+.exp-event-detail {
+  color: var(--exp-text-muted);
+  margin: 2px 0 0;
+}
+
+.exp-callout-note {
+  background: var(--exp-accent-soft);
+  border-color: transparent;
+}
+
+.exp-callout-tip {
+  background: var(--exp-tip-soft);
+  border-color: transparent;
+}
+
+.exp-callout-warning {
+  background: var(--exp-warning-soft);
+  border-color: transparent;
+}
+
+.exp-callout-body {
+  margin: 0;
+}
+
+.exp code {
+  font-family: var(--exp-mono);
+  font-size: 0.92em;
+}
