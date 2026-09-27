@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import { salvageExplanation } from "../core/salvage"
-import { renderBlock, renderExplanation } from "../core/render"
+import { renderBlock } from "../core/render"
 import { renderInline } from "../core/inline"
 import { validateExplanation } from "../core/validate"
 import type { Block } from "../core/schema"
