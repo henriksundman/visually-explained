@@ -13,7 +13,7 @@ This mirrors the proven Mermaid pattern (constrained DSL → diagram) but for ex
 
 | Question | Decision |
 |---|---|
-| Primitive model | **Hybrid**: ~10 curated composites + small escape hatch (`stack`, `text`), registry-based so new primitives can be added additively |
+| Primitive model | **Hybrid**: 9 curated composites + small escape hatch (`stack`, `text`), registry-based so new primitives can be added additively |
 | Explanation domain | **Educational/learning** and **data-driven explanations** |
 | Integration | **HTML-first core + thin React adapter** (output quality is identical because the LLM only ever emits IR) |
 | Styling | **Default themes (light/dark) + CSS custom property token overrides** |
@@ -60,7 +60,7 @@ Plain tree — no cross-references between blocks.
 
 ### Escape hatch
 
-- `stack` — nested blocks, **max depth 2**
+- `stack` — nested blocks; a `stack` may contain a `stack` at most one level deep (max nesting depth 2)
 - `text` — a paragraph
 
 ### Extensibility
@@ -76,7 +76,7 @@ Plain tree — no cross-references between blocks.
 - Block missing required content → skipped and reported.
 - `renderExplanation(ir)` → `{ html, warnings }`
 - `validateExplanation(ir)` → diagnostics (for dev tooling)
-- `{ strict: true }` opts into throwing.
+- `renderExplanation(ir, { strict: true })` opts into throwing instead of degrading.
 - **Security:** raw HTML from the LLM is never rendered. Text fields support only a tiny inline subset (bold, italic, inline code) which the library parses and escapes. All other characters are escaped.
 
 ## 6. Rendering & styling
