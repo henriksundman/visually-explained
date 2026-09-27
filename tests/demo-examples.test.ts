@@ -1,0 +1,45 @@
+import { describe, expect, it } from "vitest"
+import { explanationSchema } from "../src/core/schema"
+import { educationIr, dataIr } from "../demo/examples.js"
+
+function collectTypes(ir: { blocks: unknown[] }): Set<string> {
+  const types = new Set<string>()
+  for (const raw of ir.blocks) {
+    const b = raw as { type?: string; blocks?: unknown[] }
+    if (typeof b.type !== "string") continue
+    if (b.type === "stack" && Array.isArray(b.blocks)) {
+      types.add("stack")
+      for (const child of b.blocks) {
+        const c = child as { type?: string }
+        if (typeof c.type === "string") types.add(c.type)
+      }
+    } else {
+      types.add(b.type)
+    }
+  }
+  return types
+}
+
+describe("demo examples", () => {
+  it("education fixture is schema-valid", () => {
+    expect(explanationSchema.safeParse(educationIr).success).toBe(true)
+  })
+
+  it("data fixture is schema-valid", () => {
+    expect(explanationSchema.safeParse(dataIr).success).toBe(true)
+  })
+
+  it("education fixture covers concept, worked-example, derivation, callout, stack", () => {
+    const types = collectTypes(educationIr)
+    for (const t of ["concept", "worked-example", "derivation", "callout", "stack"]) {
+      expect(types.has(t)).toBe(true)
+    }
+  })
+
+  it("data fixture covers data-callout, comparison, cause-effect, timeline, callout", () => {
+    const types = collectTypes(dataIr)
+    for (const t of ["data-callout", "comparison", "cause-effect", "timeline", "callout"]) {
+      expect(types.has(t)).toBe(true)
+    }
+  })
+})
