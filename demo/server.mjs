@@ -7,9 +7,12 @@ import { educationIr, dataIr, capabilitiesIr } from "./examples.js"
 
 const port = Number(process.env.PORT ?? 4173)
 
-function section(id, theme, ir) {
-  const { html } = renderExplanation(ir, { theme: "none" })
-  return `<section id="${id}" class="exp exp-theme-${theme}">${html}</section>`
+function section(id, theme, ir, extraClass = "") {
+  // root:false — the section itself is the token-bearing .exp scope, so the
+  // theme class on it actually governs the palette (a nested default .exp
+  // root would re-declare light tokens and defeat the toggle).
+  const { html } = renderExplanation(ir, { theme: "none", root: false })
+  return `<section id="${id}" class="exp exp-theme-${theme}${extraClass ? ` ${extraClass}` : ""}">${html}</section>`
 }
 
 const page = `<!doctype html>
@@ -30,7 +33,6 @@ const page = `<!doctype html>
   .demo-tokens {
     --exp-accent: #7c3aed;
     --exp-accent-soft: #ede9fe;
-    --exp-surface: #faf5ff;
     --exp-radius: 2px;
     --exp-font-size: 17px;
   }
@@ -45,7 +47,7 @@ ${section("data", "dark", dataIr)}
 <h2>Capabilities</h2>
 <p>Leniency and theming: the model below invented a <code>chart</code> block type and emitted one broken block — the library renders a fallback and skips the rest. The second copy is the <em>same IR</em> re-skinned purely with token overrides on the wrapper.</p>
 ${section("capabilities", "light", capabilitiesIr)}
-<section id="capabilities-themed" class="exp exp-theme-light demo-tokens">${renderExplanation(capabilitiesIr, { theme: "none" }).html}</section>
+${section("capabilities-themed", "light", capabilitiesIr, "demo-tokens")}
 <script>
   document.getElementById("theme-toggle").addEventListener("click", () => {
     document.querySelectorAll("section.exp").forEach(el => {
