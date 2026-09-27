@@ -132,7 +132,10 @@ export type Block =
 export const stackBlockSchema = z.object({
   id: idSchema,
   type: z.literal("stack"),
-  blocks: z.array(z.lazy(() => blockUnionSchema)),
+  // Children are z.unknown() on purpose: strict child parsing would let one
+  // malformed child invalidate the whole stack. Leniency happens at render
+  // time, where invalid children are skipped and reported individually.
+  blocks: z.array(z.unknown()),
 })
 
 export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
