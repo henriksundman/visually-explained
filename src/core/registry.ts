@@ -18,7 +18,9 @@ export interface Primitive {
   render: BlockRenderer<any>
 }
 
-export const registry: Record<string, Primitive> = {}
+export const registry: Record<string, Primitive> = Object.create(null) as Record<string, Primitive>
+// Null prototype: lookups like registry["constructor"] or registry["__proto__"]
+// must return undefined (→ fallback block), not inherited Object properties.
 
 export function registerPrimitive(type: string, primitive: Primitive): void {
   registry[type] = primitive

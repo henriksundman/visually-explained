@@ -52,4 +52,12 @@ describe("renderExplanation", () => {
     const { html } = renderExplanation({ version: 1, blocks: [] }, { theme: "dark" })
     expect(html).toBe(`<div class="exp exp-theme-dark"></div>`)
   })
+
+  it("treats prototype-polluting type names as unknown, not a crash", () => {
+    for (const type of ["__proto__", "constructor", "hasOwnProperty"]) {
+      const { html } = renderExplanation({ version: 1, blocks: [{ type }] })
+      expect(html).toContain("exp-fallback")
+      expect(html).toContain(type)
+    }
+  })
 })
