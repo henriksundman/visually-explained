@@ -53,6 +53,15 @@ describe("renderExplanation", () => {
     expect(html).toBe(`<div class="exp exp-theme-dark"></div>`)
   })
 
+  it("root: false omits the wrapper so consumers can own the token-bearing element", () => {
+    const { html } = renderExplanation(
+      { version: 1, title: "T", blocks: [{ type: "text", body: "x" }] },
+      { root: false },
+    )
+    expect(html).toBe(`<h3 class="exp-title">T</h3><div class="exp-block exp-text"><p>x</p></div>`)
+    expect(html).not.toContain(`class="exp"`)
+  })
+
   it("treats prototype-polluting type names as unknown, not a crash", () => {
     for (const type of ["__proto__", "constructor", "hasOwnProperty"]) {
       const { html } = renderExplanation({ version: 1, blocks: [{ type }] })

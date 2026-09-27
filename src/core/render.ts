@@ -9,6 +9,13 @@ export interface RenderOptions {
   strict?: boolean
   /** Theme class to put on the root element. Core defaults to "none" (unstyled root); the React adapter defaults to "light". */
   theme?: "light" | "dark" | "none"
+  /**
+   * When false, no root wrapper is emitted — the consumer's own element is the
+   * token-bearing `.exp` scope. Use this when styling tokens on a wrapper you
+   * control (demo pages, design-system hosts); a nested default `.exp` would
+   * otherwise re-declare default tokens and defeat wrapper overrides.
+   */
+  root?: boolean
 }
 
 export interface RenderResult {
@@ -27,6 +34,7 @@ export function renderExplanation(input: unknown, opts: RenderOptions = {}): Ren
   const inner =
     renderHeader(salvaged.title, salvaged.summary) +
     salvaged.blocks.map(b => renderSalvagedBlock(b, 1, warnings)).join("")
+  if (opts.root === false) return { html: inner, warnings }
   return { html: `<div class="exp${themeClass}">${inner}</div>`, warnings }
 }
 
