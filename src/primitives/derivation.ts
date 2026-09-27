@@ -13,7 +13,7 @@ export function renderDerivation(block: DerivationBlock, _ctx: RenderContext): s
     )
     .join("")
   const conclusion = block.conclusion
-    ? `<p class="exp-derivation-conclusion">${renderInline(block.conclusion)}</p>`
+    ? `<p class="exp-derivation-conclusion">${escapeHtml(block.conclusion)}</p>`
     : ""
   return `<div class="exp-block exp-derivation"><ol class="exp-derivation-steps">${steps}</ol>${conclusion}</div>`
 }
