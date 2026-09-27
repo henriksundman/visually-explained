@@ -1,11 +1,21 @@
 // Demo IR fixtures — exactly what an LLM would emit. Kept schema-valid by
-// tests/demo-examples.test.ts. Plain ESM so the server (node) can import them.
+// tests/demo-examples.test.ts (except capabilitiesIr, whose unknown/invalid
+// blocks are intentional). Plain ESM so the server (node) can import them.
 
 export const educationIr = {
   version: 1,
   title: "Why does dividing by a fraction multiply?",
   summary: "A classic confusion, resolved with a picture you can hold in your head.",
   blocks: [
+    { type: "text", body: "Division asks a **counting** question: *how many of these fit in that?* The surprise is what happens when `these` is smaller than one." },
+    {
+      type: "step-list",
+      steps: [
+        { title: "Reframe the question", detail: "`8 ÷ 1/4` asks: how many quarters make a whole?" },
+        { title: "Count in a concrete case", detail: "A pizza cut in quarters has 4 pieces, so one pizza holds `4` quarters." },
+        { title: "Scale to the numerator", detail: "`3 ÷ 1/4` is three pizzas of quarters — 12 of them." },
+      ],
+    },
     {
       type: "stack",
       blocks: [
@@ -66,6 +76,14 @@ export const dataIr = {
       context: "Faster onboarding shipped Sep 12",
     },
     {
+      type: "data-callout",
+      metric: "38%",
+      label: "Sales-led share",
+      delta: "+0.1%",
+      trend: "flat",
+      context: "Mix unchanged — growth came from self-serve",
+    },
+    {
       type: "comparison",
       items: [{ name: "Self-serve" }, { name: "Sales-led" }],
       dimensions: [
@@ -100,5 +118,20 @@ export const dataIr = {
       variant: "warning",
       body: "The spike overlaps a `pricing-page` experiment — part of the lift may not be onboarding-related.",
     },
+  ],
+}
+
+// Not schema-valid on purpose: demonstrates lenient rendering. The unknown
+// block renders as a styled fallback; the invalid block is skipped with a
+// warning (visible in the server console, not the page).
+export const capabilitiesIr = {
+  version: 1,
+  title: "What an imperfect LLM response looks like",
+  summary: "The library degrades gracefully: fallbacks instead of crashes.",
+  blocks: [
+    { type: "text", body: "Below, the model invented a `chart` block type the library doesn't know, and forgot the body of a text block. Neither breaks the page." },
+    { type: "chart", title: "Weekly activations", series: [3, 4, 12] },
+    { type: "text" },
+    { type: "callout", variant: "note", body: "Known types around it render normally — and `note` is the third callout variant." },
   ],
 }

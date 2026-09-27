@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { explanationSchema } from "../src/core/schema"
-import { educationIr, dataIr } from "../demo/examples.js"
+import { educationIr, dataIr, capabilitiesIr } from "../demo/examples.js"
 
 function collectTypes(ir: { blocks: unknown[] }): Set<string> {
   const types = new Set<string>()
@@ -29,9 +29,9 @@ describe("demo examples", () => {
     expect(explanationSchema.safeParse(dataIr).success).toBe(true)
   })
 
-  it("education fixture covers concept, worked-example, derivation, callout, stack", () => {
+  it("education fixture covers concept, worked-example, derivation, callout, stack, step-list, text", () => {
     const types = collectTypes(educationIr)
-    for (const t of ["concept", "worked-example", "derivation", "callout", "stack"]) {
+    for (const t of ["concept", "worked-example", "derivation", "callout", "stack", "step-list", "text"]) {
       expect(types.has(t)).toBe(true)
     }
   })
@@ -41,5 +41,11 @@ describe("demo examples", () => {
     for (const t of ["data-callout", "comparison", "cause-effect", "timeline", "callout"]) {
       expect(types.has(t)).toBe(true)
     }
+  })
+
+  it("capabilities fixture intentionally contains an unknown and an invalid block", () => {
+    const types = collectTypes(capabilitiesIr)
+    expect(types.has("chart")).toBe(true) // unknown → fallback
+    expect(capabilitiesIr.blocks.some(b => (b as { type?: string }).type === "text" && !(b as { body?: string }).body)).toBe(true) // invalid → skipped
   })
 })

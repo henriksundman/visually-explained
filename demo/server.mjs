@@ -3,7 +3,7 @@
 import { createServer } from "node:http"
 import { readFile } from "node:fs/promises"
 import { renderExplanation } from "../dist/index.js"
-import { educationIr, dataIr } from "./examples.js"
+import { educationIr, dataIr, capabilitiesIr } from "./examples.js"
 
 const port = Number(process.env.PORT ?? 4173)
 
@@ -25,14 +25,27 @@ const page = `<!doctype html>
   body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; }
   section { display: block; margin: 2rem 0; }
   #theme-toggle { cursor: pointer; }
+  /* Token-override showcase: any consumer can re-skin without touching the
+     library — just set custom properties on a wrapper. */
+  .demo-tokens {
+    --exp-accent: #7c3aed;
+    --exp-accent-soft: #ede9fe;
+    --exp-surface: #faf5ff;
+    --exp-radius: 2px;
+    --exp-font-size: 17px;
+  }
 </style>
 </head>
 <body>
 <h1>explanations — demo</h1>
-<p>One render, two themes: the education explanation starts light, the data explanation starts dark. The toggle swaps the theme classes.</p>
+<p>One render, many looks: the education explanation starts light, the data explanation starts dark, and the toggle swaps theme classes without re-rendering.</p>
 <button id="theme-toggle" type="button">Toggle theme</button>
 ${section("education", "light", educationIr)}
 ${section("data", "dark", dataIr)}
+<h2>Capabilities</h2>
+<p>Leniency and theming: the model below invented a <code>chart</code> block type and emitted one broken block — the library renders a fallback and skips the rest. The second copy is the <em>same IR</em> re-skinned purely with token overrides on the wrapper.</p>
+${section("capabilities", "light", capabilitiesIr)}
+<section id="capabilities-themed" class="exp exp-theme-light demo-tokens">${renderExplanation(capabilitiesIr, { theme: "none" }).html}</section>
 <script>
   document.getElementById("theme-toggle").addEventListener("click", () => {
     document.querySelectorAll("section.exp").forEach(el => {
