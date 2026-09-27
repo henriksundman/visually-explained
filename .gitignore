@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+jspm_packages/
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Logs & debug output
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Test coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Caches
+.cache/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+
+# Package manager state
+.npm/
+*.tgz
+.yarn/install-state.gz
+.yarn/build-state.yml
+.pnp.*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Editor directories & files (VS Code: shared config stays tracked, local junk ignored)
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Note: .vexp/ is NOT ignored here — vexp tracks its manifest.json and
+# ignores its internal files (index.db, logs, etc.) via .vexp/.gitignore.
