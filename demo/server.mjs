@@ -3,7 +3,7 @@
 import { createServer } from "node:http"
 import { readFile } from "node:fs/promises"
 import { renderExplanation } from "../dist/index.js"
-import { educationIr, dataIr, capabilitiesIr, figuresIr } from "./examples.js"
+import { educationIr, dataIr, capabilitiesIr, figuresIr, howToIr } from "./examples.js"
 
 const port = Number(process.env.PORT ?? 4173)
 
@@ -52,6 +52,9 @@ ${section("capabilities-themed", "light", capabilitiesIr, "demo-tokens")}
 <p>LLM-emitted diagram and chart blocks, a cause-effect chain drawn as an arrow figure — the same IR twice: clean strokes, then the rough.js sketch pass.</p>
 ${section("figures", "light", figuresIr)}
 ${section("figures-sketch", "dark", figuresIr, "", true)}
+<h2>How-to</h2>
+<p>A recipe-style explanation: numbered steps, the request pipeline as a diagram, a rollout chart, and the outcome as a big number with its trend sparkline.</p>
+${section("howto", "light", howToIr)}
 <script>
   document.getElementById("theme-toggle").addEventListener("click", () => {
     document.querySelectorAll("section.exp").forEach(el => {

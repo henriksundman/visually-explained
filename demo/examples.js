@@ -188,3 +188,77 @@ export const figuresIr = {
     },
   ],
 }
+
+// Step-by-step how-to: numbered instructions paired with a pipeline diagram,
+// a timing chart, and an outcome metric — a recipe-style explanation.
+export const howToIr = {
+  version: 1,
+  title: "How to cut p95 latency with a stale-while-revalidate cache",
+  summary: "Four steps: wrap the handler, warm the cache, set the TTL, watch the number.",
+  blocks: [
+    {
+      type: "step-list",
+      steps: [
+        {
+          title: "Wrap the slow handler",
+          detail: "Decorate `getProfile` with a 60-second `stale-while-revalidate` window.",
+        },
+        {
+          title: "Warm the cache at boot",
+          detail: "Pre-fetch the top 100 profiles so the first users never hit the origin.",
+        },
+        {
+          title: "Set the TTL per route",
+          detail: "Hot routes get `ttl: 60s`; long-tail routes `ttl: 300s`.",
+        },
+        {
+          title: "Watch the p95",
+          detail: "Compare the week-over-week p95 before rolling out to all traffic.",
+        },
+      ],
+    },
+    {
+      type: "diagram",
+      nodes: [
+        { id: "req", label: "Request", shape: "pill" },
+        { id: "cache", label: "Cache lookup" },
+        { id: "fresh", label: "Fresh return" },
+        { id: "origin", label: "Origin fetch" },
+        { id: "reval", label: "Background revalidate", shape: "note" },
+      ],
+      edges: [
+        { from: "req", to: "cache", kind: "leads" },
+        { from: "cache", to: "fresh", kind: "leads", label: "hit" },
+        { from: "cache", to: "origin", kind: "leads", label: "miss / stale" },
+        { from: "origin", to: "reval", kind: "leads" },
+        { from: "reval", to: "cache", kind: "part-of" },
+      ],
+      direction: "lr",
+    },
+    {
+      type: "chart",
+      kind: "bar",
+      points: [
+        { label: "Before", value: 240 },
+        { label: "Week 1", value: 140 },
+        { label: "Week 2", value: 95 },
+      ],
+      unit: "ms",
+      caption: "p95 latency after each rollout step",
+    },
+    {
+      type: "data-callout",
+      metric: "95ms",
+      label: "p95 latency",
+      delta: "-60%",
+      trend: "down",
+      series: [240, 210, 180, 140, 120, 95],
+      context: "Week 2 after full rollout",
+    },
+    {
+      type: "callout",
+      variant: "warning",
+      body: "Stale-while-revalidate serves *old* data for up to the TTL window — skip it on endpoints that must be exactly current (e.g. billing).",
+    },
+  ],
+}
