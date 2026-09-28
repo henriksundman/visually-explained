@@ -1,8 +1,13 @@
 import { registerPrimitive, type RenderContext } from "../core/registry"
 import { dataCalloutBlockSchema, type DataCalloutBlock } from "../core/schema"
 import { escapeHtml, renderInline } from "../core/inline"
+import { layoutSparkline } from "../figures/layoutChart"
+import { sceneToSvg } from "../figures/svg"
+import type { Scene } from "../figures/scene"
 
 export function renderDataCallout(block: DataCalloutBlock, _ctx: RenderContext): string {
+  const spark = resolveSparkline(block)
+  const sparkSvg = spark ? sceneToSvg(spark.scene, { ariaLabel: spark.aria }) : ""
   const delta = block.delta
     ? `<span class="exp-delta${block.trend ? ` exp-delta-${block.trend}` : ""}">${escapeHtml(block.delta)}</span>`
     : ""
@@ -12,9 +17,21 @@ export function renderDataCallout(block: DataCalloutBlock, _ctx: RenderContext):
     `<span class="exp-metric">${escapeHtml(block.metric)}</span>` +
     `<span class="exp-metric-label">${renderInline(block.label)}</span>` +
     delta +
+    (sparkSvg ? `<div class="exp-spark-box">${sparkSvg}</div>` : "") +
     context +
     `</div>`
   )
+}
+
+/** Figure form = the callout markup plus a trend sparkline. No usable series
+ *  (or presentation "text") → null → text markup (spec §1 leniency). */
+function resolveSparkline(block: DataCalloutBlock): { scene: Scene; aria: string } | null {
+  const wantsFigure = block.presentation !== "text"
+  if (!wantsFigure) return null
+  if (!block.series || block.series.length < 2) return null
+  const { d, trend } = layoutSparkline(block.series)
+  const scene: Scene = { width: 84, height: 28, elements: [{ kind: "sparkline", d, trend }] }
+  return { scene, aria: `${block.metric} ${block.label} trend ${block.trend ?? "flat"}` }
 }
 
 registerPrimitive("data-callout", { schema: dataCalloutBlockSchema, render: renderDataCallout })

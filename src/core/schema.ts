@@ -2,6 +2,9 @@ import { z } from "zod"
 
 export const idSchema = z.string().min(1).optional()
 
+export const presentationSchema = z.enum(["auto", "text", "figure"])
+export type Presentation = z.infer<typeof presentationSchema>
+
 export const stepSchema = z.object({
   title: z.string().min(1),
   detail: z.string().min(1).optional(),
@@ -65,6 +68,7 @@ export const causeEffectBlockSchema = z.object({
   id: idSchema,
   type: z.literal("cause-effect"),
   chain: z.array(z.object({ because: z.string().min(1), therefore: z.string().min(1) })).min(1),
+  presentation: presentationSchema.optional(),
 })
 export type CauseEffectBlock = z.infer<typeof causeEffectBlockSchema>
 
@@ -75,6 +79,8 @@ export const dataCalloutBlockSchema = z.object({
   label: z.string().min(1),
   delta: z.string().min(1).optional(),
   trend: z.enum(["up", "down", "flat"]).optional(),
+  series: z.array(z.number()).min(2).max(24).optional(),
+  presentation: presentationSchema.optional(),
   context: z.string().min(1).optional(),
 })
 export type DataCalloutBlock = z.infer<typeof dataCalloutBlockSchema>
@@ -91,6 +97,7 @@ export const timelineBlockSchema = z.object({
       }),
     )
     .min(1),
+  presentation: presentationSchema.optional(),
 })
 export type TimelineBlock = z.infer<typeof timelineBlockSchema>
 

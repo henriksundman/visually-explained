@@ -43,7 +43,7 @@ describe("timeline", () => {
     const { html } = renderExplanation({
       version: 1,
       blocks: [
-        { type: "timeline", events: [{ when: "1928", what: "Penicillin", detail: "Fleming" }] },
+        { type: "timeline", events: [{ when: "1928", what: "Penicillin", detail: "Fleming" }], presentation: "text" },
       ],
     })
     expect(html).toContain(`<ol class="exp-timeline-events">`)

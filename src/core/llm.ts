@@ -17,6 +17,7 @@ Rules:
 - Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`.
 - Math and expressions go in plain strings (e.g. derivation "expression"); no LaTeX delimiters.
 - comparison: "items" are the columns (min 2), each dimension has one value per item, in the same order.
+- cause-effect/timeline/data-callout accept presentation?: "auto"|"text"|"figure". Default auto draws a figure when the data fits (cause-effect ≤5 links, timeline ≤12 events, data-callout with a series). Leave it as auto unless asked otherwise.
 
 Block types:
 - step-list: { steps: [{ title, detail? }] } — numbered steps.
@@ -25,7 +26,7 @@ Block types:
 - concept: { term, definition, intuition?, analogy? } — define and ground an idea.
 - comparison: { items: [{ name }], dimensions: [{ name, values: string[] }] } — dimensions x items table.
 - cause-effect: { chain: [{ because, therefore }] } — causal reasoning.
-- data-callout: { metric, label, delta?, trend?: "up"|"down"|"flat", context? } — one number that matters.
+- data-callout: { metric, label, delta?, trend?: "up"|"down"|"flat", series?: number[] (2-24 samples for the trend sparkline), context? } — one number that matters.
 - timeline: { events: [{ when, what, detail? }] } — ordered events.
 - callout: { variant: "note"|"tip"|"warning", body } — aside or caution.
 - diagram: { nodes: [{ id, label, shape?: "box"|"round"|"pill"|"note" }], edges: [{ from, to, label?, kind?: "causes"|"leads"|"part-of"|"conflict" }], direction?: "lr"|"tb" } — semantic nodes/edges only; the renderer computes all layout. Edge from/to must reference node ids.

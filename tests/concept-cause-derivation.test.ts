@@ -26,7 +26,7 @@ describe("cause-effect", () => {
   it("renders because/therefore pairs", () => {
     const { html } = renderExplanation({
       version: 1,
-      blocks: [{ type: "cause-effect", chain: [{ because: "load doubled", therefore: "latency rose" }] }],
+      blocks: [{ type: "cause-effect", chain: [{ because: "load doubled", therefore: "latency rose" }], presentation: "text" }],
     })
     expect(html).toContain(`<ol class="exp-cause-chain">`)
     expect(html).toContain(`<p class="exp-cause"><span class="exp-label">Because</span> load doubled</p>`)
