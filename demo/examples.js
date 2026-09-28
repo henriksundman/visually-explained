@@ -174,6 +174,28 @@ export const figuresIr = {
       caption: "p95 latency by day",
     },
     {
+      type: "figure",
+      title: "Orbit anatomy",
+      caption: "A bespoke drawn figure — every number is an expression over rx and ry.",
+      params: [
+        { name: "rx", min: 40, max: 140, step: 5, initial: 120 },
+        { name: "ry", min: 20, max: 90, step: 5, initial: 70 },
+      ],
+      derived: [
+        { name: "cx", expr: "180" },
+        { name: "cy", expr: "120" },
+      ],
+      elements: [
+        { kind: "arc", cx: "cx", cy: "cy", rx: "rx", ry: "ry", start: 0, end: 180, tone: "accent", width: 2 },
+        { kind: "arc", cx: "cx", cy: "cy", rx: "rx", ry: "ry", start: 180, end: 360, tone: "accent", width: 2 },
+        { kind: "line", x1: "cx - rx - 10", y1: "cy", x2: "cx + rx + 10", y2: "cy", tone: "muted" },
+        { kind: "line", x1: "cx", y1: "cy - ry - 10", x2: "cx", y2: "cy + ry + 10", tone: "muted" },
+        { kind: "dot", cx: "cx + rx * cos(PI / 4)", cy: "cy - ry * sin(PI / 4)", tone: "ink" },
+        { kind: "label", x: "cx + rx * cos(PI / 4) + 8", y: "cy - ry * sin(PI / 4) - 6", text: "θ = 45°", anchor: "start" },
+        { kind: "label", x: 12, y: 20, text: "rx × ry ellipse", anchor: "start" },
+      ],
+    },
+    {
       type: "cause-effect",
       presentation: "figure",
       chain: [

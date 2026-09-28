@@ -55,7 +55,7 @@ describe("demo examples", () => {
 
   it("figures fixture covers diagram, chart, cause-effect, callout", () => {
     const types = collectTypes(figuresIr)
-    for (const t of ["diagram", "chart", "cause-effect", "callout"]) {
+    for (const t of ["diagram", "chart", "figure", "cause-effect", "callout"]) {
       expect(types.has(t)).toBe(true)
     }
   })
