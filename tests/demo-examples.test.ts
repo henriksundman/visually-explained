@@ -64,9 +64,9 @@ describe("demo examples", () => {
     expect(explanationSchema.safeParse(howToIr).success).toBe(true)
   })
 
-  it("how-to fixture covers step-list, diagram, chart, data-callout, callout", () => {
+  it("how-to fixture covers step-list, code, diagram, chart, data-callout, callout", () => {
     const types = collectTypes(howToIr)
-    for (const t of ["step-list", "diagram", "chart", "data-callout", "callout"]) {
+    for (const t of ["step-list", "code", "diagram", "chart", "data-callout", "callout"]) {
       expect(types.has(t)).toBe(true)
     }
   })

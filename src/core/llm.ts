@@ -33,4 +33,5 @@ Block types:
 - chart: { kind: "bar"|"line", points: [{ label, value }], unit?, caption? } — value is a number or numeric string; line points are an ordered series.
 - stack: { blocks: Block[] } — group of blocks.
 - text: { body } — plain paragraph.
+- code: { language?, code } — a verbatim source snippet for how-tos; never contains HTML or markdown (rendered exactly as written).
 `.trim()

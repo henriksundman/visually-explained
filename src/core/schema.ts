@@ -116,6 +116,14 @@ export const textBlockSchema = z.object({
 })
 export type TextBlock = z.infer<typeof textBlockSchema>
 
+export const codeBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("code"),
+  language: z.string().min(1).optional(),
+  code: z.string().min(1),
+})
+export type CodeBlock = z.infer<typeof codeBlockSchema>
+
 // Recursion through z.lazy needs an explicit type annotation (zod docs pattern).
 export interface StackBlock {
   id?: string
@@ -134,6 +142,7 @@ export type Block =
   | TimelineBlock
   | CalloutBlock
   | TextBlock
+  | CodeBlock
   | StackBlock
   | DiagramBlock
   | ChartBlock
@@ -159,6 +168,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     timelineBlockSchema,
     calloutBlockSchema,
     textBlockSchema,
+    codeBlockSchema,
     stackBlockSchema,
     diagramBlockSchema,
     chartBlockSchema,

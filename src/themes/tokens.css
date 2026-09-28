@@ -360,6 +360,37 @@
   border-color: transparent;
 }
 
+.exp-code {
+  padding: 0;
+  overflow: hidden;
+}
+
+.exp-code-lang {
+  display: inline-block;
+  font-family: var(--exp-mono);
+  font-size: 0.75em;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--exp-text-muted);
+  background: var(--exp-surface-muted);
+  border-radius: 0 0 var(--exp-radius-sm) 0;
+  padding: 3px 10px;
+}
+
+.exp-code pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+
+.exp-code .exp-code-source {
+  font-family: var(--exp-mono);
+  font-size: 0.9em;
+  background: none;
+  padding: 0;
+}
+
 .exp-callout-body {
   margin: 0;
 }

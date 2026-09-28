@@ -218,6 +218,11 @@ export const howToIr = {
       ],
     },
     {
+      type: "code",
+      language: "ts",
+      code: "import { withSWR } from './cache'\n\nexport const getProfile = withSWR(getProfile, { ttlSeconds: 60 })",
+    },
+    {
       type: "diagram",
       nodes: [
         { id: "req", label: "Request", shape: "pill" },
