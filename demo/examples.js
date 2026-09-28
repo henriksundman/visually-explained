@@ -129,8 +129,8 @@ export const capabilitiesIr = {
   title: "What an imperfect LLM response looks like",
   summary: "The library degrades gracefully: fallbacks instead of crashes.",
   blocks: [
-    { type: "text", body: "Below, the model invented a `chart` block type the library doesn't know, and forgot the body of a text block. Neither breaks the page." },
-    { type: "chart", title: "Weekly activations", series: [3, 4, 12] },
+    { type: "text", body: "Below, the model invented a `gauge` block type the library doesn't know, and forgot the body of a text block. Neither breaks the page." },
+    { type: "gauge", title: "Weekly activations", series: [3, 4, 12] },
     { type: "text" },
     { type: "callout", variant: "note", body: "Known types around it render normally — and `note` is the third callout variant." },
   ],

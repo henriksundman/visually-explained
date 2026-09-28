@@ -35,7 +35,7 @@ describe("Explanation", () => {
 
   it("renders unknown types through the core fallback", () => {
     const html = renderToStaticMarkup(
-      <Explanation ir={{ version: 1, blocks: [{ type: "chart", title: "Sales" }] }} theme="none" />,
+      <Explanation ir={{ version: 1, blocks: [{ type: "mindmap", title: "Sales" }] }} theme="none" />,
     )
     expect(html).toContain("exp-fallback")
   })

@@ -129,6 +129,7 @@ export type Block =
   | TextBlock
   | StackBlock
   | DiagramBlock
+  | ChartBlock
 
 export const stackBlockSchema = z.object({
   id: idSchema,
@@ -153,6 +154,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     textBlockSchema,
     stackBlockSchema,
     diagramBlockSchema,
+    chartBlockSchema,
   ]) as unknown as z.ZodType<Block>,
 )
 
@@ -187,3 +189,15 @@ export const diagramBlockSchema = z.object({
   direction: z.enum(["lr", "tb"]).optional(),
 })
 export type DiagramBlock = z.infer<typeof diagramBlockSchema>
+
+export const chartBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("chart"),
+  kind: z.enum(["bar", "line"]),
+  // Lenient like stack children: per-point validation happens at render time,
+  // so one malformed point drops the point instead of the whole chart (spec §1).
+  points: z.array(z.unknown()),
+  unit: z.string().min(1).optional(),
+  caption: z.string().min(1).optional(),
+})
+export type ChartBlock = z.infer<typeof chartBlockSchema>

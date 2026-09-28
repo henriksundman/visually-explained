@@ -45,7 +45,7 @@ describe("demo examples", () => {
 
   it("capabilities fixture intentionally contains an unknown and an invalid block", () => {
     const types = collectTypes(capabilitiesIr)
-    expect(types.has("chart")).toBe(true) // unknown → fallback
+    expect(types.has("gauge")).toBe(true) // unknown → fallback
     expect(capabilitiesIr.blocks.some(b => (b as { type?: string }).type === "text" && !(b as { body?: string }).body)).toBe(true) // invalid → skipped
   })
 })

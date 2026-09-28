@@ -18,9 +18,9 @@ describe("renderExplanation", () => {
   })
 
   it("renders unknown types as a styled fallback with a warning", () => {
-    const { html, warnings } = renderExplanation({ version: 1, blocks: [{ type: "chart", title: "Sales" }] })
+    const { html, warnings } = renderExplanation({ version: 1, blocks: [{ type: "mindmap", title: "Sales" }] })
     expect(html).toContain("exp-fallback")
-    expect(html).toContain("chart")
+    expect(html).toContain("mindmap")
     expect(html).toContain("Sales")
     expect(warnings.some(w => w.includes("unknown type"))).toBe(true)
   })

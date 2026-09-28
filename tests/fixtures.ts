@@ -32,6 +32,6 @@ export const allPrimitivesIr = {
       ],
       edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }],
     },
-    { type: "chart", title: "Unknown fallback" },
+    { type: "chart", kind: "bar", points: [{ label: "A", value: 1 }, { label: "B", value: 2 }] },
   ],
 } as const

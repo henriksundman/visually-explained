@@ -29,6 +29,7 @@ Block types:
 - timeline: { events: [{ when, what, detail? }] } — ordered events.
 - callout: { variant: "note"|"tip"|"warning", body } — aside or caution.
 - diagram: { nodes: [{ id, label, shape?: "box"|"round"|"pill"|"note" }], edges: [{ from, to, label?, kind?: "causes"|"leads"|"part-of"|"conflict" }], direction?: "lr"|"tb" } — semantic nodes/edges only; the renderer computes all layout. Edge from/to must reference node ids.
+- chart: { kind: "bar"|"line", points: [{ label, value }], unit?, caption? } — value is a number or numeric string; line points are an ordered series.
 - stack: { blocks: Block[] } — group of blocks.
 - text: { body } — plain paragraph.
 `.trim()

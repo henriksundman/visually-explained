@@ -45,7 +45,7 @@ const page = `<!doctype html>
 ${section("education", "light", educationIr)}
 ${section("data", "dark", dataIr)}
 <h2>Capabilities</h2>
-<p>Leniency and theming: the model below invented a <code>chart</code> block type and emitted one broken block — the library renders a fallback and skips the rest. The second copy is the <em>same IR</em> re-skinned purely with token overrides on the wrapper.</p>
+<p>Leniency and theming: the model below invented a <code>gauge</code> block type and emitted one broken block — the library renders a fallback and skips the rest. The second copy is the <em>same IR</em> re-skinned purely with token overrides on the wrapper.</p>
 ${section("capabilities", "light", capabilitiesIr)}
 ${section("capabilities-themed", "light", capabilitiesIr, "demo-tokens")}
 <script>
