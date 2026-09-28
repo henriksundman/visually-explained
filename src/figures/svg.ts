@@ -124,6 +124,8 @@ function cleanElement(el: SceneElement, i: number): string {
       return dot(el, i)
     case "sparkline":
       return sparkline(el, i)
+    default:
+      return "" // figure-* kinds: compiled in Task 4
   }
 }
 

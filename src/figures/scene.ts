@@ -77,6 +77,55 @@ export interface SparklineEl {
   trend: "up" | "down" | "flat"
 }
 
+export type FigureTone = "ink" | "muted" | "accent"
+
+export interface FigurePathEl {
+  kind: "figure-path"
+  d: string
+  tone: FigureTone
+  fill: FigureTone | null
+  width: number
+}
+
+export interface FigureBoxEl {
+  kind: "figure-box"
+  x: number
+  y: number
+  w: number
+  h: number
+  r: number
+  label: string | null
+  tone: FigureTone
+  fill: FigureTone | null
+}
+
+export interface FigureLineEl {
+  kind: "figure-line"
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  tone: FigureTone
+  width: number
+}
+
+export interface FigureDotEl {
+  kind: "figure-dot"
+  cx: number
+  cy: number
+  r: number
+  tone: FigureTone
+}
+
+export interface FigureLabelEl {
+  kind: "figure-label"
+  x: number
+  y: number
+  text: string
+  size: number
+  anchor: "start" | "middle" | "end"
+}
+
 export type SceneElement =
   | NodeBoxEl
   | ArrowEl
@@ -86,6 +135,11 @@ export type SceneElement =
   | LinePathEl
   | DotEl
   | SparklineEl
+  | FigurePathEl
+  | FigureBoxEl
+  | FigureLineEl
+  | FigureDotEl
+  | FigureLabelEl
 
 export interface Scene {
   width: number
