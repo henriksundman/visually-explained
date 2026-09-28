@@ -13,6 +13,8 @@ export interface NodeBoxEl {
   h: number
   shape: NodeShape
   label: string
+  /** Pre-wrapped lines (layout-owned). Single-line nodes may omit it. */
+  lines?: string[]
 }
 
 export type EdgeKind = "causes" | "leads" | "part-of" | "conflict"

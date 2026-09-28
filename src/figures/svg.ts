@@ -27,10 +27,23 @@ export function n2(n: number): string {
 }
 
 function nodeLabel(el: NodeBoxEl): string {
-  return (
-    `<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h / 2)}" text-anchor="middle" dominant-baseline="central" ` +
-    `class="exp-node-label">${escapeHtml(el.label)}</text>`
-  )
+  const lines = el.lines && el.lines.length > 0 ? el.lines : [el.label]
+  if (lines.length <= 1) {
+    return (
+      `<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h / 2)}" text-anchor="middle" dominant-baseline="central" ` +
+      `class="exp-node-label">${escapeHtml(lines[0] ?? el.label)}</text>`
+    )
+  }
+  const cx = el.x + el.w / 2
+  const cy = el.y + el.h / 2
+  const pitch = 16
+  const tspans = lines
+    .map((line, i) => {
+      const y = cy - ((lines.length - 1) * pitch) / 2 + i * pitch
+      return `<tspan x="${n2(cx)}" y="${n2(y)}">${escapeHtml(line)}</tspan>`
+    })
+    .join("")
+  return `<text text-anchor="middle" dominant-baseline="central" class="exp-node-label">${tspans}</text>`
 }
 
 function nodeBox(el: NodeBoxEl, i: number): string {

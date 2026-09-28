@@ -80,6 +80,59 @@ describe("layoutFlow", () => {
     const tiny = mustNode(scene, "tiny")
     const huge = mustNode(scene, "huge")
     expect(tiny.w).toBe(90) // min width
-    expect(huge.w).toBe(260) // max width
+    // Wrapped: box fits its widest line, still clamped to [90, 260].
+    expect(huge.lines!.length).toBeGreaterThan(1)
+    const maxLine = Math.max(...huge.lines!.map(l => l.length))
+    expect(huge.w).toBe(Math.min(260, Math.max(90, Math.round(maxLine * 7.5) + 24)))
+    expect(huge.w).toBeLessThanOrEqual(260)
+  })
+
+  it("wraps long labels into lines that fit the box and grows the height", () => {
+    const { scene } = layoutFlow({
+      nodes: [{ id: "long", label: "More signups reach the aha moment before dropping off" }],
+      edges: [],
+    })
+    const n = mustNode(scene, "long")
+    expect(n.lines!.length).toBeGreaterThan(1)
+    expect(n.h).toBeGreaterThan(44)
+    const maxChars = Math.floor((n.w - 24) / 7.5)
+    for (const line of n.lines!) {
+      expect(line.length).toBeLessThanOrEqual(maxChars)
+    }
+  })
+
+  it("paints arrows before nodes so boxes cover crossing lines", () => {
+    const { scene } = layoutFlow({
+      nodes: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" },
+        { id: "c", label: "C" },
+      ],
+      edges: [{ from: "a", to: "c" }],
+      direction: "lr",
+    })
+    const kinds = scene.elements.map(e => e.kind)
+    expect(kinds.indexOf("arrow")).toBeLessThan(kinds.indexOf("node-box"))
+  })
+
+  it("routes skip-rank edges orthogonally through the column gutter", () => {
+    const { scene } = layoutFlow({
+      nodes: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" },
+        { id: "c", label: "C" },
+      ],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" }, // chain puts c in rank 2...
+        { from: "a", to: "c" }, // ...so this edge skips rank 1 → orthogonal
+      ],
+      direction: "lr",
+    })
+    const arrows = scene.elements.filter(e => e.kind === "arrow") as { d: string }[]
+    const cubic = arrows.find(e => e.d.includes(" C "))
+    const orthogonal = arrows.find(e => e.d.includes(" L ") && !e.d.includes(" C "))
+    expect(cubic).toBeDefined()
+    expect(orthogonal).toBeDefined()
   })
 })
