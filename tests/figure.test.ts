@@ -1,0 +1,92 @@
+import { describe, expect, it } from "vitest"
+import { renderBlock, renderExplanation } from "../src/core/render"
+import { explanationSchema } from "../src/core/schema"
+import "../src/core/registerAll"
+
+const base = {
+  version: 1 as const,
+  blocks: [
+    {
+      type: "figure" as const,
+      title: "Orbit",
+      caption: "A circle-ish thing.",
+      params: [{ name: "r", min: 5, max: 50, step: 1, initial: 20 }],
+      elements: [
+        { kind: "arc" as const, cx: 100, cy: 80, rx: "r", ry: "r", start: 0, end: 270 },
+        { kind: "label" as const, x: 100, y: 80, text: "r = <r>", anchor: "middle" as const },
+      ],
+    },
+  ],
+}
+
+describe("figure primitive", () => {
+  it("is schema-valid", () => {
+    expect(explanationSchema.safeParse(base).success).toBe(true)
+  })
+
+  it("renders a themed figure with param-driven geometry", () => {
+    const { html, warnings } = renderExplanation(base)
+    expect(html).toContain(`<div class="exp-block exp-figure">`)
+    expect(html).toContain(`<svg class="exp-figure"`)
+    expect(html).toContain(`A 20 20 0 1 1`) // rx = ry = initial r = 20, large+sweep for 270°
+    expect(html).toContain(`<h4 class="exp-fig-title">Orbit</h4>`)
+    expect(html).toContain(`<p class="exp-fig-caption">A circle-ish thing.</p>`)
+    expect(html).toContain("r = &lt;r&gt;")
+    expect(warnings).toEqual([])
+  })
+
+  it("drops invalid elements individually and keeps the rest", () => {
+    const { html, warnings } = renderExplanation({
+      version: 1,
+      blocks: [
+        {
+          type: "figure",
+          elements: [{ kind: "dot", cx: "bogus + 1", cy: 5 }, { kind: "dot", cx: 5, cy: 5 }],
+        },
+      ],
+    })
+    expect(warnings.some(w => w.includes("figure-dot-resolve"))).toBe(true)
+    expect(html).toContain(`class="exp-fig-dot"`)
+  })
+
+  it("degrades to exp-fig-empty when everything drops, including empty elements", () => {
+    const dropped = renderExplanation({ version: 1, blocks: [{ type: "figure", elements: [{ kind: "wedge" }] }] })
+    expect(dropped.html).toContain(`class="exp-fig-empty"`)
+    expect(dropped.html).not.toContain(`exp-fig-dot`)
+    const empty = renderExplanation({ version: 1, blocks: [{ type: "figure", elements: [] }] })
+    expect(empty.html).toContain(`class="exp-fig-empty"`)
+  })
+
+  it("drops duplicate param names, first definition wins", () => {
+    const { html, warnings } = renderExplanation({
+      version: 1,
+      blocks: [
+        {
+          type: "figure",
+          params: [
+            { name: "r", min: 1, max: 9, step: 1, initial: 4 },
+            { name: "r", min: 1, max: 9, step: 1, initial: 8 },
+          ],
+          elements: [{ kind: "dot", cx: "r * 10", cy: 10 }],
+        },
+      ],
+    })
+    expect(warnings.some(w => w.includes("figure-param-duplicate"))).toBe(true)
+    expect(html).toContain(`cx="40"`)
+  })
+
+  it("a schema-invalid figure never renders a broken figure", () => {
+    const { html } = renderExplanation({
+      version: 1,
+      blocks: [{ type: "figure", params: [{ name: "r", min: 1, max: 2, step: 1, initial: 9 }], elements: [] }],
+    })
+    expect(html).not.toContain(`<svg class="exp-figure"`)
+  })
+
+  it("sketch option produces rough strokes, in both entry points", () => {
+    expect(renderExplanation(base, { sketch: true }).html).toContain(`class="exp-fig-sketch"`)
+    // Sketch mode emits only rough strokes (labels stay crisp) — no clean classes.
+    const html = renderBlock("figure", { title: "T", elements: [{ kind: "dot", cx: 1, cy: 2 }] }, 1, { sketch: true })
+    expect(html).toContain(`class="exp-fig-sketch"`)
+  })
+})

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { renderExplanation } from "../src/core/render"
 import { explanationSchema } from "../src/core/schema"
+import { systemPromptSnippet } from "../src/core/llm"
 import "../src/core/registerAll"
 
 const chain3 = [
@@ -92,5 +93,15 @@ describe("presentation: data-callout schema", () => {
         blocks: [{ type: "data-callout", metric: "m", label: "l", series: [1, 2] }],
       }).success,
     ).toBe(true)
+  })
+})
+
+describe("systemPromptSnippet: figure guidance", () => {
+  it("documents the figure block with authoring rules", () => {
+    expect(systemPromptSnippet).toContain("figure:")
+    expect(systemPromptSnippet).toContain(`kind: "path"`)
+    expect(systemPromptSnippet).toContain("360×240")
+    expect(systemPromptSnippet).toContain("tones are")
+    expect(systemPromptSnippet).toContain("≤60 elements")
   })
 })

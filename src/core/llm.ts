@@ -31,6 +31,7 @@ Block types:
 - callout: { variant: "note"|"tip"|"warning", body } — aside or caution.
 - diagram: { nodes: [{ id, label, shape?: "box"|"round"|"pill"|"note" }], edges: [{ from, to, label?, kind?: "causes"|"leads"|"part-of"|"conflict" }], direction?: "lr"|"tb" } — semantic nodes/edges only; the renderer computes all layout. Edge from/to must reference node ids.
 - chart: { kind: "bar"|"line", points: [{ label, value }], unit?, caption? } — value is a number or numeric string; line points are an ordered series.
+- figure: { title?, caption?, width?, height?, params?: [{ name, min, max, step, initial }], derived?: [{ name, expr }], elements: Element[] } — a bespoke drawn figure on a 360×240 canvas. Elements: { kind: "path", d } (d is plain path data: M L H V C S Q T A Z only), { kind: "curve", from, cp1, cp2, to } (each { x, y }), { kind: "arc", cx, cy, rx, ry, start, end } (degrees), { kind: "box", x, y, w, h, label? }, { kind: "line", x1, y1, x2, y2 }, { kind: "dot", cx, cy, r? }, { kind: "label", x, y, text, anchor? }, { kind: "group", dx?, dy?, elements } (one level). Numbers may be expressions over params/derived (e.g. "a * 2", "sin(PI/4)"); tones are "ink"|"muted"|"accent". Label everything; ≤60 elements.
 - stack: { blocks: Block[] } — group of blocks.
 - text: { body } — plain paragraph.
 - code: { language?, code } — a verbatim source snippet for how-tos; never contains HTML or markdown (rendered exactly as written).

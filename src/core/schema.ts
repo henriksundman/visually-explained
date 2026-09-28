@@ -146,6 +146,7 @@ export type Block =
   | StackBlock
   | DiagramBlock
   | ChartBlock
+  | FigureBlock
 
 export const stackBlockSchema = z.object({
   id: idSchema,
@@ -172,6 +173,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     stackBlockSchema,
     diagramBlockSchema,
     chartBlockSchema,
+    figureBlockSchema,
   ]) as unknown as z.ZodType<Block>,
 )
 
@@ -218,3 +220,35 @@ export const chartBlockSchema = z.object({
   caption: z.string().min(1).optional(),
 })
 export type ChartBlock = z.infer<typeof chartBlockSchema>
+
+export const figureParamSchema = z
+  .object({
+    name: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "name must be an identifier"),
+    min: z.number().finite(),
+    max: z.number().finite(),
+    step: z.number().finite().positive(),
+    initial: z.number().finite(),
+  })
+  .refine(p => p.min <= p.initial && p.initial <= p.max, { message: "initial must lie within [min, max]" })
+export type FigureParam = z.infer<typeof figureParamSchema>
+
+export const figureDerivedSchema = z.object({
+  name: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "name must be an identifier"),
+  expr: z.string().min(1).max(80),
+})
+export type FigureDerived = z.infer<typeof figureDerivedSchema>
+
+export const figureBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("figure"),
+  title: z.string().min(1).optional(),
+  caption: z.string().min(1).optional(),
+  width: z.number().finite().int().min(80).max(1200).optional(),
+  height: z.number().finite().int().min(60).max(1200).optional(),
+  params: z.array(figureParamSchema).max(8).optional(),
+  derived: z.array(figureDerivedSchema).max(8).optional(),
+  // Lenient like stack children / chart points: elements are parsed at render
+  // time so one malformed element drops alone instead of the whole figure.
+  elements: z.array(z.unknown()),
+})
+export type FigureBlock = z.infer<typeof figureBlockSchema>
