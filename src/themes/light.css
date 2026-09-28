@@ -21,4 +21,11 @@
   --exp-node-fill: #ffffff;
   --exp-node-stroke: #2563eb;
   --exp-node-text: #1a1d23;
+
+  /* code tokens */
+  --exp-tok-key: #7c3aed;
+  --exp-tok-lit: #b45309;
+  --exp-tok-num: #1d4ed8;
+  --exp-tok-str: #047857;
+  --exp-tok-com: #9ca3af;
 }

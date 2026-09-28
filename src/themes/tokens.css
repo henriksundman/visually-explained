@@ -26,6 +26,13 @@
   --exp-node-stroke: #2563eb;
   --exp-node-text: #1a1d23;
 
+  /* code tokens */
+  --exp-tok-key: #7c3aed;
+  --exp-tok-lit: #b45309;
+  --exp-tok-num: #1d4ed8;
+  --exp-tok-str: #047857;
+  --exp-tok-com: #9ca3af;
+
   /* shape & type */
   --exp-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --exp-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -389,6 +396,27 @@
   font-size: 0.9em;
   background: none;
   padding: 0;
+}
+
+.exp-tok-key {
+  color: var(--exp-tok-key);
+}
+
+.exp-tok-lit {
+  color: var(--exp-tok-lit);
+}
+
+.exp-tok-num {
+  color: var(--exp-tok-num);
+}
+
+.exp-tok-str {
+  color: var(--exp-tok-str);
+}
+
+.exp-tok-com {
+  color: var(--exp-tok-com);
+  font-style: italic;
 }
 
 .exp-callout-body {
