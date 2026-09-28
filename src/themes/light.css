@@ -14,4 +14,11 @@
   --exp-up: #047857;
   --exp-down: #b91c1c;
   --exp-flat: #5c6470;
+
+  /* figures */
+  --exp-ink: #1a1d23;
+  --exp-edge: #6b7280;
+  --exp-node-fill: #ffffff;
+  --exp-node-stroke: #2563eb;
+  --exp-node-text: #1a1d23;
 }
