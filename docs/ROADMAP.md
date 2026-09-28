@@ -13,6 +13,11 @@ decisions that survive across sessions.
   auto-layout for diagrams/charts/timelines, sketch mode via rough.js,
   CSS-only progressive draw, dependency-free syntax highlighting, `code`
   block. Spec: `docs/superpowers/specs/2026-09-28-drawing-layer-design.md`.
+- **Bespoke LLM-authored figures** (2026-09-28) — `figure` block: authored
+  Scene elements (path/curve/arc/box/line/dot/label/group), params + derived
+  values resolved by a hand-rolled expression evaluator, strict path grammar,
+  static render at initial values. Spec:
+  `docs/superpowers/specs/2026-09-28-bespoke-figures-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -45,9 +50,10 @@ sub-projects, each its own spec → plan → build:
 
 ## Backlog
 
-- **Interactive figure runtime** (first follow-up after step 1): React
-  runtime consuming the bespoke-figure format *unchanged* — sliders bound to
-  `params`, play/scrub controls, re-render via cached expression ASTs, SSR
-  fallback showing `initial`-value render (already shipped by step 1).
+- **Interactive figure runtime** (next up): React runtime consuming the
+  bespoke-figure format *unchanged* (format shipped 2026-09-28) — sliders
+  bound to `params`, play/scrub controls, re-render via the cached expression
+  ASTs in `src/figures/expr.ts`, SSR fallback = the static render that already
+  ships.
 - Demo gallery of bespoke figures (step-1 follow-up polish).
 - Steps 2–3 specs (see arc above) — write when their turn comes.
