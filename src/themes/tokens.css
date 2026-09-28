@@ -591,3 +591,28 @@
     opacity: 1;
   }
 }
+
+/* Authored figure elements (figure block) */
+
+.exp-fig-path {
+  stroke-linejoin: round;
+}
+
+.exp-fig-box rect {
+  stroke-width: 1.25;
+}
+
+.exp-fig-line {
+  stroke-linecap: round;
+}
+
+.exp-fig-dot {
+  stroke: none;
+}
+
+.exp-fig-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--exp-text);
+  margin: 0 0 4px;
+}

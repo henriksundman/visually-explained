@@ -33,5 +33,16 @@ export const allPrimitivesIr = {
       edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }],
     },
     { type: "chart", kind: "bar", points: [{ label: "A", value: 1 }, { label: "B", value: 2 }] },
+    {
+      type: "figure",
+      title: "Damped oscillation",
+      caption: "Authored scene: an expression-driven curve with a labeled marker.",
+      params: [{ name: "k", min: 1, max: 5, step: 0.5, initial: 2 }],
+      elements: [
+        { kind: "path", d: "M 10 110 C 60 10 120 210 170 110", tone: "ink", width: 2 },
+        { kind: "dot", cx: "10 + 40 * k", cy: 60 },
+        { kind: "label", x: "10 + 40 * k", y: 50, text: "peak", anchor: "middle" },
+      ],
+    },
   ],
 } as const

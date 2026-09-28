@@ -1,9 +1,14 @@
 import { escapeHtml } from "../core/inline"
-import { sketchElementSvg } from "./sketch"
+import { FIGURE_TONE_VAR, sketchElementSvg } from "./sketch"
 import type {
   ArrowEl,
   BarEl,
   DotEl,
+  FigureBoxEl,
+  FigureDotEl,
+  FigureLabelEl,
+  FigureLineEl,
+  FigurePathEl,
   LabelEl,
   LinePathEl,
   NodeBoxEl,
@@ -106,6 +111,50 @@ function sparkline(el: SparklineEl, i: number): string {
   return `<path class="exp-sparkline exp-sparkline-${el.trend}" d="${el.d}" style="--draw-i:${i}"/>`
 }
 
+function figurePath(el: FigurePathEl, i: number): string {
+  const fill = el.fill ? FIGURE_TONE_VAR[el.fill] : "none"
+  const opacity = el.fill ? ` fill-opacity="0.12"` : ""
+  return (
+    `<path class="exp-fig-path" d="${el.d}" fill="${fill}"${opacity} stroke="${FIGURE_TONE_VAR[el.tone]}" ` +
+    `stroke-width="${n2(el.width)}" stroke-linecap="round" style="--draw-i:${i}"/>`
+  )
+}
+
+function figureBox(el: FigureBoxEl, i: number): string {
+  const fill = el.fill ? FIGURE_TONE_VAR[el.fill] : "none"
+  const opacity = el.fill ? ` fill-opacity="0.12"` : ""
+  const label = el.label
+    ? `<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h / 2)}" text-anchor="middle" dominant-baseline="central" class="exp-fig-label">${escapeHtml(el.label)}</text>`
+    : ""
+  return (
+    `<g class="exp-fig-box" style="--draw-i:${i}">` +
+    `<rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(el.h)}" rx="${n2(el.r)}" fill="${fill}"${opacity} stroke="${FIGURE_TONE_VAR[el.tone]}"/>` +
+    label +
+    `</g>`
+  )
+}
+
+function figureLine(el: FigureLineEl, i: number): string {
+  return (
+    `<line class="exp-fig-line" x1="${n2(el.x1)}" y1="${n2(el.y1)}" x2="${n2(el.x2)}" y2="${n2(el.y2)}" ` +
+    `stroke="${FIGURE_TONE_VAR[el.tone]}" stroke-width="${n2(el.width)}" style="--draw-i:${i}"/>`
+  )
+}
+
+function figureDot(el: FigureDotEl, i: number): string {
+  return (
+    `<circle class="exp-fig-dot" cx="${n2(el.cx)}" cy="${n2(el.cy)}" r="${n2(el.r)}" ` +
+    `fill="${FIGURE_TONE_VAR[el.tone]}" style="--draw-i:${i}"/>`
+  )
+}
+
+function figureLabel(el: FigureLabelEl, i: number): string {
+  return (
+    `<text class="exp-fig-label" x="${n2(el.x)}" y="${n2(el.y)}" text-anchor="${el.anchor}" ` +
+    `style="--draw-i:${i};font-size:${n2(el.size)}px">${escapeHtml(el.text)}</text>`
+  )
+}
+
 function cleanElement(el: SceneElement, i: number): string {
   switch (el.kind) {
     case "node-box":
@@ -124,8 +173,16 @@ function cleanElement(el: SceneElement, i: number): string {
       return dot(el, i)
     case "sparkline":
       return sparkline(el, i)
-    default:
-      return "" // figure-* kinds: compiled in Task 4
+    case "figure-path":
+      return figurePath(el, i)
+    case "figure-box":
+      return figureBox(el, i)
+    case "figure-line":
+      return figureLine(el, i)
+    case "figure-dot":
+      return figureDot(el, i)
+    case "figure-label":
+      return figureLabel(el, i)
   }
 }
 

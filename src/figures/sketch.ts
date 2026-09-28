@@ -1,6 +1,13 @@
 import rough from "roughjs"
 import { seedNumber } from "./seed"
-import type { SceneElement } from "./scene"
+import type { FigureTone, SceneElement } from "./scene"
+
+/** Authored-figure tone → theme token. Owned here; svg.ts imports it. */
+export const FIGURE_TONE_VAR: Record<FigureTone, string> = {
+  ink: "var(--exp-ink)",
+  muted: "var(--exp-text-muted)",
+  accent: "var(--exp-accent)",
+}
 
 const ROUGH_BASE = { roughness: 1, bowing: 1, fillStyle: "solid" } as const
 
@@ -42,6 +49,31 @@ function drawablesFor(gen: RoughGenerator, el: SceneElement, seed: string, index
         el.trend === "up" ? "var(--exp-up)" : el.trend === "down" ? "var(--exp-down)" : "var(--exp-flat)"
       return [gen.path(el.d, { ...opt, stroke, strokeWidth: 2 })]
     }
+    case "figure-path":
+      return [
+        gen.path(el.d, {
+          ...opt,
+          stroke: FIGURE_TONE_VAR[el.tone],
+          strokeWidth: el.width,
+          fill: el.fill ? FIGURE_TONE_VAR[el.fill] : undefined,
+        }),
+      ]
+    case "figure-box":
+      return [
+        gen.rectangle(el.x, el.y, el.w, el.h, {
+          ...opt,
+          stroke: FIGURE_TONE_VAR[el.tone],
+          fill: el.fill ? FIGURE_TONE_VAR[el.fill] : undefined,
+        }),
+      ]
+    case "figure-line":
+      return [
+        gen.line(el.x1, el.y1, el.x2, el.y2, { ...opt, stroke: FIGURE_TONE_VAR[el.tone], strokeWidth: el.width }),
+      ]
+    case "figure-dot":
+      return [
+        gen.circle(el.cx, el.cy, el.r * 2, { ...opt, stroke: FIGURE_TONE_VAR[el.tone], fill: FIGURE_TONE_VAR[el.tone] }),
+      ]
     default:
       return [] // labels are never roughed
   }
