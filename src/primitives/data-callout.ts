@@ -7,7 +7,7 @@ import { hashSeed } from "../figures/seed"
 import type { Scene } from "../figures/scene"
 
 export function renderDataCallout(block: DataCalloutBlock, ctx: RenderContext): string {
-  const spark = resolveSparkline(block, ctx.sketch)
+  const spark = resolveSparkline(block)
   const sparkSvg = spark
     ? sceneToSvg(spark.scene, { ariaLabel: spark.aria, sketch: ctx.sketch, seed: spark.seed })
     : ""
@@ -28,10 +28,7 @@ export function renderDataCallout(block: DataCalloutBlock, ctx: RenderContext): 
 
 /** Figure form = the callout markup plus a trend sparkline. No usable series
  *  (or presentation "text") → null → text markup (spec §1 leniency). */
-function resolveSparkline(
-  block: DataCalloutBlock,
-  sketch: boolean,
-): { scene: Scene; aria: string; seed: string } | null {
+function resolveSparkline(block: DataCalloutBlock): { scene: Scene; aria: string; seed: string } | null {
   const wantsFigure = block.presentation !== "text"
   if (!wantsFigure) return null
   if (!block.series || block.series.length < 2) return null
