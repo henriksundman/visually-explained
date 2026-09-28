@@ -59,5 +59,10 @@ pids/
 .DS_Store
 Thumbs.db
 
-# Note: .vexp/ is NOT ignored here — vexp tracks its manifest.json and
-# ignores its internal files (index.db, logs, etc.) via .vexp/.gitignore.
+# Local agent/tooling state — machine-specific, regenerable, not project source.
+# (.vexp/ manifest is a derived cache: per-file hashes churn on every edit and
+# the index rebuilds from source, so we don't track it despite vexp's default.)
+.codex/
+.superpowers/
+.superpowers_bookkeeping
+.vexp/

@@ -16,7 +16,8 @@ vexp runs entirely on this machine, index in `.vexp/`;
 `run_pipeline` transmits nothing to any external service.
 On `status: "degraded"` or 0 pivots the index is still building - use your own tools.
 For literal string sweeps use your native search - do NOT route text sweeps through vexp.
-Repo SOURCE only: logs, dist/, node_modules/ and files outside the repo are NOT indexed.<!-- /vexp -->
+Repo SOURCE only: logs, dist/, node_modules/ and files outside the repo are NOT indexed.
+<!-- /vexp -->
 
 ### Freebuff / non-VS-Code agents
 If the vexp MCP tools are not available in this session, drive the same index via
