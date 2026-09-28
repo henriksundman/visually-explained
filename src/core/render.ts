@@ -9,6 +9,8 @@ export interface RenderOptions {
   strict?: boolean
   /** Theme class to put on the root element. Core defaults to "none" (unstyled root); the React adapter defaults to "light". */
   theme?: "light" | "dark" | "none"
+  /** Hand-drawn (rough.js) stroke pass on every figure. */
+  sketch?: boolean
   /**
    * When false, no root wrapper is emitted — the consumer's own element is the
    * token-bearing `.exp` scope. Use this when styling tokens on a wrapper you
@@ -33,9 +35,9 @@ export function renderExplanation(input: unknown, opts: RenderOptions = {}): Ren
   const themeClass = theme === "none" ? "" : ` exp-theme-${theme}`
   const inner =
     renderHeader(salvaged.title, salvaged.summary) +
-    salvaged.blocks.map(b => renderSalvagedBlock(b, 1, warnings)).join("")
+    salvaged.blocks.map(b => renderSalvagedBlock(b, 1, warnings, opts.sketch ?? false)).join("")
   if (opts.root === false) return { html: inner, warnings }
-  return { html: `<div class="exp${themeClass}">${inner}</div>`, warnings }
+  return { html: `<div class="exp${themeClass}${opts.sketch ? " exp-sketch" : ""}">${inner}</div>`, warnings }
 }
 
 export function renderHeader(title: string | null, summary: string | null): string {
@@ -46,30 +48,31 @@ export function renderHeader(title: string | null, summary: string | null): stri
 }
 
 /** Renders a single block by type; used by the React adapter. Warnings are discarded. */
-export function renderBlock(type: string, data: unknown, depth = 1): string {
+export function renderBlock(type: string, data: unknown, depth = 1, opts: { sketch?: boolean } = {}): string {
   const raw = typeof data === "object" && data !== null ? { ...(data as object), type } : { type }
   const diagnostics: Diagnostic[] = []
   const b = salvageBlock(raw, -1, diagnostics)
-  return renderSalvagedBlock(b, depth, [])
+  return renderSalvagedBlock(b, depth, [], opts.sketch ?? false)
 }
 
-function renderSalvagedBlock(b: SalvagedBlock, depth: number, warnings: string[]): string {
+function renderSalvagedBlock(b: SalvagedBlock, depth: number, warnings: string[], sketch: boolean): string {
   if (b.kind === "invalid") return ""
   const entry = registry[b.type]
   if (b.kind === "unknown" || !entry) return renderFallback(b.type, b.data)
   const ctx: RenderContext = {
     depth,
+    sketch,
     addWarning: m => warnings.push(m),
-    renderChildren: (children, d) => renderChildrenLenient(children, d ?? depth + 1, warnings),
+    renderChildren: (children, d) => renderChildrenLenient(children, d ?? depth + 1, warnings, sketch),
   }
   return entry.render(b.data as Block, ctx)
 }
 
-function renderChildrenLenient(children: unknown[], depth: number, warnings: string[]): string {
+function renderChildrenLenient(children: unknown[], depth: number, warnings: string[], sketch: boolean): string {
   const diagnostics: Diagnostic[] = []
   const blocks = children.map((raw, i) => salvageBlock(raw, i, diagnostics))
   for (const d of diagnostics) warnings.push(`[${d.code}] ${d.message}`)
-  return blocks.map(b => renderSalvagedBlock(b, depth, warnings)).join("")
+  return blocks.map(b => renderSalvagedBlock(b, depth, warnings, sketch)).join("")
 }
 
 function renderFallback(type: string, data: unknown): string {

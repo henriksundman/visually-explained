@@ -3,6 +3,7 @@ import { causeEffectBlockSchema, type CauseEffectBlock } from "../core/schema"
 import { renderInline } from "../core/inline"
 import { layoutFlow, type FlowSpec } from "../figures/layoutFlow"
 import { sceneToSvg } from "../figures/svg"
+import { hashSeed } from "../figures/seed"
 
 const CAUSE_EFFECT_FIGURE_MAX = 5
 
@@ -25,7 +26,7 @@ function renderTextForm(block: CauseEffectBlock): string {
   return `<div class="exp-block exp-cause-effect"><ol class="exp-cause-chain">${items}</ol></div>`
 }
 
-function renderFigureForm(block: CauseEffectBlock): string {
+function renderFigureForm(block: CauseEffectBlock, ctx: RenderContext): string {
   const spec: FlowSpec = {
     nodes: block.chain.flatMap((c, i) => [
       { id: `b${i}`, label: c.because, shape: "pill" as const },
@@ -36,12 +37,12 @@ function renderFigureForm(block: CauseEffectBlock): string {
   }
   const { scene } = layoutFlow(spec)
   const aria = `Cause and effect: ${block.chain.map(c => `${c.because} → ${c.therefore}`).join("; ")}`
-  const svg = sceneToSvg(scene, { ariaLabel: aria })
+  const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: block.id ?? hashSeed(aria) })
   return `<div class="exp-block exp-cause-effect exp-cause-effect-figure">${svg}</div>`
 }
 
-export function renderCauseEffect(block: CauseEffectBlock, _ctx: RenderContext): string {
-  if (resolvePresentation(block) === "figure") return renderFigureForm(block)
+export function renderCauseEffect(block: CauseEffectBlock, ctx: RenderContext): string {
+  if (resolvePresentation(block) === "figure") return renderFigureForm(block, ctx)
   return renderTextForm(block)
 }
 

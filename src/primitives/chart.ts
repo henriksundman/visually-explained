@@ -3,6 +3,7 @@ import { chartBlockSchema, type ChartBlock } from "../core/schema"
 import { renderInline } from "../core/inline"
 import { layoutChart, type ChartPoint } from "../figures/layoutChart"
 import { sceneToSvg } from "../figures/svg"
+import { hashSeed } from "../figures/seed"
 
 /** Lenient per-point parsing (spec §1): a malformed point is dropped with a
  *  warning, not fatal. Mirrors how stack children are salvaged. */
@@ -36,7 +37,7 @@ export function renderChart(block: ChartBlock, ctx: RenderContext): string {
   }
   const { scene } = layoutChart({ kind: block.kind, points, unit: block.unit, caption: block.caption })
   const aria = block.caption ?? `Chart: ${points.map(p => p.label).join(" → ")}`
-  const svg = sceneToSvg(scene, { ariaLabel: aria })
+  const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: block.id ?? hashSeed(aria) })
   const caption = block.caption ? `<p class="exp-fig-caption">${renderInline(block.caption)}</p>` : ""
   return `<div class="exp-block exp-chart">${svg}${caption}</div>`
 }

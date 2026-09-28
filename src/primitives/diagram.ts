@@ -2,6 +2,7 @@ import { registerPrimitive, type RenderContext } from "../core/registry"
 import { diagramBlockSchema, type DiagramBlock } from "../core/schema"
 import { layoutFlow, type FlowSpec } from "../figures/layoutFlow"
 import { sceneToSvg } from "../figures/svg"
+import { hashSeed } from "../figures/seed"
 
 export function renderDiagram(block: DiagramBlock, ctx: RenderContext): string {
   const spec: FlowSpec = {
@@ -13,7 +14,7 @@ export function renderDiagram(block: DiagramBlock, ctx: RenderContext): string {
   for (const w of warnings) ctx.addWarning(w)
   // Deterministic accessible name from the block's own fields (spec §2).
   const aria = `Diagram: ${block.nodes.map(n => n.label).join(" → ")}`
-  const svg = sceneToSvg(scene, { ariaLabel: aria })
+  const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: block.id ?? hashSeed(aria) })
   return `<div class="exp-block exp-diagram">${svg}</div>`
 }
 

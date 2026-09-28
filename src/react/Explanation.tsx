@@ -18,6 +18,8 @@ export interface ExplanationProps {
   components?: { [type: string]: ExplanationComponent | undefined }
   /** Throw when the top level is invalid instead of rendering leniently. */
   strict?: boolean
+  /** Hand-drawn (rough.js) stroke pass on every figure. */
+  sketch?: boolean
 }
 
 function themeClassName(theme: "light" | "dark" | "none"): string {
@@ -28,7 +30,7 @@ function themeClassName(theme: "light" | "dark" | "none"): string {
  * Server component (no hooks, no client JS). Safe in Next.js RSC.
  * Custom components receive the parsed block payload.
  */
-export function Explanation({ ir, theme = "light", components, strict }: ExplanationProps) {
+export function Explanation({ ir, theme = "light", components, strict, sketch }: ExplanationProps) {
   if (strict) {
     const v = validateExplanation(ir)
     if (!v.ok) {
@@ -37,7 +39,7 @@ export function Explanation({ ir, theme = "light", components, strict }: Explana
   }
   const salvaged = salvageExplanation(ir)
   return (
-    <div className={themeClassName(theme)}>
+    <div className={themeClassName(theme) + (sketch ? " exp-sketch" : "")}>
       {salvaged.title && (
         <h3 className="exp-title" dangerouslySetInnerHTML={{ __html: renderInline(salvaged.title) }} />
       )}
@@ -50,7 +52,7 @@ export function Explanation({ ir, theme = "light", components, strict }: Explana
         if (Custom && b.kind === "valid") {
           return <Custom key={b.index} block={b.data as Block} />
         }
-        return <div key={b.index} dangerouslySetInnerHTML={{ __html: renderBlock(b.type, b.data) }} />
+        return <div key={b.index} dangerouslySetInnerHTML={{ __html: renderBlock(b.type, b.data, 1, { sketch }) }} />
       })}
     </div>
   )

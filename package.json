@@ -19,8 +19,15 @@
     "./themes/tokens.css": "./dist/themes/tokens.css",
     "./themes/light.css": "./dist/themes/light.css",
     "./themes/dark.css": "./dist/themes/dark.css"
-  },  "files": ["dist"],
-  "sideEffects": ["*.css", "src/core/registerAll.ts", "src/primitives/*"],
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css",
+    "src/core/registerAll.ts",
+    "src/primitives/*"
+  ],
   "scripts": {
     "build": "tsup && mkdir -p dist/themes && cp src/themes/*.css dist/themes/",
     "test": "vitest run",
@@ -31,6 +38,7 @@
     "react": ">=18.0.0"
   },
   "dependencies": {
+    "roughjs": "^4.6.6",
     "zod": "^4.0.0"
   },
   "devDependencies": {

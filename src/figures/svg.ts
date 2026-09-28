@@ -1,4 +1,5 @@
 import { escapeHtml } from "../core/inline"
+import { sketchElementSvg } from "./sketch"
 import type {
   ArrowEl,
   BarEl,
@@ -25,14 +26,20 @@ export function n2(n: number): string {
   return String(Math.round(n * 100) / 100)
 }
 
+function nodeLabel(el: NodeBoxEl): string {
+  return (
+    `<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h / 2)}" text-anchor="middle" dominant-baseline="central" ` +
+    `class="exp-node-label">${escapeHtml(el.label)}</text>`
+  )
+}
+
 function nodeBox(el: NodeBoxEl, i: number): string {
   const rx = el.shape === "pill" ? el.h / 2 : el.shape === "round" ? 10 : el.shape === "note" ? 2 : 4
   return (
     `<g class="exp-node exp-node-${el.shape}" style="--draw-i:${i}">` +
     `<rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(el.h)}" rx="${n2(rx)}"` +
     ` fill="var(--exp-node-fill)" stroke="var(--exp-node-stroke)"/>` +
-    `<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h / 2)}" text-anchor="middle" dominant-baseline="central" ` +
-    `class="exp-node-label">${escapeHtml(el.label)}</text>` +
+    nodeLabel(el) +
     `</g>`
   )
 }
@@ -108,7 +115,16 @@ function cleanElement(el: SceneElement, i: number): string {
 }
 
 export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
-  const body = scene.elements.map(cleanElement).join("")
+  const body = opts.sketch
+    ? scene.elements
+        .map((el, i) => {
+          const roughPart = sketchElementSvg(el, opts.seed ?? "", i)
+          const labelPart =
+            el.kind === "node-box" ? nodeLabel(el) : el.kind === "label" ? label(el, i) : ""
+          return roughPart + labelPart
+        })
+        .join("")
+    : scene.elements.map(cleanElement).join("")
   return (
     `<svg class="exp-figure" viewBox="0 0 ${n2(scene.width)} ${n2(scene.height)}" role="img" ` +
     `aria-label="${escapeHtml(opts.ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +

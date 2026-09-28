@@ -6,6 +6,8 @@ export const MAX_STACK_DEPTH = 2
 
 export interface RenderContext {
   depth: number
+  /** Sketch pass on (exp-sketch): primitives render rough.js strokes. */
+  sketch: boolean
   addWarning(message: string): void
   /** Leniently renders child blocks (used by stack); depth defaults to ctx.depth + 1. */
   renderChildren(blocks: unknown[], depth?: number): string
