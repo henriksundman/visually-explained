@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Curio: Explorable Knowledge &amp; Visual Explanations</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"error":"#ba1a1a","primary-fixed":"#dce3eb","tertiary-fixed-dim":"#ffb4a2","primary-container":"#1b2228","surface-dim":"#dbdad7","secondary-fixed":"#94f1fa","on-surface-variant":"#44474a","error-container":"#ffdad6","secondary":"#006970","surface-variant":"#e3e2e0","on-error":"#ffffff","on-primary-container":"#828991","on-tertiary-fixed-variant":"#812810","on-primary-fixed":"#151c22","outline-variant":"#c4c6cb","on-secondary-fixed":"#002022","on-tertiary-container":"#d8674a","on-secondary":"#ffffff","background":"#faf9f6","on-tertiary-fixed":"#3c0700","surface-bright":"#faf9f6","on-surface":"#1a1c1a","tertiary-container":"#460a00","inverse-on-surface":"#f2f1ee","on-primary":"#ffffff","on-tertiary":"#ffffff","surface-container-lowest":"#ffffff","on-secondary-container":"#007077","surface-container-high":"#e9e8e5","surface-tint":"#585f66","tertiary":"#1d0200","surface-container":"#efeeeb","surface-container-low":"#f4f3f0","surface-container-highest":"#e3e2e0","tertiary-fixed":"#ffdad2","inverse-surface":"#2f312f","on-secondary-fixed-variant":"#004f54","on-primary-fixed-variant":"#40484e","on-background":"#1a1c1a","secondary-fixed-dim":"#78d5dd","primary-fixed-dim":"#c0c7cf","surface":"#faf9f6","inverse-primary":"#c0c7cf","secondary-container":"#94f1fa","outline":"#74777b","primary":"#050b11","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"gutter":"1.5rem","gutter-mobile":"1rem","space-lg":"1.5rem","margin":"3rem","margin-mobile":"1.25rem","space-md":"1rem","space-xs":"0.25rem","space-2xl":"4rem","space-sm":"0.5rem","space-xl":"2.5rem"},"fontFamily":{"headline-sm":["Newsreader"],"display-lg-mobile":["Newsreader"],"body-sm":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"display-md":["Newsreader"],"display-md-mobile":["Newsreader"],"body-lg":["Plus Jakarta Sans"],"headline-md":["Newsreader"],"lead":["Plus Jakarta Sans"],"display-lg":["Newsreader"],"code-sm":["JetBrains Mono"],"label-sm":["Plus Jakarta Sans"],"label-md":["Plus Jakarta Sans"],"headline-lg":["Newsreader"]},"fontSize":{"headline-sm":["20px",{"lineHeight":"28px","letterSpacing":"-0.005em","fontWeight":"600"}],"display-lg-mobile":["38px",{"lineHeight":"44px","letterSpacing":"-0.015em","fontWeight":"400"}],"body-sm":["13px",{"lineHeight":"20px","letterSpacing":"0.005em","fontWeight":"400"}],"body-md":["15px",{"lineHeight":"24px","letterSpacing":"0em","fontWeight":"400"}],"display-md":["44px",{"lineHeight":"52px","letterSpacing":"-0.02em","fontWeight":"400"}],"display-md-mobile":["32px",{"lineHeight":"38px","letterSpacing":"-0.01em","fontWeight":"400"}],"body-lg":["17px",{"lineHeight":"28px","letterSpacing":"0em","fontWeight":"400"}],"headline-md":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"500"}],"lead":["19px",{"lineHeight":"30px","letterSpacing":"-0.005em","fontWeight":"400"}],"display-lg":["56px",{"lineHeight":"64px","letterSpacing":"-0.02em","fontWeight":"400"}],"code-sm":["13px",{"lineHeight":"20px","letterSpacing":"-0.01em","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.06em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"500"}]}}}};</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 w-full z-50 bg-surface/90 backdrop-blur-xl border-b border-outline-variant/40"><div class="h-20 max-w-[1440px] mx-auto px-6 lg:px-12 flex items-center justify-between gap-6"><div class="flex items-center gap-8"><a class="flex items-center gap-3 group" data-path="curio-visual-explanation-showcase-hub" href="#"><img alt="Curio Brand Mark" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WptdhfNkowK8ze6tR6jj2zd0pKua-yNipNkJSv28rLFcVnILThZnYb1tD_XnbFacVk1nyzdg5juvSYmPm8PZ_j30FGgZB8C2E7akzprRgdPOsXgQ6nq1aXvntOd1wCbIWV3QFa3SX83Ppsx_547wDkaFjylaCiNh754BCtHXbCPEb_HvWalJMowRIuxIk_E2BA9PKIFajwgAn5DyxZw_IJ5EhTMLaDsP3iFgzuJPNpxtYKDjdW0_LpbOw"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary group-hover:text-secondary transition-colors">Curio</span><span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Editorial Knowledge Atelier</span></div></a><nav class="hidden xl:flex items-center gap-6 h-20" data-active-classes="text-primary font-semibold border-b-2 border-primary"><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="curio-visual-explanation-showcase-hub" href="#">Showcase Hub</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="interactive-sandboxes" href="#">Interactive Sandboxes</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="dissections" href="#">Dissections</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="visual-how-to-the-a-pathfinding-algorithm-kinetic-graph-traversal" href="#">Procedural How-Tos</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="concept-analogies" href="#">Concept Analogies</a></nav></div><div class="flex items-center gap-4 flex-1 max-w-lg justify-end"><div class="relative w-full max-w-sm hidden md:block"><div class="flex items-center bg-surface-container-low border border-outline-variant/50 rounded-xl px-3 py-1.5 focus-within:border-secondary transition-all"><span class="material-symbols-outlined text-outline text-[18px] mr-2">search</span><input class="w-full bg-transparent text-on-surface placeholder:text-outline font-body-sm text-body-sm focus:outline-none" placeholder="Search fascicles, analogies, proofs..." type="text"/><kbd class="font-code-sm text-code-sm bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-outline-variant/60 ml-2 select-none shadow-sm">⌘K</kbd></div></div><div class="hidden lg:flex items-center gap-2 pl-1 border-l border-outline-variant/50"><span class="font-code-sm text-code-sm text-outline px-2 py-1 rounded bg-surface-container-low border border-outline-variant/40" title="Digital Object Identifier">DOI: 10.1038/curio.2024</span></div><div class="flex items-center gap-2.5 pl-1"><button aria-label="Saved Monographs" class="relative p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-all"><span class="material-symbols-outlined text-[20px]">bookmark_border</span><span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-secondary"></span></button><button aria-label="Scholar Profile" class="flex items-center p-0.5 rounded-full hover:ring-2 hover:ring-secondary/40 transition-all" title="Scholar Profile: Dr. Julian Vance"><img alt="Scholar Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2WRrQ1oB63CwrkEoWtD_wCycXAoFv7nYp1e3jyAs5Y4Tnr2LLvuWt1HMMZM8LS6VltyzQGFx3pg0NuFJ27Md2Vu_tcowUFrD3stVqGuwTF16KxocNJvrUR-dqGwLLHIIjeN3cO8A-6_p0gvVlvbbd0UTZ0U-Tvi2wCIU7G6-m5WJLMzNWcOUk1IMSYd9o4HmfsW2BaU9nG7D6qBVMYz03F64xcCBCRaVgo348_cA1v6AVhfAjNZ_r"/></button></div></div></div></header><main class="w-full pt-20 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- TOP BREADCRUMB & ACADEMIC MASTHEAD -->
+<section class="max-w-[1440px] w-full mx-auto px-6 lg:px-12 pt-8 pb-10">
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+<nav class="flex items-center gap-2 font-code-sm text-code-sm text-on-surface-variant flex-wrap">
+<a class="hover:text-secondary transition-colors" href="#">Concept Analogies</a>
+<span class="text-outline">/</span>
+<a class="hover:text-secondary transition-colors" href="#">Statistical Mechanics &amp; Thermodynamics</a>
+<span class="text-outline">/</span>
+<span class="text-primary font-medium">Fascicle No. 042</span>
+</nav>
+<div class="flex items-center gap-3">
+<span class="px-3 py-1 rounded-full font-label-sm text-label-sm uppercase tracking-wider bg-surface-container-high text-secondary font-semibold">
+          Peer-Reviewed Monograph
+        </span>
+<span class="font-code-sm text-code-sm text-outline hidden sm:inline">
+          DOI: 10.1088/curio.phys.042.entropy
+        </span>
+</div>
+</div>
+<!-- Editorial Title Block -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<span class="px-2.5 py-1 rounded font-code-sm text-code-sm bg-primary text-on-primary font-medium tracking-wide">
+            SERIES II · KINETIC FOUNDATIONS
+          </span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">
+            Dissection of Boltzmann's Invariant
+          </span>
+</div>
+<h1 class="font-display-lg text-display-lg text-primary tracking-tight leading-[1.08]">
+          The Arrow of Time &amp; Statistical Inevitability
+        </h1>
+<p class="font-lead text-lead text-on-surface-variant leading-relaxed max-w-3xl">
+          An interactive procedural monograph exploring why time marches strictly forward despite time-symmetric microscopic physics. Dissecting Boltzmann’s entropy <span class="font-code-sm text-code-sm text-secondary px-1.5 py-0.5 rounded bg-surface-container">S = k_B \ln \Omega</span> through macroscopic cards, kinetic gas billiards, and phase space hypervolume expansions.
+        </p>
+</div>
+<!-- Curatorial Meta Card -->
+<div class="lg:col-span-4 bg-surface-container-low rounded-xl p-6 shadow-sm flex flex-col gap-4">
+<div class="flex items-center gap-3 pb-3">
+<div class="w-11 h-11 rounded-full bg-surface-container-highest flex items-center justify-center font-headline-sm text-headline-sm text-primary">
+            JA
+          </div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-primary">Prof. Julian Aris</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Institute for Non-Equilibrium Dynamics</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 text-body-sm pt-2">
+<div class="bg-surface-container rounded-lg p-3">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline block">Reading Time</span>
+<span class="font-headline-sm text-headline-sm text-primary">16 min</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant block mt-0.5">Interactive Derivation</span>
+</div>
+<div class="bg-surface-container rounded-lg p-3">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline block">Verification</span>
+<span class="font-headline-sm text-headline-sm text-secondary">Verified</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant block mt-0.5">Hamiltonian Mechanics</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2 text-body-sm">
+<span class="font-code-sm text-code-sm text-outline">Curio Volume IV · Issue 2</span>
+<button class="flex items-center gap-1 font-label-md text-label-md text-secondary hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+<span>Download Monograph PDF</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- STAGE PROGRESS HUD (THE ANALOGY JOURNEY) -->
+<section class="max-w-[1440px] w-full mx-auto px-6 lg:px-12 mb-10">
+<div class="bg-surface-container-low rounded-xl p-4 lg:p-6 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-[22px]">route</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-primary">Analogy Trajectory: Macrostate Progression</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Trace the progression from isolated low-multiplicity order to ergodic equilibrium.</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high font-label-md text-label-md text-on-surface transition-all flex items-center gap-1 shadow-sm" id="prevStepBtn">
+<span class="material-symbols-outlined text-[16px]">west</span> Prev Phase
+          </button>
+<button class="px-4 py-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md transition-all flex items-center gap-1 shadow-sm" id="nextStepBtn">
+            Next Phase <span class="material-symbols-outlined text-[16px]">east</span>
+</button>
+</div>
+</div>
+<!-- Step Sequence Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2">
+<!-- Step 1 -->
+<div class="bg-surface-container rounded-lg p-3 cursor-pointer hover:bg-surface-container-high transition-all flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm font-semibold text-secondary">PHASE 01</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+</div>
+<span class="font-headline-sm text-[16px] text-primary leading-snug">The Pristine Deck</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Ordered W = 1 State</span>
+</div>
+<!-- Step 2 -->
+<div class="bg-surface-container rounded-lg p-3 cursor-pointer hover:bg-surface-container-high transition-all flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm font-semibold text-secondary">PHASE 02</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+</div>
+<span class="font-headline-sm text-[16px] text-primary leading-snug">Elastic Collisions</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Time-Symmetric Newton</span>
+</div>
+<!-- Step 3 (Active) -->
+<div class="bg-surface-container-highest rounded-lg p-3 cursor-pointer transition-all flex flex-col gap-1 shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm font-bold text-secondary">PHASE 03 · CURRENT</span>
+<span class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+</div>
+<span class="font-headline-sm text-[16px] text-primary leading-snug font-semibold">Permutation Inundation</span>
+<span class="font-code-sm text-code-sm text-secondary font-medium">52! Microstate Explosion</span>
+</div>
+<!-- Step 4 -->
+<div class="bg-surface-container/60 rounded-lg p-3 cursor-pointer hover:bg-surface-container transition-all flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm text-outline">PHASE 04</span>
+<span class="material-symbols-outlined text-outline text-[16px]">schedule</span>
+</div>
+<span class="font-headline-sm text-[16px] text-on-surface-variant leading-snug">The Ink Droplet</span>
+<span class="font-code-sm text-code-sm text-outline">Continuum Dispersion</span>
+</div>
+<!-- Step 5 -->
+<div class="bg-surface-container/60 rounded-lg p-3 cursor-pointer hover:bg-surface-container transition-all flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm text-outline">PHASE 05</span>
+<span class="material-symbols-outlined text-outline text-[16px]">schedule</span>
+</div>
+<span class="font-headline-sm text-[16px] text-on-surface-variant leading-snug">Poincaré Recurrence</span>
+<span class="font-code-sm text-code-sm text-outline">t &gt; 10^(10^24) Years</span>
+</div>
+</div>
+</div>
+</section>
+<!-- CENTRAL DUAL-PANE INTERACTIVE WORKBENCH -->
+<section class="max-w-[1440px] w-full mx-auto px-6 lg:px-12 mb-16">
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+<!-- LEFT PANE: THE KINETIC MICROSTATE CHAMBER (COL 7) -->
+<div class="xl:col-span-7 bg-surface-container-low rounded-xl p-6 shadow-sm flex flex-col gap-5">
+<!-- Header & State Pill -->
+<div class="flex flex-wrap items-center justify-between gap-3">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-label-sm text-label-sm uppercase bg-secondary-fixed text-on-secondary-fixed font-semibold">
+                Hamiltonian Billiard Simulation
+              </span>
+<span class="font-code-sm text-code-sm text-outline">N = 80 Micro-Particles</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mt-1">
+              Kinetic Chamber: Elastic Scattering &amp; Phase Dispersion
+            </h3>
+</div>
+<button class="px-3.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-variant font-label-md text-label-md text-primary transition-all flex items-center gap-1.5 shadow-sm" id="togglePlayBtn">
+<span class="material-symbols-outlined text-[18px]" id="playIcon">pause</span>
+<span id="playLabel">Sim Active</span>
+</button>
+</div>
+<!-- Simulation Canvas Inset Area -->
+<div class="relative w-full h-[380px] bg-surface-container-highest rounded-lg overflow-hidden flex items-center justify-center shadow-inner">
+<canvas class="w-full h-full block cursor-crosshair" id="kineticCanvas"></canvas>
+<!-- Corner Legend / Vector Overlay -->
+<div class="absolute top-3 left-3 bg-surface/90 backdrop-blur-md rounded-lg p-2.5 shadow-sm text-on-surface flex flex-col gap-1 max-w-[210px]">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Energy Tiers</span>
+<div class="flex items-center gap-2 font-code-sm text-code-sm">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-on-surface-variant">Sub-thermal (&lt; 0.8 v̄)</span>
+</div>
+<div class="flex items-center gap-2 font-code-sm text-code-sm">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed-dim"></span>
+<span class="text-on-surface-variant">Equipartition (v̄)</span>
+</div>
+<div class="flex items-center gap-2 font-code-sm text-code-sm">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>
+<span class="text-on-surface-variant">Hot Tail (&gt; 1.5 v̄)</span>
+</div>
+</div>
+<!-- Subtle Quadrant Target Overlay (Initial Drop Zone) -->
+<div class="absolute top-0 left-0 w-1/2 h-1/2 bg-secondary/5 pointer-events-none flex items-start p-3">
+<span class="font-code-sm text-code-sm text-secondary/60">Ω₀: Pristine Reservoir</span>
+</div>
+</div>
+<!-- Interactive Control Workbench -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+<button class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors flex flex-col items-center justify-center text-center gap-1 shadow-sm" id="stepCollisionsBtn">
+<span class="material-symbols-outlined text-[20px] text-primary">step</span>
+<span class="font-label-sm text-label-sm font-semibold text-primary">Advance dt</span>
+</button>
+<button class="p-2.5 rounded-lg bg-surface-container hover:bg-secondary-fixed transition-colors flex flex-col items-center justify-center text-center gap-1 shadow-sm group" id="invertVelocitiesBtn">
+<span class="material-symbols-outlined text-[20px] text-secondary group-hover:rotate-180 transition-transform duration-300">swap_horiz</span>
+<span class="font-label-sm text-label-sm font-semibold text-secondary">Invert v → -v</span>
+</button>
+<button class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors flex flex-col items-center justify-center text-center gap-1 shadow-sm" id="resetClusterBtn">
+<span class="material-symbols-outlined text-[20px] text-tertiary">restart_alt</span>
+<span class="font-label-sm text-label-sm font-semibold text-tertiary">Reset to Drop (W=1)</span>
+</button>
+<button class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors flex flex-col items-center justify-center text-center gap-1 shadow-sm" id="togglePartitionBtn">
+<span class="material-symbols-outlined text-[20px] text-primary">view_column</span>
+<span class="font-label-sm text-label-sm font-semibold text-primary" id="partitionLabel">Insert Barrier</span>
+</button>
+</div>
+<!-- Real-Time Micro-Inspection HUD Strip -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-surface-container rounded-lg p-3.5">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline block">Microstate Multiplicity (W)</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-code-sm text-[17px] font-bold text-primary" id="statW">3.42 × 10²⁴</span>
+<span class="font-code-sm text-code-sm text-outline">configs</span>
+</div>
+</div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline block">Boltzmann Entropy S = k_B ln(W)</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-code-sm text-[17px] font-bold text-secondary" id="statS">7.74 × 10⁻²³</span>
+<span class="font-code-sm text-code-sm text-outline">J / K</span>
+</div>
+</div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline block">Macroscopic Uniformity</span>
+<div class="flex items-baseline gap-2 mt-0.5">
+<div class="w-full bg-surface-container-high h-2.5 rounded-full overflow-hidden self-center">
+<div class="bg-secondary h-full rounded-full transition-all duration-300" id="statUniformityBar" style="width: 88.4%;"></div>
+</div>
+<span class="font-code-sm text-code-sm font-bold text-primary" id="statUniformityVal">88.4%</span>
+</div>
+</div>
+</div>
+<!-- Deep Insight: The Loschmidt Time-Reversal Paradox Callout -->
+<div class="bg-surface-container-highest rounded-lg p-4 flex gap-3.5 items-start">
+<span class="material-symbols-outlined text-secondary text-[24px] mt-0.5 flex-shrink-0">psychology_alt</span>
+<div class="flex flex-col gap-1 text-body-sm text-on-surface-variant">
+<span class="font-headline-sm text-[16px] text-primary font-semibold">The Loschmidt Paradox: Why Can't We Simply Reverse Velocity?</span>
+<p>
+              In classical Newtonian mechanics, each instantaneous collision is mathematically reversible (<span class="font-code-sm text-code-sm text-primary">t \to -t</span>). Yet if you invert all velocities in this chamber, notice what happens: after a brief, delicate re-clustering, thermal fluctuations and boundary collision rounding errors explode exponentially via the <span class="font-semibold text-primary">Lyapunov horizon</span>. For macroscopic volumes (<span class="font-code-sm text-code-sm text-primary">N \sim 10^{23}</span>), reversing the arrow requires unphysical infinite numerical precision.
+            </p>
+</div>
+</div>
+</div>
+<!-- RIGHT PANE: THE 52-CARD SHUFFLED DECK ANALOGY (COL 5) -->
+<div class="xl:col-span-5 bg-surface-container-low rounded-xl p-6 shadow-sm flex flex-col gap-5">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-label-sm text-label-sm uppercase bg-tertiary-fixed text-on-tertiary-fixed font-semibold">
+              Discrete Analogy
+            </span>
+<span class="font-code-sm text-code-sm text-outline">Combinatorics of W</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary">
+            The 52-Card Deck: Macrostates vs. Microstates
+          </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            A standard deck provides physical intuition for thermodynamic macrostates. Every individual ordered sequence is equally unlikely, yet "disordered" macrostates possess overwhelming multiplicity.
+          </p>
+</div>
+<!-- Interactive Shuffling Card Graphic Plate -->
+<div class="bg-surface-container rounded-lg p-4 flex flex-col gap-4">
+<div class="flex items-center justify-between text-body-sm pb-2">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Live Deck State</span>
+<span class="font-code-sm text-code-sm text-secondary bg-surface px-2 py-0.5 rounded shadow-sm" id="shuffleCountLabel">
+              Shuffles: 7 (Fully Disordered)
+            </span>
+</div>
+<!-- Card Ribbon Representation -->
+<div class="flex items-center justify-between gap-1 overflow-x-hidden py-2 px-1 bg-surface-container-high rounded-md" id="cardDeckRibbon">
+<!-- Dynamically populated or static representation of cards -->
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-tertiary font-bold">A<span class="text-[9px]">♠</span></div>
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-error font-bold">7<span class="text-[9px]">♥</span></div>
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-tertiary font-bold">K<span class="text-[9px]">♣</span></div>
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-error font-bold">3<span class="text-[9px]">♦</span></div>
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-tertiary font-bold">10<span class="text-[9px]">♠</span></div>
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-error font-bold">Q<span class="text-[9px]">♥</span></div>
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-tertiary font-bold">2<span class="text-[9px]">♣</span></div>
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-error font-bold">9<span class="text-[9px]">♦</span></div>
+<div class="h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] text-tertiary font-bold">J<span class="text-[9px]">♠</span></div>
+</div>
+<div class="flex items-center justify-between gap-3 pt-1">
+<button class="flex-1 py-2 px-3 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md transition-all flex items-center justify-center gap-1.5 shadow-sm" id="riffleShuffleBtn">
+<span class="material-symbols-outlined text-[16px]">shuffle</span>
+<span>Execute Riffle Shuffle</span>
+</button>
+<button class="py-2 px-3 rounded-lg bg-surface hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-all flex items-center gap-1 shadow-sm" id="resetDeckBtn">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+<span>Order Deck (W=1)</span>
+</button>
+</div>
+</div>
+<!-- Multiplicity Comparison Table -->
+<div class="bg-surface-container rounded-lg p-4 flex flex-col gap-3">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Macrostate vs Microstate Census</span>
+<div class="flex flex-col gap-2 font-body-sm text-body-sm">
+<div class="flex items-center justify-between p-2 rounded bg-surface shadow-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-primary font-medium">New Factory Pack (Sorted)</span>
+</div>
+<span class="font-code-sm text-code-sm text-secondary font-bold">W = 1</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface shadow-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="text-primary font-medium">Split by Color (Red/Black)</span>
+</div>
+<span class="font-code-sm text-code-sm text-primary font-bold">W ≈ 4.96 × 10¹⁵</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface shadow-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>
+<span class="text-primary font-medium">Complete Random Order</span>
+</div>
+<span class="font-code-sm text-code-sm text-tertiary font-bold">W = 52! ≈ 8.07 × 10⁶⁷</span>
+</div>
+</div>
+</div>
+<!-- Live Combinatorial Calculation Block -->
+<div class="bg-surface-container rounded-lg p-4 flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">The Inevitability Metric</span>
+<span class="material-symbols-outlined text-outline text-[18px]">calculate</span>
+</div>
+<div class="p-3 bg-surface rounded shadow-inner flex flex-col gap-1.5">
+<div class="flex justify-between items-baseline">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Probability of returning to sorted pack:</span>
+<span class="font-code-sm text-code-sm text-error font-bold">1.24 × 10⁻⁶⁸</span>
+</div>
+<div class="flex justify-between items-baseline pt-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Cosmic time to spontaneously re-sort:</span>
+<span class="font-code-sm text-code-sm text-primary font-bold">2.56 × 10⁵¹ × Universe Age</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant italic pt-1">
+            "The cards do not remember where they came from; they simply occupy the overwhelming desert of permutation space."
+          </p>
+</div>
+</div>
+</div>
+</section>
+<!-- EMPIRICAL DIAGNOSTIC & THEORETICAL FOUNDATION MATRIX (3 CARDS) -->
+<section class="max-w-[1440px] w-full mx-auto px-6 lg:px-12 mb-16">
+<div class="flex flex-col gap-2 mb-8">
+<span class="font-label-md text-label-md uppercase tracking-wider text-secondary font-semibold">
+        Theoretical Axioms
+      </span>
+<h2 class="font-headline-lg text-headline-lg text-primary">
+        Three Pillars of Statistical Asymmetry
+      </h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-3xl">
+        Entropy is not a mysterious cosmic friction or decay force; it is the geometric necessity of dynamic exploration across an unimaginably high-dimensional phase space.
+      </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- CARD A: THE MIXING INK DROPLET -->
+<div class="bg-surface-container-low rounded-xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[24px]">water_drop</span>
+</div>
+<span class="font-code-sm text-code-sm text-secondary font-semibold">FOUNDATION I · CONTINUUM ANALOGY</span>
+<h3 class="font-headline-md text-headline-md text-primary">The Irreversible Fountain of Ink</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            A single drop of Chinese ink placed in pure water stains the entire beaker into uniform gray. No individual molecule resists moving backwards, yet the probability of all <span class="font-code-sm text-code-sm text-primary">10²¹</span> ink molecules simultaneously clustering back into a suspended black pearl is infinitesimally zero.
+          </p>
+</div>
+<div class="pt-6">
+<div class="bg-surface-container rounded-lg p-3 flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline uppercase font-semibold">Gibbs Free Energy</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">ΔG = ΔH - TΔS &lt; 0</span>
+</div>
+</div>
+</div>
+<!-- CARD B: BOLTZMANN ERGODIC HYPOTHESIS -->
+<div class="bg-surface-container-low rounded-xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">view_in_ar</span>
+</div>
+<span class="font-code-sm text-code-sm text-primary font-semibold">FOUNDATION II · PHASE SPACE GEOMETRY</span>
+<h3 class="font-headline-md text-headline-md text-primary">Ergodic Phase Volume Hyper-Sphere</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            For <span class="font-code-sm text-code-sm text-primary">N</span> particles, phase space spans <span class="font-code-sm text-code-sm text-primary">6N</span> dimensions (positions and momenta). The macrostate corresponding to thermal equilibrium occupies more than <span class="font-code-sm text-code-sm text-primary">99.999...9%</span> of the constant-energy hyper-shell. A trajectory starting in a minuscule low-entropy nook simply diffuses into the massive bulk.
+          </p>
+</div>
+<div class="pt-6">
+<div class="bg-surface-container rounded-lg p-3 flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline uppercase font-semibold">Liouville Invariant</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">dρ/dt + {ρ, H} = 0</span>
+</div>
+</div>
+</div>
+<!-- CARD C: CHAOS SENSITIVITY & LYAPUNOV EXPONENT -->
+<div class="bg-surface-container-low rounded-xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-tertiary-container">
+<span class="material-symbols-outlined text-[24px]">grain</span>
+</div>
+<span class="font-code-sm text-code-sm text-on-tertiary-container font-semibold">FOUNDATION III · DYNAMICAL INSTABILITY</span>
+<h3 class="font-headline-md text-headline-md text-primary">Lyapunov Horizon &amp; The Gravitational Flea</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Borel calculated that moving a mass of one gram by one centimeter at the distance of Sirius alters the trajectory of oxygen molecules in a room on Earth within seconds! Because collisions magnify deflection angles exponentially, no real system can ever be truly isolated from quantum and cosmic perturbations.
+          </p>
+</div>
+<div class="pt-6">
+<div class="bg-surface-container rounded-lg p-3 flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline uppercase font-semibold">Divergence Rate</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">|δZ(t)| ~ |δZ(0)| e^(λt)</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- MATHEMATICAL FORMULATION & LIVE INVARIANT PLATE -->
+<section class="max-w-[1440px] w-full mx-auto px-6 lg:px-12 mb-16">
+<div class="bg-primary text-on-primary rounded-xl p-8 lg:p-12 shadow-xl flex flex-col gap-8">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6">
+<div class="flex flex-col gap-2">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary-fixed font-semibold">
+            Tombstone Formulation · Vienna Central Cemetery (Zentralfriedhof)
+          </span>
+<h3 class="font-display-md text-display-md text-on-primary leading-tight">
+            S = k_B \ln \Omega
+          </h3>
+</div>
+<div class="font-code-sm text-code-sm text-primary-fixed bg-primary-container px-4 py-2 rounded-lg">
+          k_B = 1.380649 × 10⁻²³ J·K⁻¹
+        </div>
+</div>
+<!-- Formula Term Breakdown Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+<div class="bg-primary-container rounded-lg p-5 flex flex-col gap-2">
+<span class="font-headline-sm text-headline-sm text-secondary-fixed">S : Thermodynamic Entropy</span>
+<p class="font-body-sm text-body-sm text-on-primary-container">
+            The macroscopic state function measuring lost mechanical work capacity and systemic thermal dispersal. In closed systems, <span class="font-code-sm text-code-sm text-on-primary">dS ≥ 0</span>.
+          </p>
+</div>
+<div class="bg-primary-container rounded-lg p-5 flex flex-col gap-2">
+<span class="font-headline-sm text-headline-sm text-secondary-fixed">k_B : Boltzmann's Constant</span>
+<p class="font-body-sm text-body-sm text-on-primary-container">
+            The fundamental dimensional bridge linking macroscopic thermal energy (temperature in Kelvins) with microscopic kinetic degrees of freedom.
+          </p>
+</div>
+<div class="bg-primary-container rounded-lg p-5 flex flex-col gap-2">
+<span class="font-headline-sm text-headline-sm text-secondary-fixed">Ω or W : Microstate Multiplicity</span>
+<p class="font-body-sm text-body-sm text-on-primary-container">
+            The exact count of distinct micro-configurations (positions and momenta) compatible with the observed single macrostate (P, V, T).
+          </p>
+</div>
+</div>
+<!-- Live Interactive Recurrence Calculator Box -->
+<div class="bg-surface/10 rounded-lg p-6 flex flex-col lg:flex-row items-center justify-between gap-6">
+<div class="flex flex-col gap-1 max-w-xl">
+<span class="font-headline-sm text-[18px] text-on-primary font-semibold">Poincaré Recurrence Time Scaler</span>
+<p class="font-body-sm text-body-sm text-primary-fixed">
+            Estimate how long before this kinetic chamber returns to its initial clustered state by sheer ergodic coincidence.
+          </p>
+</div>
+<div class="flex items-center gap-4 w-full lg:w-auto">
+<div class="flex flex-col gap-1 w-full lg:w-64">
+<div class="flex justify-between font-label-sm text-label-sm text-primary-fixed">
+<span>Particle Count (N)</span>
+<span class="font-code-sm text-code-sm text-secondary-fixed" id="particleSliderVal">80</span>
+</div>
+<input class="w-full h-1 bg-primary-container rounded-lg appearance-none cursor-pointer accent-secondary" id="recurrenceSlider" max="200" min="4" type="range" value="80"/>
+</div>
+<div class="bg-primary-container px-4 py-2.5 rounded-lg text-center min-w-[160px]">
+<span class="font-label-sm text-label-sm text-on-primary-container uppercase block">Recurrence Epoch</span>
+<span class="font-code-sm text-[16px] text-secondary-fixed font-bold" id="recurrenceOutput">~ 10^(24.1) yr</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- COMPANION ANALOGIES & ARCHIVAL DISSECTIONS -->
+<section class="max-w-[1440px] w-full mx-auto px-6 lg:px-12 mb-12">
+<div class="flex items-center justify-between pb-6">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Archival Cross-References</span>
+<h2 class="font-headline-md text-headline-md text-primary">Companion Fascicles in Statistical Mechanics</h2>
+</div>
+<a class="font-label-md text-label-md text-secondary hover:underline hidden sm:inline" href="#">
+        Browse Whole Compendium →
+      </a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Fascicle 043 -->
+<a class="bg-surface-container-low rounded-xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between" href="#">
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm text-outline">FASCICLE NO. 043</span>
+<span class="font-label-sm text-label-sm text-secondary font-semibold">Information Theory</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary group-hover:text-secondary transition-colors">
+            Maxwell's Demon &amp; Landauer's Thermodynamic Limit
+          </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            How erasing a single bit of information dissipates kT ln 2 joules of heat into the environment, saving the Second Law.
+          </p>
+</div>
+<div class="pt-4 flex items-center gap-1 font-label-md text-label-md text-secondary">
+<span>Read Fascicle</span>
+<span class="material-symbols-outlined text-[16px]">east</span>
+</div>
+</a>
+<!-- Fascicle 058 -->
+<a class="bg-surface-container-low rounded-xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between" href="#">
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm text-outline">FASCICLE NO. 058</span>
+<span class="font-label-sm text-label-sm text-secondary font-semibold">Machine Geometry</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary group-hover:text-secondary transition-colors">
+            Semantic Topography: Vector Spaces &amp; High-D Ensembles
+          </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            Exploring why hyper-dimensional geometries concentrate overwhelmingly on thin shells, identical to Boltzmann microstate shells.
+          </p>
+</div>
+<div class="pt-4 flex items-center gap-1 font-label-md text-label-md text-secondary">
+<span>Read Fascicle</span>
+<span class="material-symbols-outlined text-[16px]">east</span>
+</div>
+</a>
+<!-- Fascicle 031 -->
+<a class="bg-surface-container-low rounded-xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between" href="#">
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-code-sm text-outline">FASCICLE NO. 031</span>
+<span class="font-label-sm text-label-sm text-secondary font-semibold">General Relativity</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary group-hover:text-secondary transition-colors">
+            Bekenstein-Hawking &amp; Horizon Area Quantization
+          </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            The maximum entropy of a spatial region scales with its 2D boundary surface area rather than its 3D volume: holographic bounds.
+          </p>
+</div>
+<div class="pt-4 flex items-center gap-1 font-label-md text-label-md text-secondary">
+<span>Read Fascicle</span>
+<span class="material-symbols-outlined text-[16px]">east</span>
+</div>
+</a>
+</div>
+</section>
+<!-- CITATION & COLOPHON BAR -->
+<section class="max-w-[1440px] w-full mx-auto px-6 lg:px-12 mb-8">
+<div class="bg-surface-container rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-[20px]">format_quote</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+          Cite this monograph: Aris, J. (2024). <span class="italic">The Arrow of Time &amp; Statistical Inevitability</span>. Curio Archive, Fascicle No. 042.
+        </span>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-3 py-1 bg-surface rounded font-code-sm text-code-sm text-primary hover:bg-surface-container-high transition-colors shadow-sm">
+          Copy BibTeX
+        </button>
+<span class="font-code-sm text-code-sm text-outline">CC BY-NC 4.0</span>
+</div>
+</div>
+</section>
+<!-- CLIENT-SIDE SIMULATION LOGIC -->
+<script>
+    (function initEntropySimulation() {
+      const canvas = document.getElementById('kineticCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      // Adjust resolution for Retina Displays
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      const N = 80;
+      let particles = [];
+      let isRunning = true;
+      let hasPartition = false;
+      const kB = 1.380649e-23;
+
+      function spawnParticles(clustered = false) {
+        particles = [];
+        const rect = canvas.getBoundingClientRect();
+        const w = rect.width;
+        const h = rect.height;
+
+        for (let i = 0; i < N; i++) {
+          let x, y;
+          if (clustered) {
+            // Cluster into top-left 35% of space
+            x = 20 + Math.random() * (w * 0.35 - 30);
+            y = 20 + Math.random() * (h * 0.35 - 30);
+          } else {
+            // Distributed
+            x = 20 + Math.random() * (w - 40);
+            y = 20 + Math.random() * (h - 40);
+          }
+
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1.2 + Math.random() * 2.2;
+
+          particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: 3.2,
+            mass: 1
+          });
+        }
+      }
+
+      spawnParticles(false); // start in general dispersion
+
+      function updateSimulation() {
+        const rect = canvas.getBoundingClientRect();
+        const w = rect.width;
+        const h = rect.height;
+        const partitionX = w / 2;
+
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+
+          // Boundary bounce (left/right)
+          if (p.x - p.radius < 0) {
+            p.x = p.radius;
+            p.vx *= -1;
+          } else if (p.x + p.radius > w) {
+            p.x = w - p.radius;
+            p.vx *= -1;
+          }
+
+          // Boundary bounce (top/bottom)
+          if (p.y - p.radius < 0) {
+            p.y = p.radius;
+            p.vy *= -1;
+          } else if (p.y + p.radius > h) {
+            p.y = h - p.radius;
+            p.vy *= -1;
+          }
+
+          // Partition wall bounce if enabled
+          if (hasPartition) {
+            // leave a central opening gap
+            const gapTop = h * 0.38;
+            const gapBottom = h * 0.62;
+            if (p.y < gapTop || p.y > gapBottom) {
+              if (Math.abs(p.x - partitionX) < p.radius + 2) {
+                p.vx *= -1;
+                p.x = p.x < partitionX ? partitionX - p.radius - 2 : partitionX + p.radius + 2;
+              }
+            }
+          }
+        }
+
+        // Particle-to-particle elastic collisions (O(N^2) lightweight for N=80)
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const p1 = particles[i];
+            const p2 = particles[j];
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < p1.radius + p2.radius) {
+              // Overlap resolution
+              const overlap = (p1.radius + p2.radius) - dist;
+              const nx = dx / dist;
+              const ny = dy / dist;
+
+              p1.x -= nx * overlap * 0.5;
+              p1.y -= ny * overlap * 0.5;
+              p2.x += nx * overlap * 0.5;
+              p2.y += ny * overlap * 0.5;
+
+              // Elastic impulse
+              const kx = p1.vx - p2.vx;
+              const ky = p1.vy - p2.vy;
+              const p = 2 * (nx * kx + ny * ky) / (p1.mass + p2.mass);
+
+              p1.vx -= p * p2.mass * nx;
+              p1.vy -= p * p2.mass * ny;
+              p2.vx += p * p1.mass * nx;
+              p2.vy += p * p1.mass * ny;
+            }
+          }
+        }
+
+        computeThermodynamicStats(w, h);
+      }
+
+      function computeThermodynamicStats(w, h) {
+        // Bin into 4 quadrants
+        let q = [0, 0, 0, 0];
+        particles.forEach(p => {
+          const isRight = p.x > w / 2;
+          const isBottom = p.y > h / 2;
+          const idx = (isRight ? 1 : 0) + (isBottom ? 2 : 0);
+          q[idx]++;
+        });
+
+        // Compute Shannon uniformity: H = - sum(p_i * ln p_i) / ln(4)
+        let H = 0;
+        q.forEach(count => {
+          if (count > 0) {
+            const prob = count / N;
+            H -= prob * Math.log(prob);
+          }
+        });
+        const maxH = Math.log(4);
+        const uniformity = Math.min(100, Math.max(0, (H / maxH) * 100));
+
+        // Estimate multiplicity W ~ (N! / product(q_i!))
+        const approxLogW = (uniformity / 100) * 24.5;
+        const entropyVal = approxLogW * kB * 2.3025;
+
+        // Update DOM elements safely
+        const statUniformityBar = document.getElementById('statUniformityBar');
+        const statUniformityVal = document.getElementById('statUniformityVal');
+        const statW = document.getElementById('statW');
+        const statS = document.getElementById('statS');
+
+        if (statUniformityBar && statUniformityVal) {
+          statUniformityBar.style.width = uniformity.toFixed(1) + '%';
+          statUniformityVal.innerText = uniformity.toFixed(1) + '%';
+        }
+        if (statW) {
+          statW.innerText = (Math.pow(10, approxLogW % 1) * 2).toFixed(2) + ' × 10' + Math.floor(approxLogW);
+        }
+        if (statS) {
+          statS.innerText = (entropyVal * 1e23).toFixed(2) + ' × 10⁻²³';
+        }
+      }
+
+      function renderSimulation() {
+        const rect = canvas.getBoundingClientRect();
+        const w = rect.width;
+        const h = rect.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Draw micro grid background
+        ctx.strokeStyle = 'rgba(27, 34, 40, 0.05)';
+        ctx.lineWidth = 1;
+        const step = 28;
+        for (let x = 0; x < w; x += step) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        for (let y = 0; y < h; y += step) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+
+        // Draw partition wall if toggled
+        if (hasPartition) {
+          ctx.fillStyle = '#050b11';
+          const partitionX = w / 2 - 2;
+          const gapTop = h * 0.38;
+          const gapBottom = h * 0.62;
+          // Upper slab
+          ctx.fillRect(partitionX, 0, 4, gapTop);
+          // Lower slab
+          ctx.fillRect(partitionX, gapBottom, 4, h - gapBottom);
+
+          // Faint aperture bracket
+          ctx.strokeStyle = '#006970';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(partitionX - 4, gapTop, 12, gapBottom - gapTop);
+        }
+
+        // Draw particles & velocity vectors
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+
+          // Color by kinetic energy
+          let color = '#006970'; // slow/cyan
+          if (speed > 2.8) {
+            color = '#d8674a'; // hot
+          } else if (speed > 1.8) {
+            color = '#78d5dd'; // median
+          }
+
+          // Particle body
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          // Velocity needle
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x + p.vx * 3.5, p.y + p.vy * 3.5);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      }
+
+      function loop() {
+        if (isRunning) {
+          updateSimulation();
+        }
+        renderSimulation();
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+
+      // Interactive Control Bindings
+      const togglePlayBtn = document.getElementById('togglePlayBtn');
+      const playIcon = document.getElementById('playIcon');
+      const playLabel = document.getElementById('playLabel');
+      if (togglePlayBtn) {
+        togglePlayBtn.addEventListener('click', () => {
+          isRunning = !isRunning;
+          playIcon.innerText = isRunning ? 'pause' : 'play_arrow';
+          playLabel.innerText = isRunning ? 'Sim Active' : 'Sim Paused';
+        });
+      }
+
+      const invertBtn = document.getElementById('invertVelocitiesBtn');
+      if (invertBtn) {
+        invertBtn.addEventListener('click', () => {
+          particles.forEach(p => {
+            p.vx *= -1;
+            p.vy *= -1;
+          });
+        });
+      }
+
+      const stepBtn = document.getElementById('stepCollisionsBtn');
+      if (stepBtn) {
+        stepBtn.addEventListener('click', () => {
+          updateSimulation();
+          renderSimulation();
+        });
+      }
+
+      const resetClusterBtn = document.getElementById('resetClusterBtn');
+      if (resetClusterBtn) {
+        resetClusterBtn.addEventListener('click', () => {
+          spawnParticles(true); // Cluster in top-left
+        });
+      }
+
+      const togglePartitionBtn = document.getElementById('togglePartitionBtn');
+      const partitionLabel = document.getElementById('partitionLabel');
+      if (togglePartitionBtn) {
+        togglePartitionBtn.addEventListener('click', () => {
+          hasPartition = !hasPartition;
+          partitionLabel.innerText = hasPartition ? 'Remove Barrier' : 'Insert Barrier';
+        });
+      }
+
+      // Live Deck Shuffling Interaction
+      const riffleBtn = document.getElementById('riffleShuffleBtn');
+      const resetDeckBtn = document.getElementById('resetDeckBtn');
+      const cardRibbon = document.getElementById('cardDeckRibbon');
+      const shuffleLabel = document.getElementById('shuffleCountLabel');
+      let shuffleCount = 7;
+
+      const deckSuits = ['♠', '♥', '♣', '♦'];
+      const deckRanks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+      function renderCardRibbon(shuffled = true) {
+        if (!cardRibbon) return;
+        cardRibbon.innerHTML = '';
+        const displayCards = [];
+
+        if (!shuffled) {
+          // Ordered: A♠, 2♠, 3♠...
+          for (let i = 0; i < 9; i++) {
+            displayCards.push({ rank: deckRanks[i], suit: '♠', isRed: false });
+          }
+        } else {
+          // Shuffled arbitrary sample
+          for (let i = 0; i < 9; i++) {
+            const s = deckSuits[Math.floor(Math.random() * deckSuits.length)];
+            const r = deckRanks[Math.floor(Math.random() * deckRanks.length)];
+            displayCards.push({ rank: r, suit: s, isRed: (s === '♥' || s === '♦') });
+          }
+        }
+
+        displayCards.forEach(c => {
+          const cardEl = document.createElement('div');
+          cardEl.className = 'h-14 w-8 rounded bg-surface shadow-sm flex flex-col items-center justify-center font-code-sm text-[11px] font-bold ' + 
+                             (c.isRed ? 'text-error' : 'text-primary');
+          cardEl.innerHTML = `${c.rank}<span class="text-[9px]">${c.suit}</span>`;
+          cardRibbon.appendChild(cardEl);
+        });
+      }
+
+      if (riffleBtn) {
+        riffleBtn.addEventListener('click', () => {
+          shuffleCount++;
+          if (shuffleLabel) shuffleLabel.innerText = `Shuffles: ${shuffleCount} (Fully Disordered)`;
+          renderCardRibbon(true);
+        });
+      }
+
+      if (resetDeckBtn) {
+        resetDeckBtn.addEventListener('click', () => {
+          shuffleCount = 0;
+          if (shuffleLabel) shuffleLabel.innerText = 'Shuffles: 0 (Pristine W = 1)';
+          renderCardRibbon(false);
+        });
+      }
+
+      // Poincaré Recurrence Slider Dynamic calculation
+      const recurrenceSlider = document.getElementById('recurrenceSlider');
+      const particleSliderVal = document.getElementById('particleSliderVal');
+      const recurrenceOutput = document.getElementById('recurrenceOutput');
+
+      if (recurrenceSlider && particleSliderVal && recurrenceOutput) {
+        recurrenceSlider.addEventListener('input', (e) => {
+          const val = parseInt(e.target.value, 10);
+          particleSliderVal.innerText = val;
+          // Log10 recurrence time scales linearly with N: T ~ 10^(N * 0.3)
+          const exponent = (val * 0.301).toFixed(1);
+          recurrenceOutput.innerText = `~ 10^(${exponent}) yr`;
+        });
+      }
+
+    })();
+  </script>
+</div></main><footer class="w-full bg-surface-container-low border-t border-outline-variant/40 mt-space-2xl"><div class="max-w-[1440px] mx-auto px-6 lg:px-12 py-16"><div class="grid grid-cols-1 md:grid-cols-12 gap-12"><div class="md:col-span-5 flex flex-col gap-4"><div class="flex items-center gap-3"><img alt="Curio Brand Mark" class="h-7 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WptdhfNkowK8ze6tR6jj2zd0pKua-yNipNkJSv28rLFcVnILThZnYb1tD_XnbFacVk1nyzdg5juvSYmPm8PZ_j30FGgZB8C2E7akzprRgdPOsXgQ6nq1aXvntOd1wCbIWV3QFa3SX83Ppsx_547wDkaFjylaCiNh754BCtHXbCPEb_HvWalJMowRIuxIk_E2BA9PKIFajwgAn5DyxZw_IJ5EhTMLaDsP3iFgzuJPNpxtYKDjdW0_LpbOw"/><span class="font-headline-sm text-headline-sm text-primary">Curio</span></div><p class="font-body-md text-body-md text-on-surface-variant max-w-md">Curio is an open digital atelier and intellectual repository dedicated to visual inquiry, interactive mathematical derivations, and multi-scale historical dissections.</p><div class="flex items-center gap-2 mt-2"><span class="font-code-sm text-code-sm text-outline">Archival Series: Analogies, Proofs &amp; Dissections • Bound by inquiry</span></div></div><div class="md:col-span-4 flex flex-col gap-3"><span class="font-label-md text-label-md uppercase tracking-wider text-primary font-bold">Monograph Fascicles &amp; Disciplines</span><div class="grid grid-cols-2 gap-2"><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" data-path="fascicle-no-042-entropy-the-arrow-of-time-statistical-microstates-the-irreversible-fountain" href="#">No. 042: Entropy &amp; Time</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" data-path="fascicle-no-058-semantic-topography-navigating-neural-latent-spaces-vector-geometry" href="#">No. 058: Semantic Topography</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Theoretical Physics</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Classical Mechanics</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Information Geometry</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Cellular Dynamics</a></div></div><div class="md:col-span-3 flex flex-col gap-3"><span class="font-label-md text-label-md uppercase tracking-wider text-primary font-bold">Academic Colophon</span><p class="font-body-sm text-body-sm text-on-surface-variant">Peer-reviewed algorithmic proofs, kinetic diagrams, and computational monographs verified across university laboratories and independent scholars.</p><div class="flex items-center gap-4 mt-2"><a class="font-label-sm text-label-sm font-semibold text-secondary hover:underline" href="#">Editorial Standards</a><span class="text-outline-variant">•</span><a class="font-label-sm text-label-sm font-semibold text-secondary hover:underline" href="#">Monograph Submissions</a></div></div></div><div class="mt-12 pt-8 border-t border-outline-variant/30 flex flex-col sm:flex-row items-center justify-between gap-4"><span class="font-body-sm text-body-sm text-on-surface-variant">© 2024 Curio Archive. Crafted for inquisitive minds under Open Inquiry License. DOI: 10.1038/curio.2024</span><div class="flex items-center gap-6"><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Repository Index</a><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Typography &amp; Colophon</a><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Fascicle RSS</a></div></div></div></footer></body></html>

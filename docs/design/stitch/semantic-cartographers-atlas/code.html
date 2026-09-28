@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Curio: Explorable Knowledge &amp; Visual Explanations</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"error":"#ba1a1a","primary-fixed":"#dce3eb","tertiary-fixed-dim":"#ffb4a2","primary-container":"#1b2228","surface-dim":"#dbdad7","secondary-fixed":"#94f1fa","on-surface-variant":"#44474a","error-container":"#ffdad6","secondary":"#006970","surface-variant":"#e3e2e0","on-error":"#ffffff","on-primary-container":"#828991","on-tertiary-fixed-variant":"#812810","on-primary-fixed":"#151c22","outline-variant":"#c4c6cb","on-secondary-fixed":"#002022","on-tertiary-container":"#d8674a","on-secondary":"#ffffff","background":"#faf9f6","on-tertiary-fixed":"#3c0700","surface-bright":"#faf9f6","on-surface":"#1a1c1a","tertiary-container":"#460a00","inverse-on-surface":"#f2f1ee","on-primary":"#ffffff","on-tertiary":"#ffffff","surface-container-lowest":"#ffffff","on-secondary-container":"#007077","surface-container-high":"#e9e8e5","surface-tint":"#585f66","tertiary":"#1d0200","surface-container":"#efeeeb","surface-container-low":"#f4f3f0","surface-container-highest":"#e3e2e0","tertiary-fixed":"#ffdad2","inverse-surface":"#2f312f","on-secondary-fixed-variant":"#004f54","on-primary-fixed-variant":"#40484e","on-background":"#1a1c1a","secondary-fixed-dim":"#78d5dd","primary-fixed-dim":"#c0c7cf","surface":"#faf9f6","inverse-primary":"#c0c7cf","secondary-container":"#94f1fa","outline":"#74777b","primary":"#050b11","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"gutter":"1.5rem","gutter-mobile":"1rem","space-lg":"1.5rem","margin":"3rem","margin-mobile":"1.25rem","space-md":"1rem","space-xs":"0.25rem","space-2xl":"4rem","space-sm":"0.5rem","space-xl":"2.5rem"},"fontFamily":{"headline-sm":["Newsreader"],"display-lg-mobile":["Newsreader"],"body-sm":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"display-md":["Newsreader"],"display-md-mobile":["Newsreader"],"body-lg":["Plus Jakarta Sans"],"headline-md":["Newsreader"],"lead":["Plus Jakarta Sans"],"display-lg":["Newsreader"],"code-sm":["JetBrains Mono"],"label-sm":["Plus Jakarta Sans"],"label-md":["Plus Jakarta Sans"],"headline-lg":["Newsreader"]},"fontSize":{"headline-sm":["20px",{"lineHeight":"28px","letterSpacing":"-0.005em","fontWeight":"600"}],"display-lg-mobile":["38px",{"lineHeight":"44px","letterSpacing":"-0.015em","fontWeight":"400"}],"body-sm":["13px",{"lineHeight":"20px","letterSpacing":"0.005em","fontWeight":"400"}],"body-md":["15px",{"lineHeight":"24px","letterSpacing":"0em","fontWeight":"400"}],"display-md":["44px",{"lineHeight":"52px","letterSpacing":"-0.02em","fontWeight":"400"}],"display-md-mobile":["32px",{"lineHeight":"38px","letterSpacing":"-0.01em","fontWeight":"400"}],"body-lg":["17px",{"lineHeight":"28px","letterSpacing":"0em","fontWeight":"400"}],"headline-md":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"500"}],"lead":["19px",{"lineHeight":"30px","letterSpacing":"-0.005em","fontWeight":"400"}],"display-lg":["56px",{"lineHeight":"64px","letterSpacing":"-0.02em","fontWeight":"400"}],"code-sm":["13px",{"lineHeight":"20px","letterSpacing":"-0.01em","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.06em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"500"}]}}}};</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 w-full z-50 bg-surface/90 backdrop-blur-xl border-b border-outline-variant/40"><div class="h-20 max-w-[1440px] mx-auto px-6 lg:px-12 flex items-center justify-between gap-6"><div class="flex items-center gap-8"><a class="flex items-center gap-3 group" data-path="curio-visual-explanation-showcase-hub" href="#"><img alt="Curio Brand Mark" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WptdhfNkowK8ze6tR6jj2zd0pKua-yNipNkJSv28rLFcVnILThZnYb1tD_XnbFacVk1nyzdg5juvSYmPm8PZ_j30FGgZB8C2E7akzprRgdPOsXgQ6nq1aXvntOd1wCbIWV3QFa3SX83Ppsx_547wDkaFjylaCiNh754BCtHXbCPEb_HvWalJMowRIuxIk_E2BA9PKIFajwgAn5DyxZw_IJ5EhTMLaDsP3iFgzuJPNpxtYKDjdW0_LpbOw"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary group-hover:text-secondary transition-colors">Curio</span><span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Editorial Knowledge Atelier</span></div></a><nav class="hidden xl:flex items-center gap-6 h-20" data-active-classes="text-primary font-semibold border-b-2 border-primary"><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="curio-visual-explanation-showcase-hub" href="#">Showcase Hub</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="interactive-sandboxes" href="#">Interactive Sandboxes</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="dissections" href="#">Dissections</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="visual-how-to-the-a-pathfinding-algorithm-kinetic-graph-traversal" href="#">Procedural How-Tos</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-2" data-path="concept-analogies" href="#">Concept Analogies</a></nav></div><div class="flex items-center gap-4 flex-1 max-w-lg justify-end"><div class="relative w-full max-w-sm hidden md:block"><div class="flex items-center bg-surface-container-low border border-outline-variant/50 rounded-xl px-3 py-1.5 focus-within:border-secondary transition-all"><span class="material-symbols-outlined text-outline text-[18px] mr-2">search</span><input class="w-full bg-transparent text-on-surface placeholder:text-outline font-body-sm text-body-sm focus:outline-none" placeholder="Search fascicles, analogies, proofs..." type="text"/><kbd class="font-code-sm text-code-sm bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-outline-variant/60 ml-2 select-none shadow-sm">⌘K</kbd></div></div><div class="hidden lg:flex items-center gap-2 pl-1 border-l border-outline-variant/50"><span class="font-code-sm text-code-sm text-outline px-2 py-1 rounded bg-surface-container-low border border-outline-variant/40" title="Digital Object Identifier">DOI: 10.1038/curio.2024</span></div><div class="flex items-center gap-2.5 pl-1"><button aria-label="Saved Monographs" class="relative p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-all"><span class="material-symbols-outlined text-[20px]">bookmark_border</span><span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-secondary"></span></button><button aria-label="Scholar Profile" class="flex items-center p-0.5 rounded-full hover:ring-2 hover:ring-secondary/40 transition-all" title="Scholar Profile: Dr. Julian Vance"><img alt="Scholar Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2WRrQ1oB63CwrkEoWtD_wCycXAoFv7nYp1e3jyAs5Y4Tnr2LLvuWt1HMMZM8LS6VltyzQGFx3pg0NuFJ27Md2Vu_tcowUFrD3stVqGuwTF16KxocNJvrUR-dqGwLLHIIjeN3cO8A-6_p0gvVlvbbd0UTZ0U-Tvi2wCIU7G6-m5WJLMzNWcOUk1IMSYd9o4HmfsW2BaU9nG7D6qBVMYz03F64xcCBCRaVgo348_cA1v6AVhfAjNZ_r"/></button></div></div></div></header><main class="w-full pt-20 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Monograph Top Metadata Banner -->
+<section class="w-full bg-surface-container-low px-6 lg:px-12 py-10 shadow-sm">
+<div class="max-w-[1440px] mx-auto flex flex-col gap-6">
+<!-- Breadcrumb Bar -->
+<nav class="flex items-center flex-wrap gap-2 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+<a class="hover:text-primary transition-colors" href="#">Concept Analogies</a>
+<span class="text-outline-variant font-code-sm">/</span>
+<a class="hover:text-primary transition-colors" href="#">Machine Learning &amp; High-Dimensional Geometry</a>
+<span class="text-outline-variant font-code-sm">/</span>
+<span class="text-secondary font-bold">Fascicle No. 058</span>
+<span class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high text-primary font-code-sm text-code-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+          ACTIVE CARTOGRAPHIC SIMULATION
+        </span>
+</nav>
+<!-- Editorial Title & Abstract -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-8 flex flex-col gap-4">
+<h1 class="font-display-lg text-display-lg text-primary tracking-tight leading-[1.08]">
+            The Semantic Cartographer’s Atlas: Navigating Neural Latent Spaces through Topographical &amp; Gravitational Analogies
+          </h1>
+<p class="font-lead text-lead text-on-surface-variant max-w-4xl">
+            Translating 1,536-dimensional transformer embedding vectors into intuitive physical geography. Explore semantic distance, cosine similarity, latent arithmetic, and manifold curvature through contour elevations, elastic semantic springs, and magnetic words.
+          </p>
+</div>
+<div class="lg:col-span-4 flex flex-col gap-3.5 bg-surface-container rounded-xl p-5 shadow-sm">
+<div class="flex items-center justify-between pb-3 bg-surface-container-high/40 rounded-lg p-2.5">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Archival Series</span>
+<span class="font-code-sm text-code-sm font-semibold text-primary">FASCICLE #058</span>
+</div>
+<div class="grid grid-cols-2 gap-3 font-body-sm text-body-sm text-on-surface-variant">
+<div>
+<span class="block font-label-sm text-label-sm uppercase text-outline">Principal Investigators</span>
+<span class="font-medium text-on-surface">Dr. Elena Rostova</span>
+<span class="block text-outline text-xs">Dr. Julian Aris</span>
+</div>
+<div>
+<span class="block font-label-sm text-label-sm uppercase text-outline">Affiliation</span>
+<span class="font-medium text-on-surface">Cognitive Topography Lab</span>
+<span class="block text-outline text-xs">Princeton Institute</span>
+</div>
+<div>
+<span class="block font-label-sm text-label-sm uppercase text-outline">Persistent Handle</span>
+<span class="font-code-sm text-xs text-secondary truncate block">10.1088/curio.ai.058</span>
+</div>
+<div>
+<span class="block font-label-sm text-label-sm uppercase text-outline">Verification Seal</span>
+<span class="inline-flex items-center gap-1 font-medium text-secondary text-xs">
+<span class="material-symbols-outlined text-[14px]">verified</span> Admissible Geometry
+              </span>
+</div>
+</div>
+<div class="pt-2 flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span> 14 min interactive journey
+            </span>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container-highest text-primary">
+              d = 1,536 hypersphere
+            </span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Expedition Phase Stepper (Sticky Ribbon) -->
+<div class="w-full bg-surface-container-high px-6 lg:px-12 py-3 shadow-sm z-30">
+<div class="max-w-[1440px] mx-auto flex items-center justify-between gap-4 overflow-x-auto">
+<div class="flex items-center gap-2 flex-shrink-0">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Expedition Traversal:</span>
+</div>
+<div class="flex items-center gap-3 lg:gap-6 flex-shrink-0">
+<!-- Step 1 -->
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-lowest transition-colors text-left group">
+<span class="w-5 h-5 rounded-full bg-surface-container-highest group-hover:bg-primary group-hover:text-on-primary flex items-center justify-center font-code-sm text-xs text-on-surface-variant">01</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary">Vector as Direction</span>
+<span class="text-[10px] text-outline leading-none">2D Planar Foundation</span>
+</div>
+</button>
+<!-- Step 2 -->
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-lowest transition-colors text-left group">
+<span class="w-5 h-5 rounded-full bg-surface-container-highest group-hover:bg-primary group-hover:text-on-primary flex items-center justify-center font-code-sm text-xs text-on-surface-variant">02</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary">Dimensional Curse</span>
+<span class="text-[10px] text-outline leading-none">Hyper-shell Thinning</span>
+</div>
+</button>
+<!-- Step 3 Active -->
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-on-primary shadow-sm text-left">
+<span class="w-5 h-5 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-code-sm text-xs font-bold">03</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-primary font-bold">Latent Arithmetic</span>
+<span class="text-[10px] text-primary-fixed-dim leading-none">King - Man + Woman = Queen</span>
+</div>
+</button>
+<!-- Step 4 -->
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-lowest transition-colors text-left group">
+<span class="w-5 h-5 rounded-full bg-surface-container-highest group-hover:bg-primary group-hover:text-on-primary flex items-center justify-center font-code-sm text-xs text-on-surface-variant">04</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary">Elastic Manifold</span>
+<span class="text-[10px] text-outline leading-none">Topographical Contours</span>
+</div>
+</button>
+<!-- Step 5 -->
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-lowest transition-colors text-left group">
+<span class="w-5 h-5 rounded-full bg-surface-container-highest group-hover:bg-primary group-hover:text-on-primary flex items-center justify-center font-code-sm text-xs text-on-surface-variant">05</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary">Projection Geodesics</span>
+<span class="text-[10px] text-outline leading-none">t-SNE &amp; UMAP Tears</span>
+</div>
+</button>
+</div>
+<div class="flex items-center gap-2 ml-auto flex-shrink-0">
+<button class="p-1.5 rounded-md hover:bg-surface-container-lowest text-on-surface-variant transition-colors" title="Previous Phase">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+</button>
+<span class="font-code-sm text-code-sm text-on-surface-variant px-1.5">3 / 5</span>
+<button class="p-1.5 rounded-md hover:bg-surface-container-lowest text-on-surface-variant transition-colors" title="Next Phase">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Central Dual-Pane Interactive Workbench -->
+<section class="w-full px-6 lg:px-12 py-10">
+<div class="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- LEFT PANE: Cartographic Atlas & Vector Traversal Map -->
+<div class="lg:col-span-8 flex flex-col gap-5 bg-surface-container-lowest rounded-xl p-6 shadow-md">
+<!-- Workbench Map Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-primary">Chart I: Semantic Topographical Map</span>
+<span class="font-code-sm text-xs px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-semibold">Projection: UMAP (n_neighbors=15)</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              Topographic isolines denote local token probability mass density \(P(w)\). Vectors track arithmetic displacement along the gender-monarchy subspace.
+            </p>
+</div>
+<!-- Tooling Toggles -->
+<div class="flex items-center gap-1.5 flex-wrap">
+<button class="px-2.5 py-1.5 rounded-md text-xs font-label-md bg-secondary text-on-secondary shadow-sm transition-all flex items-center gap-1" id="toggleContours">
+<span class="material-symbols-outlined text-[14px]">layers</span> Contours
+            </button>
+<button class="px-2.5 py-1.5 rounded-md text-xs font-label-md bg-surface-container text-on-surface hover:bg-surface-container-high transition-all flex items-center gap-1" id="toggleSprings">
+<span class="material-symbols-outlined text-[14px]">grain</span> Affinity Springs
+            </button>
+<button class="px-2.5 py-1.5 rounded-md text-xs font-label-md bg-surface-container text-on-surface hover:bg-surface-container-high transition-all flex items-center gap-1" id="toggleVoronoi">
+<span class="material-symbols-outlined text-[14px]">grid_4x4</span> Voronoi
+            </button>
+<button class="p-1.5 rounded-md bg-surface-container text-outline hover:text-primary transition-colors" id="resetView" title="Recenter Projection">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+</button>
+</div>
+</div>
+<!-- Canvas Area / Map Plate -->
+<div class="relative w-full aspect-[16/10] bg-surface-container-low rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+<!-- Background Subtle Grid -->
+<div class="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#74777b_1px,transparent_1px)] [background-size:24px_24px]"></div>
+<!-- Topographic Map SVG Vector Layer -->
+<svg class="absolute inset-0 w-full h-full cursor-crosshair select-none" id="cartographicSvg" preserveaspectratio="xMidYMid meet" viewbox="0 0 800 500">
+<!-- Defs for markers and gradients -->
+<defs>
+<radialgradient cx="50%" cy="50%" id="monarchGlow" r="50%">
+<stop offset="0%" stop-color="#006970" stop-opacity="0.35"></stop>
+<stop offset="60%" stop-color="#006970" stop-opacity="0.12"></stop>
+<stop offset="100%" stop-color="#006970" stop-opacity="0"></stop>
+</radialgradient>
+<radialgradient cx="50%" cy="50%" id="kinshipGlow" r="50%">
+<stop offset="0%" stop-color="#d8674a" stop-opacity="0.3"></stop>
+<stop offset="70%" stop-color="#d8674a" stop-opacity="0.08"></stop>
+<stop offset="100%" stop-color="#d8674a" stop-opacity="0"></stop>
+</radialgradient>
+<radialgradient cx="50%" cy="50%" id="temporalGlow" r="50%">
+<stop offset="0%" stop-color="#828991" stop-opacity="0.25"></stop>
+<stop offset="100%" stop-color="#828991" stop-opacity="0"></stop>
+</radialgradient>
+<marker id="arrow-sub" markerheight="6" markerwidth="6" orient="auto-start-reverse" refx="6" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#ba1a1a"></path>
+</marker>
+<marker id="arrow-add" markerheight="6" markerwidth="6" orient="auto-start-reverse" refx="6" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#006970"></path>
+</marker>
+<marker id="arrow-result" markerheight="6" markerwidth="6" orient="auto-start-reverse" refx="6" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#050b11"></path>
+</marker>
+</defs>
+<!-- Contour Elevation Fields (Semantic Archipelagos) -->
+<!-- Archipelago of Monarchs -->
+<path d="M 450 140 C 490 120, 560 130, 600 170 C 640 210, 630 270, 580 290 C 530 310, 470 290, 440 250 C 410 210, 410 160, 450 140 Z" fill="url(#monarchGlow)"></path>
+<path class="contour-line" d="M 460 155 C 495 135, 550 145, 585 180 C 620 215, 610 260, 570 275 C 525 295, 480 275, 455 240 C 430 205, 430 170, 460 155 Z" fill="none" opacity="0.6" stroke="#006970" stroke-dasharray="2,3" stroke-width="0.75"></path>
+<path class="contour-line" d="M 480 175 C 510 155, 545 165, 570 195 C 595 225, 585 245, 555 255 C 525 265, 495 250, 475 225 C 455 200, 455 185, 480 175 Z" fill="none" opacity="0.8" stroke="#006970" stroke-width="1"></path>
+<!-- Coast of Kinship & Gender -->
+<path d="M 160 260 C 220 230, 310 240, 340 300 C 370 360, 330 420, 270 430 C 200 440, 140 390, 130 340 C 120 290, 130 275, 160 260 Z" fill="url(#kinshipGlow)"></path>
+<path class="contour-line" d="M 180 280 C 230 250, 290 260, 320 310 C 345 355, 315 400, 260 410 C 205 420, 160 380, 150 335 C 140 295, 150 290, 180 280 Z" fill="none" opacity="0.5" stroke="#d8674a" stroke-dasharray="3,2" stroke-width="0.75"></path>
+<!-- Valley of Temporal Actions -->
+<path d="M 210 90 C 270 70, 330 90, 350 140 C 370 180, 340 210, 290 220 C 240 230, 190 200, 180 160 C 170 120, 180 100, 210 90 Z" fill="url(#temporalGlow)"></path>
+<path class="contour-line" d="M 230 110 C 275 95, 315 110, 330 145 C 345 175, 320 195, 280 205 C 245 210, 205 185, 200 155 C 190 125, 200 115, 230 110 Z" fill="none" opacity="0.4" stroke="#74777b" stroke-width="0.75"></path>
+<!-- Deep Sea of Abstract Emotion -->
+<path d="M 620 340 C 680 320, 740 345, 750 395 C 760 445, 715 480, 660 480 C 605 480, 570 440, 580 395 C 590 355, 595 350, 620 340 Z" fill="none" opacity="0.3" stroke="#44474a" stroke-dasharray="1,4" stroke-width="0.5"></path>
+<!-- Region Toponym Labels -->
+<text class="font-headline-sm text-xs fill-secondary opacity-70 tracking-widest uppercase" x="490" y="115">Archipelago of Monarchs &amp; Power</text>
+<text class="font-headline-sm text-xs fill-tertiary-container opacity-70 tracking-widest uppercase" x="140" y="455">Coast of Gender &amp; Kinship</text>
+<text class="font-headline-sm text-xs fill-on-surface-variant opacity-60 tracking-widest uppercase" x="180" y="65">Valley of Temporal Actions</text>
+<text class="font-headline-sm text-xs fill-outline opacity-50 tracking-widest uppercase" x="590" y="470">Deep Sea of Emotion</text>
+<!-- Semantic Spring Network Lines (Affinity Lattice) -->
+<g id="springLayer" opacity="0.4">
+<line stroke="#74777b" stroke-dasharray="2,2" stroke-width="0.5" x1="490" x2="570" y1="210" y2="190"></line>
+<line stroke="#74777b" stroke-dasharray="2,2" stroke-width="0.5" x1="570" x2="540" y1="190" y2="245"></line>
+<line stroke="#74777b" stroke-dasharray="2,2" stroke-width="0.5" x1="210" x2="275" y1="330" y2="365"></line>
+<line stroke="#74777b" stroke-dasharray="2,2" stroke-width="0.5" x1="250" x2="295" y1="140" y2="175"></line>
+<!-- Cross-manifold weak bridge -->
+<line stroke="#006970" stroke-dasharray="4,4" stroke-opacity="0.3" stroke-width="0.5" x1="490" x2="210" y1="210" y2="330"></line>
+<line stroke="#d8674a" stroke-dasharray="4,4" stroke-opacity="0.3" stroke-width="0.5" x1="540" x2="275" y1="245" y2="365"></line>
+</g>
+<!-- Vector Arithmetic Pathway: King - Man + Woman ~ Queen -->
+<!-- Step 1: Displacement Vector: King -> (King - Man) [Red Dashed Vector] -->
+<path d="M 490 210 L 375 270" fill="none" id="pathSub" marker-end="url(#arrow-sub)" stroke="#ba1a1a" stroke-dasharray="4,4" stroke-width="2"></path>
+<!-- Step 2: Displacement Vector: (King - Man) + Woman -> Predicted Queen Coordinate -->
+<path d="M 375 270 L 536 248" fill="none" id="pathAdd" marker-end="url(#arrow-add)" stroke="#006970" stroke-width="2"></path>
+<!-- Direct Resultant Vector from Origin (King to Queen parallel projection) -->
+<line stroke="#050b11" stroke-dasharray="1,3" stroke-width="1.2" x1="490" x2="540" y1="210" y2="245"></line>
+<!-- Word Nodes (Tokens in Semantic Space) -->
+<!-- King Token -->
+<g class="cursor-pointer group" id="nodeKing" transform="translate(490, 210)">
+<circle class="group-hover:scale-125 transition-transform" fill="#006970" r="7"></circle>
+<circle fill="none" opacity="0.4" r="12" stroke="#006970" stroke-width="1"></circle>
+<text class="font-headline-sm text-sm fill-primary font-bold" x="12" y="4">King</text>
+<text class="font-code-sm text-[10px] fill-outline" x="12" y="16">v_king [0.82, -0.41]</text>
+</g>
+<!-- Emperor Token -->
+<g class="cursor-pointer" transform="translate(570, 190)">
+<circle fill="#006970" opacity="0.7" r="4"></circle>
+<text class="font-body-sm text-xs fill-on-surface-variant" x="8" y="3">Emperor</text>
+</g>
+<!-- Sovereign Token -->
+<g class="cursor-pointer" transform="translate(515, 160)">
+<circle fill="#006970" opacity="0.6" r="3.5"></circle>
+<text class="font-body-sm text-xs fill-on-surface-variant" x="8" y="3">Sovereign</text>
+</g>
+<!-- Queen Token (Target Attraction Basin) -->
+<g class="cursor-pointer group" id="nodeQueen" transform="translate(540, 245)">
+<circle class="animate-pulse" fill="#006970" opacity="0.15" r="16"></circle>
+<circle class="group-hover:scale-125 transition-transform" fill="#006970" r="7.5"></circle>
+<circle fill="#ffffff" r="1.5"></circle>
+<text class="font-headline-sm text-sm fill-primary font-bold" x="14" y="4">Queen</text>
+<text class="font-code-sm text-[10px] fill-secondary font-semibold" x="14" y="16">TARGET (sim=0.941)</text>
+</g>
+<!-- Candidate landing mark from arithmetic -->
+<g transform="translate(536, 248)">
+<line stroke="#ba1a1a" stroke-width="1.5" x1="-5" x2="5" y1="-5" y2="5"></line>
+<line stroke="#ba1a1a" stroke-width="1.5" x1="-5" x2="5" y1="5" y2="-5"></line>
+<circle fill="none" r="14" stroke="#ba1a1a" stroke-dasharray="2,2" stroke-width="0.75"></circle>
+<text class="font-code-sm text-[10px] fill-error font-medium" x="-40" y="-12">ε = 0.048 dist</text>
+</g>
+<!-- Man Token -->
+<g class="cursor-pointer group" id="nodeMan" transform="translate(210, 330)">
+<circle class="group-hover:scale-125 transition-transform" fill="#d8674a" r="6"></circle>
+<text class="font-headline-sm text-sm fill-primary" x="10" y="4">Man</text>
+<text class="font-code-sm text-[10px] fill-outline" x="10" y="16">v_man [0.35, -0.78]</text>
+</g>
+<!-- Woman Token -->
+<g class="cursor-pointer group" id="nodeWoman" transform="translate(275, 365)">
+<circle class="group-hover:scale-125 transition-transform" fill="#d8674a" r="6"></circle>
+<text class="font-headline-sm text-sm fill-primary" x="10" y="4">Woman</text>
+<text class="font-code-sm text-[10px] fill-outline" x="10" y="16">v_woman [0.39, -0.71]</text>
+</g>
+<!-- Kinship cluster companions -->
+<g transform="translate(170, 375)">
+<circle fill="#d8674a" opacity="0.6" r="3.5"></circle>
+<text class="font-body-sm text-xs fill-on-surface-variant" x="8" y="3">Brother</text>
+</g>
+<g transform="translate(230, 410)">
+<circle fill="#d8674a" opacity="0.6" r="3.5"></circle>
+<text class="font-body-sm text-xs fill-on-surface-variant" x="8" y="3">Sister</text>
+</g>
+<!-- Temporal cluster companions -->
+<g transform="translate(250, 140)">
+<circle fill="#74777b" opacity="0.7" r="4"></circle>
+<text class="font-body-sm text-xs fill-on-surface-variant" x="8" y="3">Walked</text>
+</g>
+<g transform="translate(295, 175)">
+<circle fill="#74777b" opacity="0.7" r="4"></circle>
+<text class="font-body-sm text-xs fill-on-surface-variant" x="8" y="3">Walking</text>
+</g>
+<g transform="translate(210, 170)">
+<circle fill="#74777b" opacity="0.5" r="3"></circle>
+<text class="font-body-sm text-xs fill-outline" x="7" y="3">Strolled</text>
+</g>
+<!-- Emotional tokens -->
+<g transform="translate(640, 370)">
+<circle fill="#44474a" opacity="0.5" r="3.5"></circle>
+<text class="font-body-sm text-xs fill-outline" x="7" y="3">Serenity</text>
+</g>
+<g transform="translate(710, 410)">
+<circle fill="#44474a" opacity="0.5" r="3.5"></circle>
+<text class="font-body-sm text-xs fill-outline" x="7" y="3">Melancholy</text>
+</g>
+</svg>
+<!-- Floating Micro-Inspection Callout Plate -->
+<div class="absolute bottom-4 left-4 bg-surface-container-lowest/90 backdrop-blur-md rounded-lg p-3.5 shadow-md max-w-xs">
+<div class="flex items-center justify-between pb-1.5">
+<span class="font-label-sm text-label-sm uppercase text-outline">Angular Metric Inspector</span>
+<span class="font-code-sm text-xs font-bold text-secondary">θ = 21.2°</span>
+</div>
+<div class="font-code-sm text-xs text-on-surface space-y-1">
+<div class="flex justify-between">
+<span class="text-outline">cos(θ) = (A · B) / (|A||B|)</span>
+<span class="font-semibold text-primary">0.9324</span>
+</div>
+<div class="flex justify-between">
+<span class="text-outline">Euclidean L2 (d=1536)</span>
+<span class="font-semibold text-primary">0.3676</span>
+</div>
+<div class="w-full bg-surface-container-high rounded-full h-1 mt-1">
+<div class="bg-secondary h-1 rounded-full w-[93%]"></div>
+</div>
+</div>
+</div>
+<!-- Compass & Orientation Rose in Top-Right -->
+<div class="absolute top-4 right-4 bg-surface-container-lowest/80 backdrop-blur-sm rounded-lg p-2.5 flex flex-col items-center shadow-sm">
+<span class="font-code-sm text-[10px] text-outline font-bold">N_SEMANTIC</span>
+<div class="w-7 h-7 relative my-1 flex items-center justify-center">
+<div class="w-0.5 h-full bg-outline-variant"></div>
+<div class="h-0.5 w-full bg-outline-variant absolute"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-secondary"></div>
+</div>
+<span class="font-code-sm text-[9px] text-outline">LATENT Z</span>
+</div>
+</div>
+<!-- Legend and Physical Cartography Readout -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+<div class="bg-surface-container rounded-lg p-3 flex items-start gap-2.5">
+<span class="w-3 h-3 rounded-full bg-secondary mt-1 flex-shrink-0"></span>
+<div>
+<span class="font-label-sm text-label-sm text-primary block">Monarchy Island</span>
+<p class="font-body-sm text-xs text-on-surface-variant">Dense sovereign authority manifold. High cosine coherence across dynastic titles.</p>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-3 flex items-start gap-2.5">
+<span class="w-3 h-3 rounded-full bg-on-tertiary-container mt-1 flex-shrink-0"></span>
+<div>
+<span class="font-label-sm text-label-sm text-primary block">Gender-Kinship Archipelago</span>
+<p class="font-body-sm text-xs text-on-surface-variant">Linear gender displacement vector \( \vec{v}_{\text{female}} - \vec{v}_{\text{male}} \approx (0.04, 0.07) \).</p>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-3 flex items-start gap-2.5">
+<span class="w-3 h-3 rounded-full bg-error mt-1 flex-shrink-0"></span>
+<div>
+<span class="font-label-sm text-label-sm text-primary block">Hyper-Spherical Invariant</span>
+<p class="font-body-sm text-xs text-on-surface-variant">Unit vectors \(\|\vec{v}\| = 1\) bound all semantics to the thin outer skin of the 1,536-sphere.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT PANE: Latent Probe Workbench & Vector Algebra Deck -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- Vector Equation Sandbox Card -->
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-md flex flex-col gap-4">
+<div class="flex items-center justify-between pb-2 bg-surface-container-low rounded-lg p-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">calculate</span>
+<span class="font-headline-sm text-headline-sm text-primary">Vector Arithmetic</span>
+</div>
+<span class="font-code-sm text-xs text-outline">Eq. 058.4</span>
+</div>
+<!-- The Arithmetic Plate -->
+<div class="flex flex-col gap-2.5 font-code-sm text-code-sm">
+<!-- Operand 1: King -->
+<div class="flex items-center justify-between bg-surface-container rounded-lg p-2.5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-bold text-primary">King</span>
+</div>
+<span class="text-xs text-on-surface-variant">[0.82, -0.41, 0.65, ...]</span>
+</div>
+<!-- Operator Minus -->
+<div class="flex items-center justify-center -my-1 text-error font-bold text-sm">
+<span class="px-2 py-0.5 rounded bg-error-container text-on-error-container">− SUBTRACT (Masculine Base)</span>
+</div>
+<!-- Operand 2: Man -->
+<div class="flex items-center justify-between bg-surface-container rounded-lg p-2.5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<span class="font-bold text-primary">Man</span>
+</div>
+<span class="text-xs text-on-surface-variant">[0.35, -0.78, 0.12, ...]</span>
+</div>
+<!-- Operator Plus -->
+<div class="flex items-center justify-center -my-1 text-secondary font-bold text-sm">
+<span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container">+ ADD (Feminine Pole)</span>
+</div>
+<!-- Operand 3: Woman -->
+<div class="flex items-center justify-between bg-surface-container rounded-lg p-2.5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>
+<span class="font-bold text-primary">Woman</span>
+</div>
+<span class="text-xs text-on-surface-variant">[0.39, -0.71, 0.88, ...]</span>
+</div>
+<!-- Equals Arrow -->
+<div class="flex items-center justify-center pt-1 pb-0.5">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Nearest Neighbor KNN Search</span>
+</div>
+<!-- Resultant -->
+<div class="bg-primary text-on-primary rounded-lg p-3 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">ads_click</span>
+<div class="flex flex-col">
+<span class="font-headline-sm text-sm text-on-primary font-semibold">Queen</span>
+<span class="text-[10px] text-primary-fixed-dim">Target Cluster Candidate</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-code-sm text-sm font-bold text-secondary-fixed">96.4%</span>
+<span class="block text-[10px] text-primary-fixed-dim">top-1 match</span>
+</div>
+</div>
+</div>
+<!-- Dynamic Preset Dropdown -->
+<div class="pt-2">
+<label class="block font-label-sm text-label-sm text-outline mb-1.5 uppercase">Test Alternative Subspace Probes:</label>
+<div class="grid grid-cols-2 gap-2">
+<button class="px-2.5 py-1.5 text-xs text-left font-body-sm bg-surface-container hover:bg-surface-container-high rounded-md text-on-surface transition-colors truncate">
+                Paris - France + Japan = Tokyo
+              </button>
+<button class="px-2.5 py-1.5 text-xs text-left font-body-sm bg-surface-container hover:bg-surface-container-high rounded-md text-on-surface transition-colors truncate">
+                Walked - Walk + Swim = Swam
+              </button>
+</div>
+</div>
+</div>
+<!-- Ranked Cosine Neighbors List (KNN Output) -->
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-md flex flex-col gap-3">
+<div class="flex items-center justify-between pb-1">
+<span class="font-label-md text-label-md uppercase tracking-wider text-primary font-bold">Top k=4 Cosine Neighbors</span>
+<span class="font-code-sm text-xs text-outline">k-d tree query</span>
+</div>
+<div class="space-y-2 font-code-sm text-xs">
+<!-- Row 1 (Queen) -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low shadow-sm">
+<div class="flex items-center gap-2.5">
+<span class="font-bold text-secondary text-sm">01.</span>
+<span class="font-semibold text-primary font-body-md text-sm">Queen</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-secondary text-on-secondary font-bold">TARGET</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-16 bg-surface-container-high rounded-full h-1.5 hidden sm:block">
+<div class="bg-secondary h-1.5 rounded-full" style="width: 94.1%"></div>
+</div>
+<span class="font-bold text-on-surface">0.941</span>
+</div>
+</div>
+<!-- Row 2 (Monarch) -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2.5">
+<span class="text-outline text-sm">02.</span>
+<span class="text-on-surface font-body-md text-sm">Monarch</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-16 bg-surface-container-high rounded-full h-1.5 hidden sm:block">
+<div class="bg-outline h-1.5 rounded-full" style="width: 88.9%"></div>
+</div>
+<span class="text-on-surface-variant">0.889</span>
+</div>
+</div>
+<!-- Row 3 (Princess) -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2.5">
+<span class="text-outline text-sm">03.</span>
+<span class="text-on-surface font-body-md text-sm">Princess</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-16 bg-surface-container-high rounded-full h-1.5 hidden sm:block">
+<div class="bg-outline h-1.5 rounded-full" style="width: 86.5%"></div>
+</div>
+<span class="text-on-surface-variant">0.865</span>
+</div>
+</div>
+<!-- Row 4 (Crown) -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2.5">
+<span class="text-outline text-sm">04.</span>
+<span class="text-on-surface font-body-md text-sm">Crown</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-16 bg-surface-container-high rounded-full h-1.5 hidden sm:block">
+<div class="bg-outline h-1.5 rounded-full" style="width: 79.2%"></div>
+</div>
+<span class="text-on-surface-variant">0.792</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Latent Hyper-Plane Sliders -->
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-md flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase tracking-wider text-primary font-bold">Subspace Steering Weights</span>
+<span class="font-code-sm text-xs text-outline">Eigenvector Bias</span>
+</div>
+<div class="space-y-4">
+<!-- Slider 1 -->
+<div>
+<div class="flex justify-between text-xs font-label-sm mb-1.5">
+<span class="text-on-surface font-medium">Gender Pole (Masculine ↔ Feminine)</span>
+<span class="font-code-sm text-secondary font-bold" id="valGender">+0.82</span>
+</div>
+<input class="w-full h-1 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-secondary" max="1" min="-1" step="0.05" type="range" value="0.82"/>
+</div>
+<!-- Slider 2 -->
+<div>
+<div class="flex justify-between text-xs font-label-sm mb-1.5">
+<span class="text-on-surface font-medium">Formality / Archaic Hierarchy</span>
+<span class="font-code-sm text-secondary font-bold" id="valFormality">+0.45</span>
+</div>
+<input class="w-full h-1 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-secondary" max="1" min="-1" step="0.05" type="range" value="0.45"/>
+</div>
+<!-- Slider 3 -->
+<div>
+<div class="flex justify-between text-xs font-label-sm mb-1.5">
+<span class="text-on-surface font-medium">Abstractness vs. Physicality</span>
+<span class="font-code-sm text-secondary font-bold" id="valAbstract">-0.15</span>
+</div>
+<input class="w-full h-1 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-secondary" max="1" min="-1" step="0.05" type="range" value="-0.15"/>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-2.5 flex items-center justify-between text-xs">
+<span class="font-body-sm text-on-surface-variant">Manifold Perturbation</span>
+<span class="font-code-sm text-outline">Δv = 0.0418 rad</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Empirical Diagnostic Matrix (Analogy Breakdown & Geometry) -->
+<section class="w-full px-6 lg:px-12 py-12 bg-surface-container-low">
+<div class="max-w-[1440px] mx-auto flex flex-col gap-8">
+<!-- Section Header -->
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">Physical Analogies &amp; Diagnostic Models</span>
+<h2 class="font-display-md text-display-md text-primary mt-1">Deconstructing the Latent Intuition</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-lg">
+          High-dimensional vector spaces confound human 3D perception. We translate mathematical axioms into three physical mechanics verified in linguistic transformers.
+        </p>
+</div>
+<!-- 3 Analytical Comparison Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Card A: Elastic Spring & Magnet Analogy -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between gap-6 hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[28px]">electric_bolt</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Analogy Model I</span>
+<h3 class="font-headline-md text-headline-md text-primary mt-1">The Elastic Semantic Spring</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Words act as magnetic charged particles suspended in an isotropic fluid. Co-occurrence creates attractive Hooke's law springs, while polysemy exerts repulsive force. The final resting equilibrium represents minimum global potential energy across the vocabulary.
+            </p>
+</div>
+<!-- Micro Visual Schematic (Inline SVG) -->
+<div class="w-full bg-surface-container-low rounded-lg p-4 flex items-center justify-center">
+<svg class="w-full h-24" viewbox="0 0 240 80">
+<circle cx="40" cy="40" fill="#006970" opacity="0.8" r="14"></circle>
+<text class="font-code-sm text-[10px] font-bold" fill="#ffffff" text-anchor="middle" x="40" y="44">W₁</text>
+<circle cx="200" cy="40" fill="#d8674a" opacity="0.8" r="14"></circle>
+<text class="font-code-sm text-[10px] font-bold" fill="#ffffff" text-anchor="middle" x="200" y="44">W₂</text>
+<!-- Spring Coil Path -->
+<path d="M 54 40 L 70 40 L 75 25 L 85 55 L 95 25 L 105 55 L 115 25 L 125 55 L 135 25 L 145 55 L 155 25 L 165 55 L 170 40 L 186 40" fill="none" stroke="#74777b" stroke-width="1.75"></path>
+<text class="font-code-sm text-[9px] fill-outline" text-anchor="middle" x="120" y="72">F = -k(x - x₀)</text>
+</svg>
+</div>
+<div class="pt-2 font-code-sm text-xs text-secondary font-medium">
+            Invariant: Gradient descent settles at semantic tension equilibria.
+          </div>
+</div>
+<!-- Card B: High-Dimensional Shadow (t-SNE / UMAP Projection) -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between gap-6 hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]">wb_twilight</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Analogy Model II</span>
+<h3 class="font-headline-md text-headline-md text-primary mt-1">The Shadow of 1,536 Dimensions</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Flattening a 1,536-dimensional hyper-sphere onto a 2D sheet requires catastrophic compression. Like projecting a faceted crystal's shadow onto a paper plane, clusters appear adjacent that in truth remain separated by massive orthogonal chasms.
+            </p>
+</div>
+<!-- Micro Visual Schematic (Inline SVG) -->
+<div class="w-full bg-surface-container-low rounded-lg p-4 flex items-center justify-center">
+<svg class="w-full h-24" viewbox="0 0 240 80">
+<!-- Hypercube Wireframe Silhouette -->
+<polygon fill="none" points="40,20 80,10 100,30 60,40" stroke="#74777b" stroke-width="1"></polygon>
+<polygon fill="none" points="40,60 80,50 100,70 60,80" stroke="#74777b" stroke-width="1"></polygon>
+<line stroke="#74777b" stroke-width="1" x1="40" x2="40" y1="20" y2="60"></line>
+<line stroke="#74777b" stroke-width="1" x1="80" x2="80" y1="10" y2="50"></line>
+<line stroke="#74777b" stroke-width="1" x1="100" x2="100" y1="30" y2="70"></line>
+<line stroke="#74777b" stroke-width="1" x1="60" x2="60" y1="40" y2="80"></line>
+<!-- Ray Projection to 2D Screen -->
+<path d="M 100 45 L 170 30" stroke="#006970" stroke-dasharray="2,2" stroke-width="1"></path>
+<path d="M 100 60 L 170 55" stroke="#006970" stroke-dasharray="2,2" stroke-width="1"></path>
+<!-- Projection Plate -->
+<rect fill="#006970" fill-opacity="0.1" height="50" stroke="#006970" stroke-width="1" width="45" x="175" y="15"></rect>
+<circle cx="195" cy="40" fill="#006970" r="3"></circle>
+<text class="font-code-sm text-[9px] fill-outline" text-anchor="middle" x="195" y="74">False Adjacency</text>
+</svg>
+</div>
+<div class="pt-2 font-code-sm text-xs text-primary font-medium">
+            Invariant: Distance in 2D does NOT imply proximity in 1536D.
+          </div>
+</div>
+<!-- Card C: Linear Subspaces & Concept Stepping -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between gap-6 hover:shadow-md transition-shadow">
+<div class="flex flex-col gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[28px]">straighten</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Analogy Model III</span>
+<h3 class="font-headline-md text-headline-md text-primary mt-1">Linear Parallel Subspaces</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Concept transitions (verb conjugations, capital cities, stylistic register) behave as constant translation vectors across distinct semantic islands. Walking 2 units in direction \(\vec{u}_{\text{tense}}\) converts present to past consistently everywhere.
+            </p>
+</div>
+<!-- Micro Visual Schematic (Inline SVG) -->
+<div class="w-full bg-surface-container-low rounded-lg p-4 flex items-center justify-center">
+<svg class="w-full h-24" viewbox="0 0 240 80">
+<!-- Pair 1 -->
+<circle cx="35" cy="60" fill="#050b11" r="4"></circle>
+<text class="font-body-sm text-[9px] fill-on-surface" text-anchor="middle" x="35" y="74">Walk</text>
+<line marker-end="url(#arrow-add)" stroke="#006970" stroke-width="1.5" x1="42" x2="85" y1="56" y2="28"></line>
+<circle cx="90" cy="25" fill="#006970" r="4"></circle>
+<text class="font-body-sm text-[9px] fill-primary font-bold" text-anchor="middle" x="90" y="16">Walked</text>
+<!-- Pair 2 Parallel -->
+<circle cx="145" cy="60" fill="#050b11" r="4"></circle>
+<text class="font-body-sm text-[9px] fill-on-surface" text-anchor="middle" x="145" y="74">Sing</text>
+<line marker-end="url(#arrow-add)" stroke="#006970" stroke-width="1.5" x1="152" x2="195" y1="56" y2="28"></line>
+<circle cx="200" cy="25" fill="#006970" r="4"></circle>
+<text class="font-body-sm text-[9px] fill-primary font-bold" text-anchor="middle" x="200" y="16">Sang</text>
+<text class="font-code-sm text-[9px] fill-secondary font-bold" text-anchor="middle" x="120" y="45">Δv_tense ∥</text>
+</svg>
+</div>
+<div class="pt-2 font-code-sm text-xs text-secondary font-medium">
+            Invariant: Grammatical relation is encoded as rigid affine shifts.
+          </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Visual Dissection: High-Dimensional Concentration of Mass -->
+<section class="w-full px-6 lg:px-12 py-12">
+<div class="max-w-[1440px] mx-auto bg-surface-container rounded-2xl p-8 lg:p-12 shadow-md">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+<!-- Left: Editorial Prose & Derivation -->
+<div class="lg:col-span-6 flex flex-col gap-5">
+<div class="inline-flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container-highest text-primary font-code-sm text-xs font-semibold">GEOMETRIC PHENOMENOLOGY</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">
+            The Soap Bubble Theorem: Why Mass Concentrates on the Equator &amp; Outer Shell
+          </h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            In standard 3D Euclidean space, a solid ball contains significant interior volume. But as dimensionality \(d\) approaches 1,536, the fraction of volume in the core sphere of radius \((1 - \epsilon)\) collapses exponentially:
+          </p>
+<!-- Mathematical Equation Callout -->
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm font-code-sm text-sm space-y-2">
+<div class="flex items-center justify-between text-secondary font-bold">
+<span>\(\lim_{d \to \infty} \frac{\text{Vol}(B^d(1 - \epsilon))}{\text{Vol}(B^d(1))} = (1 - \epsilon)^d \approx 0\)</span>
+<span class="text-xs text-outline font-normal">ε = 0.01, d=1536</span>
+</div>
+<p class="font-body-sm text-xs text-on-surface-variant pt-1 font-sans">
+              For \(d = 1536\) and \(\epsilon = 0.01\), \((0.99)^{1536} \approx 2.14 \times 10^{-7}\). Almost 99.9999% of the volume of the hyper-sphere resides in an unimaginably thin outer shell within 1% of the surface!
+            </p>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Consequently, all transformer token embeddings are effectively orthogonal to one another by default unless deliberate semantic co-occurrence binds them together into dense, low-dimensional manifold ribbons.
+          </p>
+</div>
+<!-- Right: Analytical Comparison Table & Dimensionality Scale -->
+<div class="lg:col-span-6 flex flex-col gap-4">
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<span class="font-label-md text-label-md uppercase tracking-wider text-primary font-bold block mb-4">
+              Dimensional Scaling Comparison Matrix
+            </span>
+<div class="overflow-x-auto">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="border-b border-surface-container-highest font-label-sm text-label-sm text-outline uppercase">
+<th class="pb-2.5">Dimension (d)</th>
+<th class="pb-2.5">Shell Mass (%)</th>
+<th class="pb-2.5">Mutual Orthogonality</th>
+<th class="pb-2.5">Max Equidistant Tokens</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high font-code-sm text-xs text-on-surface">
+<tr>
+<td class="py-3 font-bold text-primary">d = 2 (Cartesian Plane)</td>
+<td class="py-3 text-on-surface-variant">1.99%</td>
+<td class="py-3 text-on-surface-variant">θ = 90° (rare)</td>
+<td class="py-3 text-secondary font-bold">4 tokens</td>
+</tr>
+<tr>
+<td class="py-3 font-bold text-primary">d = 3 (Physical Space)</td>
+<td class="py-3 text-on-surface-variant">2.97%</td>
+<td class="py-3 text-on-surface-variant">θ = 90° (rare)</td>
+<td class="py-3 text-secondary font-bold">6 tokens</td>
+</tr>
+<tr>
+<td class="py-3 font-bold text-primary">d = 768 (BERT Base)</td>
+<td class="py-3 text-on-surface-variant">99.95%</td>
+<td class="py-3 text-on-surface-variant">θ ≈ 89.2° ± 1.1°</td>
+<td class="py-3 text-secondary font-bold">1,536 tokens</td>
+</tr>
+<tr class="bg-surface-container-low font-bold">
+<td class="py-3 text-secondary">d = 1,536 (OpenAI Ada / Large)</td>
+<td class="py-3 text-error">99.9999%</td>
+<td class="py-3 text-secondary">θ ≈ 89.8° ± 0.4°</td>
+<td class="py-3 text-secondary">3,072+ tokens</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-4 pt-4 flex items-center justify-between text-xs text-outline font-label-sm border-t border-surface-container-high">
+<span>*Measured on unit hyper-sphere \(S^{d-1}\) under uniform isotropic distribution.</span>
+<button class="text-secondary font-semibold hover:underline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">download</span> Export Proof (PDF)
+              </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Curated Companion Fascicles (Archive Showcase) -->
+<section class="w-full px-6 lg:px-12 py-16">
+<div class="max-w-[1440px] mx-auto flex flex-col gap-8">
+<div class="flex items-center justify-between">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-outline font-bold">Curio Archival Corpus</span>
+<h2 class="font-headline-lg text-headline-lg text-primary mt-1">Companion Visual Fascicles</h2>
+</div>
+<a class="font-label-md text-label-md text-secondary font-bold flex items-center gap-1 hover:underline" href="#">
+          View Complete Catalog <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Fascicle 042 -->
+<article class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-xs font-semibold px-2 py-0.5 rounded bg-surface-container-high text-primary">No. 042</span>
+<span class="font-label-sm text-xs text-outline">Statistical Physics</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary group-hover:text-secondary transition-colors">
+              Entropy &amp; The Arrow of Time: Microstates &amp; The Irreversible Fountain
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Interactive Boltzmann gas phase lattice simulations proving why shattered teacups never spontaneously reassemble against thermal diffusion.
+            </p>
+</div>
+<div class="pt-6 flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">timer</span> 18 min</span>
+<span class="font-semibold text-primary group-hover:translate-x-1 transition-transform">Read Monograph →</span>
+</div>
+</article>
+<!-- Fascicle 059 -->
+<article class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-xs font-semibold px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container">No. 059</span>
+<span class="font-label-sm text-xs text-secondary font-bold">Sequel Fascicle</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary group-hover:text-secondary transition-colors">
+              Attention Is All You Need: The Multi-Head Geometric Lens
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Dynamic Query-Key-Value projection matrices mapped as prism optics refracting incoming token streams through contextual attention routing.
+            </p>
+</div>
+<div class="pt-6 flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">timer</span> 22 min</span>
+<span class="font-semibold text-primary group-hover:translate-x-1 transition-transform">Read Monograph →</span>
+</div>
+</article>
+<!-- Fascicle 018 -->
+<article class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-xs font-semibold px-2 py-0.5 rounded bg-surface-container-high text-primary">No. 018</span>
+<span class="font-label-sm text-xs text-outline">Material Mechanics</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary group-hover:text-secondary transition-colors">
+              Precision Dovetail Joinery &amp; Kinetic Kerf Alignment
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Orthographic mechanical explorations of Japanese wood joinery with tensile shear calculations under dynamic seismic loading conditions.
+            </p>
+</div>
+<div class="pt-6 flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">timer</span> 12 min</span>
+<span class="font-semibold text-primary group-hover:translate-x-1 transition-transform">Read Monograph →</span>
+</div>
+</article>
+</div>
+</div>
+</section>
+<!-- Editorial Colophon & Scholar Citation Drawer -->
+<section class="w-full bg-surface-container px-6 lg:px-12 py-10 shadow-inner">
+<div class="max-w-[1440px] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex flex-col gap-1 max-w-xl">
+<span class="font-label-md text-label-md uppercase tracking-wider text-primary font-bold">Academic Citation Format (BibTeX)</span>
+<p class="font-code-sm text-xs text-outline bg-surface-container-lowest p-2.5 rounded-lg select-all shadow-sm">
+          @article{rostova2024curio58, author={Rostova, Elena and Aris, Julian}, title={Semantic Topography: Navigating Neural Latent Spaces}, journal={Curio Digital Atelier}, volume={58}, year={2024}, doi={10.1088/curio.ai.058.latent}}
+        </p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 rounded-lg bg-surface-container-lowest text-primary hover:bg-surface-container-high transition-colors font-label-md text-label-md flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">content_copy</span> Copy BibTeX
+        </button>
+<button class="px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">download_for_offline</span> Download Vector Dataset
+        </button>
+</div>
+</div>
+</section>
+<!-- Inline Dynamic Micro-interactions -->
+<script>
+    (function initCartography() {
+      // Toggle Contour Isolines
+      const toggleContours = document.getElementById('toggleContours');
+      const contourLines = document.querySelectorAll('.contour-line');
+      let contoursVisible = true;
+      if (toggleContours) {
+        toggleContours.addEventListener('click', () => {
+          contoursVisible = !contoursVisible;
+          contourLines.forEach(line => {
+            line.style.display = contoursVisible ? 'inline' : 'none';
+          });
+          toggleContours.classList.toggle('bg-secondary');
+          toggleContours.classList.toggle('text-on-secondary');
+          toggleContours.classList.toggle('bg-surface-container');
+          toggleContours.classList.toggle('text-on-surface');
+        });
+      }
+
+      // Toggle Affinity Springs
+      const toggleSprings = document.getElementById('toggleSprings');
+      const springLayer = document.getElementById('springLayer');
+      let springsVisible = true;
+      if (toggleSprings) {
+        toggleSprings.addEventListener('click', () => {
+          springsVisible = !springsVisible;
+          if (springLayer) springLayer.style.display = springsVisible ? 'inline' : 'none';
+          toggleSprings.classList.toggle('bg-secondary');
+          toggleSprings.classList.toggle('text-on-secondary');
+          toggleSprings.classList.toggle('bg-surface-container');
+          toggleSprings.classList.toggle('text-on-surface');
+        });
+      }
+
+      // Slider live feedback
+      const sliderGender = document.querySelector('input[type="range"]');
+      const valGender = document.getElementById('valGender');
+      if (sliderGender && valGender) {
+        sliderGender.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          valGender.textContent = (val >= 0 ? '+' : '') + val.toFixed(2);
+        });
+      }
+    })();
+  </script>
+</div></main><footer class="w-full bg-surface-container-low border-t border-outline-variant/40 mt-space-2xl"><div class="max-w-[1440px] mx-auto px-6 lg:px-12 py-16"><div class="grid grid-cols-1 md:grid-cols-12 gap-12"><div class="md:col-span-5 flex flex-col gap-4"><div class="flex items-center gap-3"><img alt="Curio Brand Mark" class="h-7 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WptdhfNkowK8ze6tR6jj2zd0pKua-yNipNkJSv28rLFcVnILThZnYb1tD_XnbFacVk1nyzdg5juvSYmPm8PZ_j30FGgZB8C2E7akzprRgdPOsXgQ6nq1aXvntOd1wCbIWV3QFa3SX83Ppsx_547wDkaFjylaCiNh754BCtHXbCPEb_HvWalJMowRIuxIk_E2BA9PKIFajwgAn5DyxZw_IJ5EhTMLaDsP3iFgzuJPNpxtYKDjdW0_LpbOw"/><span class="font-headline-sm text-headline-sm text-primary">Curio</span></div><p class="font-body-md text-body-md text-on-surface-variant max-w-md">Curio is an open digital atelier and intellectual repository dedicated to visual inquiry, interactive mathematical derivations, and multi-scale historical dissections.</p><div class="flex items-center gap-2 mt-2"><span class="font-code-sm text-code-sm text-outline">Archival Series: Analogies, Proofs &amp; Dissections • Bound by inquiry</span></div></div><div class="md:col-span-4 flex flex-col gap-3"><span class="font-label-md text-label-md uppercase tracking-wider text-primary font-bold">Monograph Fascicles &amp; Disciplines</span><div class="grid grid-cols-2 gap-2"><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" data-path="fascicle-no-042-entropy-the-arrow-of-time-statistical-microstates-the-irreversible-fountain" href="#">No. 042: Entropy &amp; Time</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" data-path="fascicle-no-058-semantic-topography-navigating-neural-latent-spaces-vector-geometry" href="#">No. 058: Semantic Topography</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Theoretical Physics</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Classical Mechanics</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Information Geometry</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Cellular Dynamics</a></div></div><div class="md:col-span-3 flex flex-col gap-3"><span class="font-label-md text-label-md uppercase tracking-wider text-primary font-bold">Academic Colophon</span><p class="font-body-sm text-body-sm text-on-surface-variant">Peer-reviewed algorithmic proofs, kinetic diagrams, and computational monographs verified across university laboratories and independent scholars.</p><div class="flex items-center gap-4 mt-2"><a class="font-label-sm text-label-sm font-semibold text-secondary hover:underline" href="#">Editorial Standards</a><span class="text-outline-variant">•</span><a class="font-label-sm text-label-sm font-semibold text-secondary hover:underline" href="#">Monograph Submissions</a></div></div></div><div class="mt-12 pt-8 border-t border-outline-variant/30 flex flex-col sm:flex-row items-center justify-between gap-4"><span class="font-body-sm text-body-sm text-on-surface-variant">© 2024 Curio Archive. Crafted for inquisitive minds under Open Inquiry License. DOI: 10.1038/curio.2024</span><div class="flex items-center gap-6"><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Repository Index</a><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Typography &amp; Colophon</a><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Fascicle RSS</a></div></div></div></footer></body></html>
