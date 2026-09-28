@@ -1,0 +1,92 @@
+/** Scene model — the internal currency of the figure system.
+ *  Layouts compile semantic specs INTO a Scene; sceneToSvg compiles a Scene OUT to SVG.
+ *  No coordinates ever enter or leave the IR — Scene is internal to src/figures. */
+
+export type NodeShape = "box" | "round" | "pill" | "note"
+
+export interface NodeBoxEl {
+  kind: "node-box"
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+  shape: NodeShape
+  label: string
+}
+
+export type EdgeKind = "causes" | "leads" | "part-of" | "conflict"
+
+export interface ArrowEl {
+  kind: "arrow"
+  /** Shaft path; ends just short of the head tip. */
+  d: string
+  /** Closed triangle path for the arrowhead. */
+  head: string
+  label?: string
+  /** Label anchor point (computed by the layout, absolute scene coordinates). */
+  labelX?: number
+  labelY?: number
+  edgeKind: EdgeKind
+}
+
+export interface LabelEl {
+  kind: "label"
+  x: number
+  y: number
+  text: string
+  anchor: "start" | "middle" | "end"
+  /** Emphasis labels are ink-colored and bold; default labels are muted. */
+  emphasis?: boolean
+}
+
+export interface AxisEl {
+  kind: "axis"
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+}
+
+export interface BarEl {
+  kind: "bar"
+  x: number
+  y: number
+  w: number
+  h: number
+  /** Preformatted value label (unit already applied) — the layout emits the matching LabelEl. */
+  valueLabel: string
+}
+
+export interface LinePathEl {
+  kind: "line-path"
+  d: string
+}
+
+export interface DotEl {
+  kind: "dot"
+  x: number
+  y: number
+}
+
+export interface SparklineEl {
+  kind: "sparkline"
+  d: string
+  trend: "up" | "down" | "flat"
+}
+
+export type SceneElement =
+  | NodeBoxEl
+  | ArrowEl
+  | LabelEl
+  | AxisEl
+  | BarEl
+  | LinePathEl
+  | DotEl
+  | SparklineEl
+
+export interface Scene {
+  width: number
+  height: number
+  elements: SceneElement[]
+}
