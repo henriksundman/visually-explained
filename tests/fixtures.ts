@@ -23,6 +23,15 @@ export const allPrimitivesIr = {
     { type: "callout", variant: "tip", body: "Body" },
     { type: "callout", variant: "warning", body: "Body" },
     { type: "stack", blocks: [{ type: "stack", blocks: [{ type: "text", body: "Nested" }] }] },
+    {
+      type: "diagram",
+      nodes: [
+        { id: "a", label: "Input" },
+        { id: "b", label: "Transform" },
+        { id: "c", label: "Output" },
+      ],
+      edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }],
+    },
     { type: "chart", title: "Unknown fallback" },
   ],
 } as const

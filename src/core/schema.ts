@@ -128,6 +128,7 @@ export type Block =
   | CalloutBlock
   | TextBlock
   | StackBlock
+  | DiagramBlock
 
 export const stackBlockSchema = z.object({
   id: idSchema,
@@ -151,6 +152,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     calloutBlockSchema,
     textBlockSchema,
     stackBlockSchema,
+    diagramBlockSchema,
   ]) as unknown as z.ZodType<Block>,
 )
 
@@ -161,3 +163,27 @@ export const explanationSchema = z.object({
   blocks: z.array(blockUnionSchema),
 })
 export type Explanation = z.infer<typeof explanationSchema>
+
+export const diagramNodeSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  shape: z.enum(["box", "round", "pill", "note"]).optional(),
+})
+export type DiagramNode = z.infer<typeof diagramNodeSchema>
+
+export const diagramEdgeSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  label: z.string().min(1).optional(),
+  kind: z.enum(["causes", "leads", "part-of", "conflict"]).optional(),
+})
+export type DiagramEdge = z.infer<typeof diagramEdgeSchema>
+
+export const diagramBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("diagram"),
+  nodes: z.array(diagramNodeSchema).min(1),
+  edges: z.array(diagramEdgeSchema),
+  direction: z.enum(["lr", "tb"]).optional(),
+})
+export type DiagramBlock = z.infer<typeof diagramBlockSchema>

@@ -388,6 +388,10 @@
   stroke-width: 1.5;
 }
 
+.exp-node-box rect {
+  rx: 4px;
+}
+
 .exp-node-note rect {
   stroke-dasharray: 4 3;
 }
