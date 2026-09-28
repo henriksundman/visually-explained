@@ -3,16 +3,16 @@
 import { createServer } from "node:http"
 import { readFile } from "node:fs/promises"
 import { renderExplanation } from "../dist/index.js"
-import { educationIr, dataIr, capabilitiesIr } from "./examples.js"
+import { educationIr, dataIr, capabilitiesIr, figuresIr } from "./examples.js"
 
 const port = Number(process.env.PORT ?? 4173)
 
-function section(id, theme, ir, extraClass = "") {
+function section(id, theme, ir, extraClass = "", sketch = false) {
   // root:false — the section itself is the token-bearing .exp scope, so the
   // theme class on it actually governs the palette (a nested default .exp
   // root would re-declare light tokens and defeat the toggle).
-  const { html } = renderExplanation(ir, { theme: "none", root: false })
-  return `<section id="${id}" class="exp exp-theme-${theme}${extraClass ? ` ${extraClass}` : ""}">${html}</section>`
+  const { html } = renderExplanation(ir, { theme: "none", root: false, sketch })
+  return `<section id="${id}" class="exp exp-theme-${theme}${extraClass ? ` ${extraClass}` : ""}${sketch ? " exp-sketch" : ""}">${html}</section>`
 }
 
 const page = `<!doctype html>
@@ -48,6 +48,10 @@ ${section("data", "dark", dataIr)}
 <p>Leniency and theming: the model below invented a <code>gauge</code> block type and emitted one broken block — the library renders a fallback and skips the rest. The second copy is the <em>same IR</em> re-skinned purely with token overrides on the wrapper.</p>
 ${section("capabilities", "light", capabilitiesIr)}
 ${section("capabilities-themed", "light", capabilitiesIr, "demo-tokens")}
+<h2>Figures</h2>
+<p>LLM-emitted diagram and chart blocks, a cause-effect chain drawn as an arrow figure — the same IR twice: clean strokes, then the rough.js sketch pass.</p>
+${section("figures", "light", figuresIr)}
+${section("figures-sketch", "dark", figuresIr, "", true)}
 <script>
   document.getElementById("theme-toggle").addEventListener("click", () => {
     document.querySelectorAll("section.exp").forEach(el => {

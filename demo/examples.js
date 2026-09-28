@@ -135,3 +135,56 @@ export const capabilitiesIr = {
     { type: "callout", variant: "note", body: "Known types around it render normally — and `note` is the third callout variant." },
   ],
 }
+
+// Drawing-layer showcase — every figure rendered from semantic specs only.
+export const figuresIr = {
+  version: 1,
+  title: "How a slow deploy gets rolled back",
+  summary: "Diagrams and charts straight from the model — no coordinates anywhere.",
+  blocks: [
+    {
+      type: "diagram",
+      nodes: [
+        { id: "dep", label: "Deploy ships", shape: "pill" },
+        { id: "lat", label: "p95 latency spikes" },
+        { id: "err", label: "Error rate climbs", shape: "note" },
+        { id: "alert", label: "Alert fires", shape: "round" },
+        { id: "rb", label: "Canary rollback", shape: "round" },
+      ],
+      edges: [
+        { from: "dep", to: "lat", kind: "causes" },
+        { from: "lat", to: "err", kind: "causes" },
+        { from: "err", to: "alert", kind: "leads" },
+        { from: "dep", to: "rb", label: "canary only" },
+        { from: "dep", to: "err", label: "risk", kind: "conflict" },
+      ],
+      direction: "lr",
+    },
+    {
+      type: "chart",
+      kind: "bar",
+      points: [
+        { label: "Mon", value: 120 },
+        { label: "Tue", value: 118 },
+        { label: "Wed", value: 240 },
+        { label: "Thu", value: 95 },
+        { label: "Fri", value: 90 },
+      ],
+      unit: "ms",
+      caption: "p95 latency by day",
+    },
+    {
+      type: "cause-effect",
+      presentation: "figure",
+      chain: [
+        { because: "Cache warmed at boot", therefore: "First requests stay fast." },
+        { because: "Circuit breaker opens", therefore: "Retries back off instead of stampeding." },
+      ],
+    },
+    {
+      type: "callout",
+      variant: "tip",
+      body: "The renderer owns all geometry — the model only names nodes, edges, and values.",
+    },
+  ],
+}

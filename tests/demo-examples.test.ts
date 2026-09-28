@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { explanationSchema } from "../src/core/schema"
-import { educationIr, dataIr, capabilitiesIr } from "../demo/examples.js"
+import { educationIr, dataIr, capabilitiesIr, figuresIr } from "../demo/examples.js"
 
 function collectTypes(ir: { blocks: unknown[] }): Set<string> {
   const types = new Set<string>()
@@ -47,5 +47,16 @@ describe("demo examples", () => {
     const types = collectTypes(capabilitiesIr)
     expect(types.has("gauge")).toBe(true) // unknown → fallback
     expect(capabilitiesIr.blocks.some(b => (b as { type?: string }).type === "text" && !(b as { body?: string }).body)).toBe(true) // invalid → skipped
+  })
+
+  it("figures fixture is schema-valid", () => {
+    expect(explanationSchema.safeParse(figuresIr).success).toBe(true)
+  })
+
+  it("figures fixture covers diagram, chart, cause-effect, callout", () => {
+    const types = collectTypes(figuresIr)
+    for (const t of ["diagram", "chart", "cause-effect", "callout"]) {
+      expect(types.has(t)).toBe(true)
+    }
   })
 })
