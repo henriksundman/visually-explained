@@ -183,3 +183,54 @@ describe("placePopover", () => {
     expect(p.left).toBe(136) // stage.right - MAX_W(260) - 4
   })
 })
+
+const tippedFigure = {
+  type: "figure",
+  title: "Orbit",
+  elements: [
+    { kind: "dot", cx: 100, cy: 80, r: 6, id: "pen", tip: "The pen dot" },
+    { kind: "dot", cx: 10, cy: 10, r: 3 },
+  ],
+}
+
+describe("element popover wiring (SSR)", () => {
+  it("renders tip-bearing elements focusable and the popover closed", () => {
+    const html = renderToStaticMarkup(<InteractiveFigure block={tippedFigure} />)
+    expect(html).toContain(`tabindex="0"`)
+    expect(html).toContain(`data-tip="The pen dot"`)
+    expect(html).not.toContain(`exp-popover`) // closed initially — SSR-safe
+  })
+
+  it("static path wraps figure blocks in the delegated container when onElementEvent is set", () => {
+    const withHandler = renderToStaticMarkup(
+      <Explanation ir={{ version: 1, blocks: [tippedFigure] }} theme="none" onElementEvent={() => {}} />,
+    )
+    expect(withHandler).toContain(`exp-fig-events`)
+    expect(withHandler).toContain(`data-el-id="pen"`)
+    const without = renderToStaticMarkup(
+      <Explanation ir={{ version: 1, blocks: [tippedFigure] }} theme="none" />,
+    )
+    expect(without).not.toContain(`exp-fig-events`) // RSC-safe default
+  })
+
+  it("static wrapper also covers diagram blocks", () => {
+    const html = renderToStaticMarkup(
+      <Explanation
+        ir={{
+          version: 1,
+          blocks: [
+            {
+              type: "diagram",
+              nodes: [{ id: "a", label: "A", tip: "Node A" }],
+              edges: [],
+            },
+          ],
+        }}
+        theme="none"
+        onElementEvent={() => {}}
+      />,
+    )
+    expect(html).toContain(`exp-fig-events`)
+    expect(html).toContain(`data-tip="Node A"`)
+  })
+})

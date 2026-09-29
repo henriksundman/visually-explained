@@ -670,3 +670,42 @@
 .exp-el[data-tip]:hover {
   opacity: 0.8;
 }
+
+/* Popover tokens — dark surface defaults work on both themes. */
+.exp {
+  --exp-popover-bg: #1a1d23;
+  --exp-popover-fg: #ffffff;
+  --exp-popover-border: transparent;
+  --exp-popover-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+}
+
+.exp-fig-stage,
+.exp-fig-events {
+  position: relative;
+}
+
+.exp-popover {
+  position: absolute;
+  z-index: 10;
+  max-width: 260px;
+  background: var(--exp-popover-bg);
+  color: var(--exp-popover-fg);
+  border: 1px solid var(--exp-popover-border);
+  box-shadow: var(--exp-popover-shadow);
+  border-radius: var(--exp-radius-sm);
+  padding: 6px 10px;
+  font-size: 0.85em;
+  pointer-events: none;
+}
+
+.exp-popover p {
+  margin: 0;
+}
+
+.exp-popover-above {
+  transform: translateY(-100%);
+}
+
+.exp-popover-below {
+  transform: none;
+}

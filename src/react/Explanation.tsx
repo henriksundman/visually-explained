@@ -4,6 +4,8 @@ import { renderBlock } from "../core/render"
 import { renderInline } from "../core/inline"
 import { validateExplanation } from "../core/validate"
 import { InteractiveFigure } from "./InteractiveFigure"
+import { FigureEvents } from "./ElementPopover"
+import type { FigureElementEvent } from "./figureEvents"
 import type { Block } from "../core/schema"
 import "../themes/tokens.css"
 import "../themes/light.css"
@@ -24,6 +26,10 @@ export interface ExplanationProps {
   /** Route figure blocks to the interactive runtime (sliders + play).
    *  Default false — keeps this component RSC-safe. */
   interactive?: boolean
+  /** Delegate hover/click events for identified figure elements. Presence
+   *  routes figure/diagram/chart blocks through a small client wrapper;
+   *  default undefined keeps this component RSC-safe. */
+  onElementEvent?: (e: FigureElementEvent) => void
 }
 
 function themeClassName(theme: "light" | "dark" | "none"): string {
@@ -34,7 +40,15 @@ function themeClassName(theme: "light" | "dark" | "none"): string {
  * Server component (no hooks, no client JS). Safe in Next.js RSC.
  * Custom components receive the parsed block payload.
  */
-export function Explanation({ ir, theme = "light", components, strict, sketch, interactive }: ExplanationProps) {
+export function Explanation({
+  ir,
+  theme = "light",
+  components,
+  strict,
+  sketch,
+  interactive,
+  onElementEvent,
+}: ExplanationProps) {
   if (strict) {
     const v = validateExplanation(ir)
     if (!v.ok) {
@@ -58,6 +72,10 @@ export function Explanation({ ir, theme = "light", components, strict, sketch, i
         }
         if (interactive && b.kind === "valid" && b.type === "figure") {
           return <InteractiveFigure key={b.index} block={b.data} sketch={sketch} />
+        }
+        if (onElementEvent && b.kind === "valid" && (b.type === "figure" || b.type === "diagram" || b.type === "chart")) {
+          const html = renderBlock(b.type, b.data, 1, { sketch })
+          return <FigureEvents key={b.index} html={html} onEvent={onElementEvent} />
         }
         return <div key={b.index} dangerouslySetInnerHTML={{ __html: renderBlock(b.type, b.data, 1, { sketch }) }} />
       })}

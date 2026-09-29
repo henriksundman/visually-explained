@@ -5,6 +5,8 @@ import { compileFigure } from "../figures/authored"
 import { hashSeed } from "../figures/seed"
 import { n2, sceneToSvg } from "../figures/svg"
 import { renderInline } from "../core/inline"
+import { PopoverDiv, useElementPopover } from "./ElementPopover"
+import type { FigureElementEvent } from "./figureEvents"
 import type { FigureBlock } from "../core/schema"
 
 export interface InteractiveFigureProps {
@@ -12,6 +14,8 @@ export interface InteractiveFigureProps {
   block: unknown
   /** Hand-drawn (rough.js) stroke pass, matching the static option. */
   sketch?: boolean
+  /** Delegate hover/click events for identified elements (events spec §5). */
+  onElementEvent?: (e: FigureElementEvent) => void
 }
 
 /** Width (ch) of the widest value the param can ever display, so the value
@@ -50,7 +54,7 @@ interface ParamSpec {
   initial: number
 }
 
-export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = false }) => {
+export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = false, onElementEvent }) => {
   const { authored, raw } = useMemo(() => {
     const b = (block ?? {}) as Partial<FigureBlock>
     const warnings: string[] = []
@@ -120,6 +124,8 @@ export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = 
     setValues(v => ({ ...v, [name]: Math.min(p.max, Math.max(p.min, value)) }))
   }
 
+  const { stageRef, pop, bind } = useElementPopover(onElementEvent)
+
   const header = authored.title ? (
     <h4 className="exp-fig-title" dangerouslySetInnerHTML={{ __html: renderInline(authored.title) }} />
   ) : null
@@ -127,7 +133,10 @@ export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = 
     <p className="exp-fig-caption" dangerouslySetInnerHTML={{ __html: renderInline(authored.caption) }} />
   ) : null
   const body = svg ? (
-    <div className="exp-fig-stage" dangerouslySetInnerHTML={{ __html: svg }} />
+    <div className="exp-fig-stage" ref={stageRef} {...bind}>
+      <div dangerouslySetInnerHTML={{ __html: svg }} />
+      {pop && <PopoverDiv pop={pop} />}
+    </div>
   ) : (
     <p className="exp-fig-empty">Figure could not be drawn.</p>
   )
