@@ -69,6 +69,10 @@ describe("demo examples", () => {
     expect(elements.some(e => e.kind === "group")).toBe(true)
     const wave = elements.find(e => e.kind === "path")
     expect(wave?.d?.split("{{").length).toBe(17) // 16 slots + trailing text
+    // The samples must span a full square-wave period (2π): the 5th-harmonic
+    // phase retardation in the last slot is 5·δ, so δmax = 30/5 = 6.0 ≈ 2π.
+    expect(wave?.d).toContain("sin(a-6)")
+    expect(wave?.d).toContain("5*a-30")
   })
 
   it("how-to fixture is schema-valid", () => {
