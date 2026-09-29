@@ -651,3 +651,22 @@
   color: var(--exp-ink);
   cursor: pointer;
 }
+
+/* Element interactivity (events spec 2026-09-29): CSS-only hover/focus
+   affordances work without React; popover styles ship with the React layer. */
+.exp-el-hit {
+  pointer-events: stroke;
+}
+
+.exp-el:focus {
+  outline: none;
+}
+
+.exp-el[data-tip]:focus-visible {
+  outline: 2px solid var(--exp-accent);
+  outline-offset: 2px;
+}
+
+.exp-el[data-tip]:hover {
+  opacity: 0.8;
+}

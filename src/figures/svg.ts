@@ -31,6 +31,44 @@ export function n2(n: number): string {
   return String(Math.round(n * 100) / 100)
 }
 
+/** Emit-layer identity gate: escape-safety only. Author ids were already
+ *  regex-validated at parse time; derived ids (dep->lat, bar:Wed) are built
+ *  from schema-validated strings. escapeHtml makes any of them attribute-safe. */
+function hasIdentity(el: SceneElement): boolean {
+  return typeof el.id === "string" && el.id !== "" && el.id.length <= 100
+}
+
+function hasTip(el: SceneElement): boolean {
+  return typeof el.tip === "string" && el.tip.trim() !== "" && el.tip.length <= 200
+}
+
+/** Hairline elements are nearly impossible to hover; a transparent 12px twin
+ *  stroke inside the same wrapper widens the hit area without new geometry
+ *  layers. Arcs/curves compile to figure-path, so they are covered by d. */
+function twinStroke(el: SceneElement): string {
+  const d =
+    el.kind === "figure-path" || el.kind === "line-path" || el.kind === "arrow"
+      ? el.d
+      : el.kind === "figure-line"
+        ? `M ${n2(el.x1)} ${n2(el.y1)} L ${n2(el.x2)} ${n2(el.y2)}`
+        : null
+  if (d === null) return ""
+  return `<path class="exp-el-hit" d="${d}" stroke="transparent" stroke-width="12" fill="none" pointer-events="stroke"/>`
+}
+
+/** Wrap in the .exp-el group when the element carries identity. Duplicate ids
+ *  resolve first-wins via `claimId` (silent salvage — the emit layer has no
+ *  warning channel): a duplicate emits anonymous but keeps its tip. */
+function wrapIdentity(el: SceneElement, inner: string, claimId: (id: string) => boolean): string {
+  const idOk = hasIdentity(el) && claimId(el.id!)
+  if (!idOk && !hasTip(el)) return inner
+  const attrs =
+    (idOk ? ` data-el-id="${escapeHtml(el.id!)}"` : "") +
+    (hasTip(el) ? ` data-tip="${escapeHtml(el.tip!)}"` : "")
+  const tabindex = hasTip(el) ? ` tabindex="0"` : ""
+  return `<g class="exp-el"${attrs}${tabindex}>${inner}</g>`
+}
+
 function nodeLabel(el: NodeBoxEl): string {
   const lines = el.lines && el.lines.length > 0 ? el.lines : [el.label]
   if (lines.length <= 1) {
@@ -155,7 +193,16 @@ function figureLabel(el: FigureLabelEl, i: number): string {
   )
 }
 
-function cleanElement(el: SceneElement, i: number): string {
+function cleanElement(el: SceneElement, i: number, claimed: Set<string>): string {
+  const identity = hasIdentity(el) || hasTip(el)
+  return wrapIdentity(el, cleanInner(el, i) + (identity ? twinStroke(el) : ""), id => {
+    if (claimed.has(id)) return false
+    claimed.add(id)
+    return true
+  })
+}
+
+function cleanInner(el: SceneElement, i: number): string {
   switch (el.kind) {
     case "node-box":
       return nodeBox(el, i)
@@ -187,16 +234,22 @@ function cleanElement(el: SceneElement, i: number): string {
 }
 
 export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
+  const claimed = new Set<string>() // first id wins; later duplicates emit anonymous
   const body = opts.sketch
     ? scene.elements
         .map((el, i) => {
           const roughPart = sketchElementSvg(el, opts.seed ?? "", i)
           const labelPart =
             el.kind === "node-box" ? nodeLabel(el) : el.kind === "label" ? label(el, i) : ""
-          return roughPart + labelPart
+          const identity = hasIdentity(el) || hasTip(el)
+          return wrapIdentity(el, roughPart + labelPart + (identity ? twinStroke(el) : ""), id => {
+            if (claimed.has(id)) return false
+            claimed.add(id)
+            return true
+          })
         })
         .join("")
-    : scene.elements.map(cleanElement).join("")
+    : scene.elements.map((el, i) => cleanElement(el, i, claimed)).join("")
   return (
     `<svg class="exp-figure" viewBox="0 0 ${n2(scene.width)} ${n2(scene.height)}" role="img" ` +
     `aria-label="${escapeHtml(opts.ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +
