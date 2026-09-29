@@ -14,11 +14,15 @@ export interface InteractiveFigureProps {
   sketch?: boolean
 }
 
-/** Widest value the param can ever display, so the value column never shifts
- *  the controls row: max n2 length over [min, max], plus a ch of slack. */
+/** Width (ch) of the widest value the param can ever display, so the value
+ *  column never shifts the controls row. Sweep intermediates are fractional
+ *  (45.83), so the bound is the worst-case n2 FORMAT over [min, max] —
+ *  sign + integer digits + "." + 2 decimals — plus a ch of slack. */
 export function valueColumnCh(p: { min: number; max: number }): number {
-  const len = (v: number) => n2(v).length
-  return Math.max(len(p.min), len(p.max)) + 1
+  const digits = (v: number) => String(Math.trunc(Math.abs(v))).length
+  const intDigits = Math.max(digits(p.min), digits(p.max), 1)
+  const sign = p.min < 0 ? 1 : 0
+  return sign + intDigits + 3 + 1
 }
 
 /** Sweep speed: steps advanced per second of playback. Decoupled from the

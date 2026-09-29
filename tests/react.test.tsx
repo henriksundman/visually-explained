@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Explanation } from "../src/react/Explanation"
-import { InteractiveFigure, nextSweepValue } from "../src/react/InteractiveFigure"
+import { InteractiveFigure, nextSweepValue, valueColumnCh } from "../src/react/InteractiveFigure"
 import type { TextBlock } from "../src/core/schema"
 
 const ir = {
@@ -80,9 +80,10 @@ describe("InteractiveFigure", () => {
     expect(html).toContain(`type="range"`)
     expect(html).toContain(`aria-label="r"`)
     expect(html).toContain(`aria-label="Play r"`) // sweep falls back to params[0]
-    // Value column is sized from the param bounds so the row never shifts:
-    // r spans 5..50 → n2 lengths 1,2 → max(1,2)+1 = 3ch.
-    expect(html).toContain(`min-width:3ch`)
+    // Value column is sized from the worst-case n2 format over the bounds
+    // (sign + integer digits + "." + 2 decimals + slack) so fractional sweep
+    // intermediates like 45.83 never widen it: 5..50 → 0+2+3+1 = 6ch.
+    expect(html).toContain(`min-width:6ch`)
   })
 
   it("renders no controls for a zero-param figure", () => {
@@ -99,6 +100,16 @@ describe("InteractiveFigure", () => {
     expect(html).toContain(`aria-label="Play r"`)
     const empty = renderToStaticMarkup(<InteractiveFigure block={{ type: "figure", elements: [{ kind: "wedge" }] }} />)
     expect(empty).toContain(`class="exp-fig-empty"`)
+  })
+})
+
+describe("valueColumnCh", () => {
+  it.each([
+    [{ min: 20, max: 60 }, 6], // 2 digits + ".dd" + slack
+    [{ min: 0, max: 360 }, 7], // 3 digits + ".dd" + slack
+    [{ min: -10, max: 5 }, 7], // sign + 2 digits + ".dd" + slack
+  ])("%j → %ich", (bounds, expected) => {
+    expect(valueColumnCh(bounds as { min: number; max: number })).toBe(expected)
   })
 })
 
