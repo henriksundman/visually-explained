@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Explanation } from "../src/react/Explanation"
 import { InteractiveFigure, nextSweepValue, valueColumnCh } from "../src/react/InteractiveFigure"
+import { hitElement, placePopover, resolveTip } from "../src/react/figureEvents"
 import type { TextBlock } from "../src/core/schema"
 
 const ir = {
@@ -123,5 +124,62 @@ describe("nextSweepValue", () => {
     [40, -5, 40], // negative dt is a no-op
   ])("value %i + dt %p ms → %p", (current, dt, expected) => {
     expect(nextSweepValue(current, spec, dt)).toBeCloseTo(expected as number)
+  })
+})
+
+describe("resolveTip", () => {
+  it("keeps non-empty tips within the cap", () => {
+    expect(resolveTip("hello")).toBe("hello")
+    expect(resolveTip("  spaced  ")).toBe("spaced")
+    expect(resolveTip("x".repeat(200))).toBe("x".repeat(200))
+  })
+  it("nulls empty and over-long tips", () => {
+    expect(resolveTip(null)).toBe(null)
+    expect(resolveTip("")).toBe(null)
+    expect(resolveTip("   ")).toBe(null)
+    expect(resolveTip("x".repeat(201))).toBe(null)
+  })
+})
+
+describe("hitElement", () => {
+  const makeEl = (attrs: Record<string, string>): Element =>
+    ({
+      getAttribute: (k: string) => attrs[k] ?? null,
+      closest: (sel: string) => (sel === ".exp-el" ? makeElEl : null),
+    }) as unknown as Element
+  const makeElEl: Element = makeEl({ "data-el-id": "pen", "data-tip": "The pen" })
+
+  it("reads elId and tip off the hit element", () => {
+    expect(hitElement(makeElEl)).toEqual({ elId: "pen", tip: "The pen", node: makeElEl })
+  })
+
+  it("returns null for chrome without identity", () => {
+    const anon = ({
+      getAttribute: () => null,
+      closest: () => null,
+    }) as unknown as Element
+    expect(hitElement(anon)).toBe(null)
+    expect(hitElement(null)).toBe(null)
+  })
+})
+
+describe("placePopover", () => {
+  const stage = { left: 0, top: 0, right: 400 }
+  it("prefers above with a gap when there is headroom", () => {
+    const anchor = { left: 100, top: 80, width: 20, height: 20, right: 120, bottom: 100 }
+    const p = placePopover(anchor, stage)
+    expect(p.placement).toBe("above")
+    expect(p.top).toBe(72) // anchor.top - GAP(8)
+  })
+  it("flips below when clipped at the top", () => {
+    const anchor = { left: 100, top: 10, width: 20, height: 20, right: 120, bottom: 30 }
+    const p = placePopover(anchor, stage)
+    expect(p.placement).toBe("below")
+    expect(p.top).toBe(38) // anchor.bottom + GAP(8)
+  })
+  it("nudges horizontally to stay inside the stage", () => {
+    const anchor = { left: 380, top: 80, width: 20, height: 20, right: 400, bottom: 100 }
+    const p = placePopover(anchor, stage)
+    expect(p.left).toBe(136) // stage.right - MAX_W(260) - 4
   })
 })
