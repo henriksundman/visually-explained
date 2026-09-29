@@ -18,6 +18,11 @@ decisions that survive across sessions.
   values resolved by a hand-rolled expression evaluator, strict path grammar,
   static render at initial values. Spec:
   `docs/superpowers/specs/2026-09-28-bespoke-figures-design.md`.
+- **Path slots + epicycles showcase** (2026-09-29) — authored `path` d strings
+  accept `{{expr}}` slots (evaluated against params/derived, grammar-gated
+  after expansion); the demo gains a Fourier-epicycles figure exercising
+  params, derived chains, expression-offset groups and slots. Spec:
+  `docs/superpowers/specs/2026-09-29-path-slots-epicycles-demo-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -55,5 +60,4 @@ sub-projects, each its own spec → plan → build:
   bound to `params`, play/scrub controls, re-render via the cached expression
   ASTs in `src/figures/expr.ts`, SSR fallback = the static render that already
   ships.
-- Demo gallery of bespoke figures (step-1 follow-up polish).
 - Steps 2–3 specs (see arc above) — write when their turn comes.
