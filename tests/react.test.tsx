@@ -80,6 +80,9 @@ describe("InteractiveFigure", () => {
     expect(html).toContain(`type="range"`)
     expect(html).toContain(`aria-label="r"`)
     expect(html).toContain(`aria-label="Play r"`) // sweep falls back to params[0]
+    // Value column is sized from the param bounds so the row never shifts:
+    // r spans 5..50 → n2 lengths 1,2 → max(1,2)+1 = 3ch.
+    expect(html).toContain(`min-width:3ch`)
   })
 
   it("renders no controls for a zero-param figure", () => {
@@ -102,12 +105,12 @@ describe("InteractiveFigure", () => {
 describe("nextSweepValue", () => {
   const spec = { min: 20, max: 60, step: 5 }
   it.each([
-    [40, 16.67, 45], // one step per frame
-    [60, 16.67, 20], // wraps at max
-    [40, 8.335, 42.5], // frame-rate scaled sub-step
+    [40, 100, 45], // SWEEP_STEPS_PER_SEC = 10 → one step per 100ms
+    [60, 100, 20], // wraps at max
+    [40, 50, 42.5], // frame-rate scaled sub-step
     [40, 0, 40], // zero dt is a no-op
     [40, -5, 40], // negative dt is a no-op
-  ])("value %i + dt %p → %p", (current, dt, expected) => {
+  ])("value %i + dt %p ms → %p", (current, dt, expected) => {
     expect(nextSweepValue(current, spec, dt)).toBeCloseTo(expected as number)
   })
 })

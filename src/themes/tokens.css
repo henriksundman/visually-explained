@@ -638,7 +638,7 @@
   color: var(--exp-text-muted);
 }
 .exp-fig-param-value {
-  min-width: 3ch;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 .exp-fig-play {

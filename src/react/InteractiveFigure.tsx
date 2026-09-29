@@ -14,15 +14,27 @@ export interface InteractiveFigureProps {
   sketch?: boolean
 }
 
-/** Pure sweep step: advances by step scaled to frame time, wrapping at max.
- *  Frame-rate independent; zero/negative dt is a no-op. Exported for tests. */
+/** Widest value the param can ever display, so the value column never shifts
+ *  the controls row: max n2 length over [min, max], plus a ch of slack. */
+export function valueColumnCh(p: { min: number; max: number }): number {
+  const len = (v: number) => n2(v).length
+  return Math.max(len(p.min), len(p.max)) + 1
+}
+
+/** Sweep speed: steps advanced per second of playback. Decoupled from the
+ *  param's step size so small-step params don't crawl and big-step params
+ *  don't blur — one full range = max(step)/10 seconds roughly. */
+const SWEEP_STEPS_PER_SEC = 10
+
+/** Pure sweep step: advances SWEEP_STEPS_PER_SEC × step per second, wrapping
+ *  at max. Frame-rate independent; zero/negative dt is a no-op. Exported for tests. */
 export function nextSweepValue(
   current: number,
   spec: { min: number; max: number; step: number },
   dtMs: number,
 ): number {
   if (dtMs <= 0) return current
-  const next = current + spec.step * (dtMs / 16.67)
+  const next = current + spec.step * SWEEP_STEPS_PER_SEC * (dtMs / 1000)
   return next > spec.max ? spec.min : next
 }
 
@@ -130,7 +142,9 @@ export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = 
               aria-label={p.name}
               onChange={e => setParam(p.name, Number(e.target.value))}
             />
-            <span className="exp-fig-param-value">{n2(values[p.name] ?? p.initial)}</span>
+            <span className="exp-fig-param-value" style={{ minWidth: `${valueColumnCh(p)}ch` }}>
+              {n2(values[p.name] ?? p.initial)}
+            </span>
           </label>
         ))}
         {sweepSpec && (
