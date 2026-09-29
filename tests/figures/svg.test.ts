@@ -98,4 +98,75 @@ describe("authored figure elements", () => {
     expect(svg).not.toContain(`data-el-id`)
     expect(svg).not.toContain(`tabindex`)
   })
+
+  it("gives hairline elements a transparent twin stroke inside the wrapper", () => {
+    const svg = sceneToSvg(
+      {
+        width: 200,
+        height: 100,
+        elements: [
+          { kind: "figure-path", id: "wave", d: "M 0 0 L 10 10", tone: "ink", fill: null, width: 2 },
+          { kind: "figure-line", id: "axis", x1: 0, y1: 0, x2: 5, y2: 5, tone: "muted", width: 1 },
+          { kind: "figure-dot", id: "pen", cx: 50, cy: 50, r: 3, tone: "accent" },
+        ],
+      },
+      { ariaLabel: "f" },
+    )
+    expect(svg).toContain(`<path class="exp-el-hit" d="M 0 0 L 10 10" stroke="transparent" stroke-width="12" fill="none" pointer-events="stroke"/>`)
+    expect(svg).toContain(`<path class="exp-el-hit" d="M 0 0 L 5 5" stroke="transparent"`) // line → path form
+    const dotPart = svg.slice(svg.indexOf(`data-el-id="pen"`))
+    expect(dotPart).not.toContain(`exp-el-hit`) // dots have real area; no twin
+  })
+
+  it("tabindex only appears on tip-bearing elements", () => {
+    const svg = sceneToSvg(
+      { width: 100, height: 100, elements: [{ kind: "figure-dot", id: "d", cx: 5, cy: 5, r: 3, tone: "ink" }] },
+      { ariaLabel: "f" },
+    )
+    expect(svg).toContain(`data-el-id="d"`)
+    expect(svg).not.toContain(`tabindex`)
+  })
+
+  it("carries identity through the sketch pass", () => {
+    const svg = sceneToSvg(
+      {
+        width: 200,
+        height: 100,
+        elements: [
+          { kind: "node-box", id: "lat", tip: "t", x: 20, y: 20, w: 90, h: 44, shape: "box", label: "Latency" },
+          { kind: "figure-dot", id: "pen", tip: "p", cx: 50, cy: 50, r: 3, tone: "accent" },
+        ],
+      },
+      { ariaLabel: "f", sketch: true, seed: "s" },
+    )
+    expect(svg).toContain(`data-el-id="lat"`)
+    expect(svg).toContain(`data-el-id="pen"`)
+    expect(svg).toContain(`class="exp-fig-sketch"`) // rough strokes still emitted
+  })
+
+  it("escapes hostile identity values", () => {
+    const svg = sceneToSvg(
+      { width: 100, height: 100, elements: [{ kind: "figure-dot", id: 'x"y', tip: "<script>", cx: 5, cy: 5, r: 3, tone: "ink" }] },
+      { ariaLabel: "f" },
+    )
+    expect(svg).toContain(`data-el-id="x&quot;y"`)
+    expect(svg).toContain(`data-tip="&lt;script&gt;"`)
+    expect(svg).not.toContain("<script>")
+  })
+
+  it("first duplicate id wins; later duplicates emit anonymous but keep tips", () => {
+    const svg = sceneToSvg(
+      {
+        width: 100,
+        height: 100,
+        elements: [
+          { kind: "figure-dot", id: "d", cx: 5, cy: 5, r: 3, tone: "ink" },
+          { kind: "figure-dot", id: "d", tip: "dup", cx: 20, cy: 20, r: 3, tone: "ink" },
+        ],
+      },
+      { ariaLabel: "f" },
+    )
+    expect(svg.match(/data-el-id="d"/g)).toHaveLength(1)
+    expect(svg).toContain(`data-tip="dup"`)
+  })
 })
