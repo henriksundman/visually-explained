@@ -63,4 +63,9 @@ sub-projects, each its own spec → plan → build:
 
 - Schema guard: params must not be named `PI`/`E`/`TAU` (evaluator constants
   silently shadow them).
+- **Figure interactivity events**: `data-node-id`/`data-el-id` attributes at
+  SVG emit time + React event delegation → hover/click callbacks and popover
+  plumbing. Generalizes across diagrams, charts, timelines and bespoke
+  figures; sketch mode needs the attributes carried through rough drawables.
+  Own spec when its turn comes.
 - Steps 2–3 specs (see arc above) — write when their turn comes.
