@@ -83,7 +83,9 @@ function parseXY(v: unknown): XY | null {
 const TONES: readonly Tone[] = ["ink", "muted", "accent"]
 function parseTone(v: unknown): Tone | undefined {
   return typeof v === "string" && (TONES as readonly string[]).includes(v) ? (v as Tone) : undefined
-}/** Resolves one Num against the env, or null when unresolvable/non-finite. */
+}
+
+/** Resolves one Num against the env, or null when unresolvable/non-finite. */
 function resolve(v: Num, env: Readonly<Record<string, number>>): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null
   try {
