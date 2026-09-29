@@ -616,3 +616,38 @@
   color: var(--exp-text);
   margin: 0 0 4px;
 }
+
+/* Interactive figure controls (React runtime only) */
+.exp-fig-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+.exp-fig-param {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85em;
+}
+.exp-fig-param input[type="range"] {
+  accent-color: var(--exp-accent);
+}
+.exp-fig-param-name {
+  color: var(--exp-text-muted);
+}
+.exp-fig-param-value {
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+}
+.exp-fig-play {
+  font: inherit;
+  font-size: 0.85em;
+  padding: 0.15rem 0.7rem;
+  border: 1px solid var(--exp-node-stroke);
+  border-radius: var(--exp-radius);
+  background: transparent;
+  color: var(--exp-ink);
+  cursor: pointer;
+}

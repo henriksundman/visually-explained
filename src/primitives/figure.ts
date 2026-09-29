@@ -34,8 +34,9 @@ function dedupeNames<T extends { name: string }>(
 }
 
 /** Builds the authored figure from the lenient schema output: elements are
- *  parsed one-by-one so a malformed element drops alone (spec §Salvage). */
-function buildAuthored(block: FigureBlock, warnings: string[]): AuthoredFigure {
+ *  parsed one-by-one so a malformed element drops alone (spec §Salvage).
+ *  Exported for the React runtime, which shares this exact salvage path. */
+export function buildAuthored(block: FigureBlock, warnings: string[]): AuthoredFigure {
   const elements: FigureEl[] = []
   for (const raw of block.elements) {
     if (elements.length >= MAX_TOTAL_ELEMENTS) {

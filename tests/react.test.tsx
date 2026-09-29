@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Explanation } from "../src/react/Explanation"
+import { InteractiveFigure, nextSweepValue } from "../src/react/InteractiveFigure"
 import type { TextBlock } from "../src/core/schema"
 
 const ir = {
@@ -38,5 +39,56 @@ describe("Explanation", () => {
       <Explanation ir={{ version: 1, blocks: [{ type: "mindmap", title: "Sales" }] }} theme="none" />,
     )
     expect(html).toContain("exp-fallback")
+  })
+})
+
+const figureBlock = {
+  type: "figure",
+  title: "Orbit",
+  caption: "A circle-ish thing.",
+  params: [{ name: "r", min: 5, max: 50, step: 1, initial: 20 }],
+  elements: [{ kind: "arc", cx: 100, cy: 80, rx: "r", ry: "r", start: 0, end: 270 }],
+}
+
+describe("InteractiveFigure", () => {
+  it("renders static-identical initial SVG with markup parity", () => {
+    const html = renderToStaticMarkup(<InteractiveFigure block={figureBlock} />)
+    expect(html).toContain(`class="exp-block exp-figure"`)
+    expect(html).toContain(`class="exp-fig-title"`)
+    expect(html).toContain(`class="exp-fig-caption"`)
+    expect(html).toContain(`class="exp-figure"`)
+    expect(html).toContain("A 20 20 0 1 1") // same geometry as the static render
+    expect(html).toContain(`type="range"`)
+    expect(html).toContain(`aria-label="r"`)
+    expect(html).toContain(`aria-label="Play r"`) // sweep falls back to params[0]
+  })
+
+  it("renders no controls for a zero-param figure", () => {
+    const html = renderToStaticMarkup(
+      <InteractiveFigure block={{ type: "figure", elements: [{ kind: "dot", cx: 5, cy: 5 }] }} />,
+    )
+    expect(html).toContain(`class="exp-fig-dot"`)
+    expect(html).not.toContain(`type="range"`)
+    expect(html).not.toContain(`exp-fig-play`)
+  })
+
+  it("honors a known sweep name and survives garbage blocks", () => {
+    const html = renderToStaticMarkup(<InteractiveFigure block={{ ...figureBlock, sweep: "r" }} />)
+    expect(html).toContain(`aria-label="Play r"`)
+    const empty = renderToStaticMarkup(<InteractiveFigure block={{ type: "figure", elements: [{ kind: "wedge" }] }} />)
+    expect(empty).toContain(`class="exp-fig-empty"`)
+  })
+})
+
+describe("nextSweepValue", () => {
+  const spec = { min: 20, max: 60, step: 5 }
+  it.each([
+    [40, 16.67, 45], // one step per frame
+    [60, 16.67, 20], // wraps at max
+    [40, 8.335, 42.5], // frame-rate scaled sub-step
+    [40, 0, 40], // zero dt is a no-op
+    [40, -5, 40], // negative dt is a no-op
+  ])("value %i + dt %p → %p", (current, dt, expected) => {
+    expect(nextSweepValue(current, spec, dt)).toBeCloseTo(expected as number)
   })
 })
