@@ -23,7 +23,15 @@ function parsePoints(raw: unknown[], warnings: string[]): ChartPoint[] {
       warnings.push(`figure-point-invalid: chart point ${i} dropped — needs a label and a numeric value`)
       return
     }
-    points.push({ label, value })
+    let tip: string | undefined
+    if (rec?.tip !== undefined) {
+      if (typeof rec.tip === "string" && rec.tip.trim() !== "" && rec.tip.length <= 200) {
+        tip = rec.tip
+      } else {
+        warnings.push(`figure-tip-too-long: chart point ${i} tip dropped — must be 1-200 characters`)
+      }
+    }
+    points.push({ label, value, tip })
   })
   return points
 }

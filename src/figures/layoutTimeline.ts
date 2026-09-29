@@ -3,6 +3,7 @@ import type { Scene } from "./scene"
 export interface TimelineEventSpec {
   when: string
   what: string
+  tip?: string
 }
 
 export interface TimelineLayoutResult {
@@ -26,7 +27,7 @@ export function layoutTimeline(events: TimelineEventSpec[]): TimelineLayoutResul
   ]
   events.forEach((e, i) => {
     const x = PAD + (i + 0.5) * step
-    elements.push({ kind: "dot", x, y: SPINE_Y })
+    elements.push({ kind: "dot", x, y: SPINE_Y, id: `event:${i}`, tip: e.tip })
     const up = i % 2 === 0
     const endY = up ? SPINE_Y - STEM : SPINE_Y + STEM
     elements.push({ kind: "line-path", d: `M ${x} ${SPINE_Y} L ${x} ${endY}` })

@@ -94,6 +94,7 @@ export const timelineBlockSchema = z.object({
         when: z.string().min(1),
         what: z.string().min(1),
         detail: z.string().min(1).optional(),
+        tip: z.string().min(1).max(200).optional(),
       }),
     )
     .min(1),
@@ -189,6 +190,8 @@ export const diagramNodeSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   shape: z.enum(["box", "round", "pill", "note"]).optional(),
+  // Hover explanation for the interactivity layer (events spec §3).
+  tip: z.string().min(1).max(200).optional(),
 })
 export type DiagramNode = z.infer<typeof diagramNodeSchema>
 

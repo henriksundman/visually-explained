@@ -4,6 +4,7 @@ export interface FlowNodeSpec {
   id: string
   label: string
   shape?: NodeShape
+  tip?: string
 }
 
 export interface FlowEdgeSpec {
@@ -71,6 +72,7 @@ interface Placed {
   label: string
   lines?: string[]
   shape: NodeShape
+  tip?: string
   x: number
   y: number
   w: number
@@ -150,6 +152,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         label: n.label,
         lines: lines.length > 1 ? lines : undefined,
         shape: n.shape ?? "box",
+        tip: n.tip,
         w,
         h,
         x: direction === "lr" ? mainOffset : cross,
@@ -211,7 +214,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         labelY = gutterY - 6
       }
     }
-    elements.push({ kind: "arrow", d, head, edgeKind: e.kind ?? "leads", label: e.label, labelX, labelY })
+    elements.push({ kind: "arrow", d, head, edgeKind: e.kind ?? "leads", label: e.label, labelX, labelY, id: `${e.from}->${e.to}` })
   }
 
   // 7. Nodes AFTER edges: their opaque fill covers crossings.
@@ -226,6 +229,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       shape: p.shape,
       label: p.label,
       lines: p.lines,
+      tip: p.tip,
     })
   }
 

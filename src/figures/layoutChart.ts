@@ -3,6 +3,7 @@ import type { Scene } from "./scene"
 export interface ChartPoint {
   label: string
   value: number
+  tip?: string
 }
 
 export interface ChartSpec {
@@ -55,7 +56,7 @@ export function layoutChart(spec: ChartSpec): ChartLayoutResult {
       const h = yAt(0) - yAt(p.value)
       const x = PAD_L + i * band + (band - bw) / 2
       const y = baseline - h
-      elements.push({ kind: "bar", x, y, w: bw, h, valueLabel: fmtValue(p.value, spec.unit) })
+      elements.push({ kind: "bar", x, y, w: bw, h, valueLabel: fmtValue(p.value, spec.unit), id: `bar:${p.label}`, tip: p.tip })
       elements.push({ kind: "label", x: x + bw / 2, y: y - 6, text: fmtValue(p.value, spec.unit), anchor: "middle", emphasis: true })
       elements.push({ kind: "label", x: x + bw / 2, y: baseline + 16, text: p.label, anchor: "middle" })
     })
@@ -64,7 +65,7 @@ export function layoutChart(spec: ChartSpec): ChartLayoutResult {
     points.forEach((p, i) => {
       const x = xAt(i, n)
       const y = yAt(p.value)
-      elements.push({ kind: "dot", x, y })
+      elements.push({ kind: "dot", x, y, id: `dot:${p.label}`, tip: p.tip })
       elements.push({ kind: "label", x, y: y - 8, text: fmtValue(p.value, spec.unit), anchor: "middle", emphasis: true })
       elements.push({ kind: "label", x, y: baseline + 16, text: p.label, anchor: "middle" })
     })

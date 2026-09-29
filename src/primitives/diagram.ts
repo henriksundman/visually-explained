@@ -6,7 +6,7 @@ import { hashSeed } from "../figures/seed"
 
 export function renderDiagram(block: DiagramBlock, ctx: RenderContext): string {
   const spec: FlowSpec = {
-    nodes: block.nodes.map(n => ({ id: n.id, label: n.label, shape: n.shape })),
+    nodes: block.nodes.map(n => ({ id: n.id, label: n.label, shape: n.shape, tip: n.tip })),
     edges: block.edges.map(e => ({ from: e.from, to: e.to, label: e.label, kind: e.kind })),
     direction: block.direction ?? "lr",
   }

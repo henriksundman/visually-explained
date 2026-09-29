@@ -54,4 +54,23 @@ describe("diagram", () => {
     expect(html).not.toContain("<img")
     expect(html).toContain("&lt;img")
   })
+
+  it("derives arrow ids and carries node tips into the scene", () => {
+    const { html } = renderExplanation({
+      version: 1,
+      blocks: [
+        {
+          type: "diagram",
+          nodes: [
+            { id: "dep", label: "Deploy ships", tip: "Start of every incident" },
+            { id: "lat", label: "Latency spikes" },
+          ],
+          edges: [{ from: "dep", to: "lat" }],
+        },
+      ],
+    })
+    expect(html).toContain(`data-el-id="dep"`)
+    expect(html).toContain(`data-tip="Start of every incident"`)
+    expect(html).toContain(`data-el-id="dep-&gt;lat"`) // derived arrow id, escaped >
+  })
 })

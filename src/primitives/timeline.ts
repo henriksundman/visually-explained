@@ -29,7 +29,7 @@ function renderTextForm(block: TimelineBlock): string {
 
 export function renderTimeline(block: TimelineBlock, ctx: RenderContext): string {
   if (resolvePresentation(block) === "text") return renderTextForm(block)
-  const { scene } = layoutTimeline(block.events.map(e => ({ when: e.when, what: e.what })))
+  const { scene } = layoutTimeline(block.events.map(e => ({ when: e.when, what: e.what, tip: e.tip })))
   // `detail` is prose too long for figure labels; the text form carries it (spec §1).
   const aria = `Timeline: ${block.events.map(e => `${e.when} ${e.what}`).join(" → ")}`
   const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: block.id ?? hashSeed(aria) })

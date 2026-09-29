@@ -51,4 +51,22 @@ describe("timeline", () => {
     expect(html).toContain(`<p class="exp-event-what">Penicillin</p>`)
     expect(html).toContain(`<p class="exp-event-detail">Fleming</p>`)
   })
+
+  it("derives event ids and carries event tips in the figure form", () => {
+    const { html } = renderExplanation({
+      version: 1,
+      blocks: [
+        {
+          type: "timeline",
+          presentation: "figure",
+          events: [
+            { when: "Sep 12", what: "Onboarding ships", tip: "Steps cut from 7 to 3" },
+            { when: "Sep 14", what: "Activations triple" },
+          ],
+        },
+      ],
+    })
+    expect(html).toContain(`data-el-id="event:0"`)
+    expect(html).toContain(`data-tip="Steps cut from 7 to 3"`)
+  })
 })

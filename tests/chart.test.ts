@@ -68,4 +68,22 @@ describe("chart", () => {
     expect(html).not.toContain("<script>")
     expect(html).toContain("&lt;script&gt;")
   })
+
+  it("carries point tips and derives bar ids", () => {
+    const { html } = renderExplanation({
+      version: 1,
+      blocks: [
+        {
+          type: "chart",
+          kind: "bar",
+          points: [
+            { label: "Mon", value: 120 },
+            { label: "Wed", value: 240, tip: "Deploy day spike" },
+          ],
+        },
+      ],
+    })
+    expect(html).toContain(`data-el-id="bar:Mon"`) // id present, no tip → no tabindex
+    expect(html).toContain(`data-tip="Deploy day spike"`)
+  })
 })
