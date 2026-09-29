@@ -96,4 +96,38 @@ describe("figure primitive", () => {
     const badSweep = { ...base, blocks: [{ ...base.blocks[0], sweep: "not a name!" }] }
     expect(explanationSchema.safeParse(badSweep).success).toBe(false)
   })
+
+  it("rejects reserved evaluator constants as param names (they would be shadowed)", () => {
+    for (const name of ["PI", "E", "TAU"]) {
+      const bad = {
+        ...base,
+        blocks: [{ ...base.blocks[0], params: [{ name, min: 1, max: 9, step: 1, initial: 4 }] }],
+      }
+      expect(explanationSchema.safeParse(bad).success, `param name ${name}`).toBe(false)
+    }
+  })
+
+  it("rejects reserved evaluator constants as derived names and sweep", () => {
+    for (const name of ["PI", "E", "TAU"]) {
+      const badDerived = { ...base, blocks: [{ ...base.blocks[0], derived: [{ name, expr: "1 + 2" }] }] }
+      expect(explanationSchema.safeParse(badDerived).success, `derived name ${name}`).toBe(false)
+      const badSweep = { ...base, blocks: [{ ...base.blocks[0], sweep: name }] }
+      expect(explanationSchema.safeParse(badSweep).success, `sweep ${name}`).toBe(false)
+    }
+  })
+
+  it("still accepts identifiers that merely contain a reserved name", () => {
+    const ok = {
+      ...base,
+      blocks: [
+        {
+          ...base.blocks[0],
+          params: [{ name: "PI_x", min: 1, max: 9, step: 1, initial: 4 }],
+          derived: [{ name: "TIME", expr: "t * 2" }],
+          sweep: "E2",
+        },
+      ],
+    }
+    expect(explanationSchema.safeParse(ok).success).toBe(true)
+  })
 })

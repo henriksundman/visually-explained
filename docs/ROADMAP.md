@@ -61,8 +61,6 @@ sub-projects, each its own spec → plan → build:
 
 ## Backlog
 
-- Schema guard: params must not be named `PI`/`E`/`TAU` (evaluator constants
-  silently shadow them).
 - **Figure interactivity events**: `data-node-id`/`data-el-id` attributes at
   SVG emit time + React event delegation → hover/click callbacks and popover
   plumbing. Generalizes across diagrams, charts, timelines and bespoke

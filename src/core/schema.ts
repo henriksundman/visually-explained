@@ -221,9 +221,15 @@ export const chartBlockSchema = z.object({
 })
 export type ChartBlock = z.infer<typeof chartBlockSchema>
 
+// Identifier that is not an evaluator constant: evalExpr resolves PI/E/TAU
+// before the param/derived env, so a binding with one of those exact names
+// would be silently dead. Substrings (PI_x, TIME, E2) are fine.
+const figureNamePattern = /^(?!(?:PI|E|TAU)$)[A-Za-z_][A-Za-z0-9_]*$/
+const figureNameMessage = "must be an identifier other than the evaluator constants PI/E/TAU"
+
 export const figureParamSchema = z
   .object({
-    name: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "name must be an identifier"),
+    name: z.string().regex(figureNamePattern, figureNameMessage),
     min: z.number().finite(),
     max: z.number().finite(),
     step: z.number().finite().positive(),
@@ -233,7 +239,7 @@ export const figureParamSchema = z
 export type FigureParam = z.infer<typeof figureParamSchema>
 
 export const figureDerivedSchema = z.object({
-  name: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "name must be an identifier"),
+  name: z.string().regex(figureNamePattern, figureNameMessage),
   expr: z.string().min(1).max(80),
 })
 export type FigureDerived = z.infer<typeof figureDerivedSchema>
@@ -245,9 +251,11 @@ export const figureBlockSchema = z.object({
   caption: z.string().min(1).optional(),
   width: z.number().finite().int().min(80).max(1200).optional(),
   height: z.number().finite().int().min(60).max(1200).optional(),
-  // Identifer-validated on purpose: sweep names reach aria-labels, so only a
-  // bare identifier may pass. Unknown names fall back to params[0] at runtime.
-  sweep: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).optional(),
+  // Identifier-validated on purpose: sweep names reach aria-labels, so only a
+  // bare identifier may pass. Reserved evaluator constants are rejected (a
+  // sweep over PI would animate nothing). Unknown names fall back to
+  // params[0] at runtime.
+  sweep: z.string().regex(figureNamePattern, figureNameMessage).optional(),
   params: z.array(figureParamSchema).max(8).optional(),
   derived: z.array(figureDerivedSchema).max(8).optional(),
   // Lenient like stack children / chart points: elements are parsed at render
