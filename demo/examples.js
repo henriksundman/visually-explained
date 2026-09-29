@@ -145,11 +145,11 @@ export const figuresIr = {
     {
       type: "diagram",
       nodes: [
-        { id: "dep", label: "Deploy ships", shape: "pill" },
-        { id: "lat", label: "p95 latency spikes" },
+        { id: "dep", label: "Deploy ships", shape: "pill", tip: "Every incident review starts here" },
+        { id: "lat", label: "p95 latency spikes", tip: "p95 — the number the SLO watches" },
         { id: "err", label: "Error rate climbs", shape: "note" },
         { id: "alert", label: "Alert fires", shape: "round" },
-        { id: "rb", label: "Canary rollback", shape: "round" },
+        { id: "rb", label: "Canary rollback", shape: "round", tip: "Automated canary revert" },
       ],
       edges: [
         { from: "dep", to: "lat", kind: "causes" },
@@ -166,7 +166,7 @@ export const figuresIr = {
       points: [
         { label: "Mon", value: 120 },
         { label: "Tue", value: 118 },
-        { label: "Wed", value: 240 },
+        { label: "Wed", value: 240, tip: "Deploy day — 2× the weekly median" },
         { label: "Thu", value: 95 },
         { label: "Fri", value: 90 },
       ],
@@ -287,13 +287,14 @@ export const figuresIr = {
               tone: "muted",
               width: 1,
             },
-            { kind: "dot", cx: "r * 1.2732 * cos(a)", cy: "-r * 1.2732 * sin(a)", r: 2, tone: "ink" },
+            { kind: "dot", cx: "r * 1.2732 * cos(a)", cy: "-r * 1.2732 * sin(a)", r: 2, tone: "ink", id: "epi-1" },
             {
               kind: "dot",
               cx: "r * (1.2732 * cos(a) + 0.4244 * cos(3 * a))",
               cy: "-r * (1.2732 * sin(a) + 0.4244 * sin(3 * a))",
               r: 2,
               tone: "ink",
+              id: "epi-2",
             },
             {
               kind: "dot",
@@ -301,6 +302,8 @@ export const figuresIr = {
               cy: "-r * (1.2732 * sin(a) + 0.4244 * sin(3 * a) + 0.2546 * sin(5 * a))",
               r: 3,
               tone: "ink",
+              id: "pen",
+              tip: "Sum of the three circular motions — traced right as the square wave",
             },
           ],
         },

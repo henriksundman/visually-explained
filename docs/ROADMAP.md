@@ -29,6 +29,12 @@ decisions that survive across sessions.
   `compileFigure`/`sceneToSvg` with memoized expression ASTs. `interactive`
   opt-in on `<Explanation>`; static render remains the SSR path. Spec:
   `docs/superpowers/specs/2026-09-29-interactive-figure-runtime-design.md`.
+- **Figure interactivity events** (2026-09-29) — element `id`/`tip` through
+  Scene IR (authored leaves, diagram nodes, chart points, timeline events;
+  arrows/points/events derive ids), `data-el-id`/`data-tip` at SVG emit with
+  twin-stroke hit areas, delegated React events (`onElementEvent`) and a
+  built-in popover. Spec:
+  `docs/superpowers/specs/2026-09-29-figure-interactivity-events-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -61,9 +67,4 @@ sub-projects, each its own spec → plan → build:
 
 ## Backlog
 
-- **Figure interactivity events**: `data-node-id`/`data-el-id` attributes at
-  SVG emit time + React event delegation → hover/click callbacks and popover
-  plumbing. Generalizes across diagrams, charts, timelines and bespoke
-  figures; sketch mode needs the attributes carried through rough drawables.
-  Own spec when its turn comes.
 - Steps 2–3 specs (see arc above) — write when their turn comes.

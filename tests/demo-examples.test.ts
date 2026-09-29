@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { explanationSchema } from "../src/core/schema"
+import { renderExplanation } from "../src/core/render"
+import "../src/core/registerAll"
 import { educationIr, dataIr, capabilitiesIr, figuresIr, howToIr } from "../demo/examples.js"
 
 function collectTypes(ir: { blocks: unknown[] }): Set<string> {
@@ -84,6 +86,15 @@ describe("demo examples", () => {
     for (const t of ["step-list", "code", "diagram", "chart", "data-callout", "callout"]) {
       expect(types.has(t)).toBe(true)
     }
+  })
+
+  it("demo fixtures carry element tips that survive rendering", () => {
+    const { html } = renderExplanation(figuresIr)
+    expect(html).toContain(`data-tip="Every incident review starts here"`)
+    expect(html).toContain(`data-el-id="bar:Wed"`)
+    expect(html).toContain(`data-tip="Deploy day — 2× the weekly median"`)
+    expect(html).toContain(`data-el-id="pen"`)
+    expect(html).toContain(`data-tip="Sum of the three circular motions — traced right as the square wave"`)
   })
 
   it("interactive demo import map covers every runtime dependency of the react entry", async () => {
