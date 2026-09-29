@@ -60,6 +60,17 @@ describe("demo examples", () => {
     }
   })
 
+  it("figures fixture includes the Fourier epicycles figure with slotted paths", () => {
+    const fig = figuresIr.blocks.find(
+      b => (b as { type?: string }).type === "figure" && (b as { title?: string }).title === "Fourier epicycles",
+    )
+    expect(fig).toBeDefined()
+    const elements = (fig as { elements: { kind: string; d?: string }[] }).elements
+    expect(elements.some(e => e.kind === "group")).toBe(true)
+    const wave = elements.find(e => e.kind === "path")
+    expect(wave?.d?.split("{{").length).toBe(17) // 16 slots + trailing text
+  })
+
   it("how-to fixture is schema-valid", () => {
     expect(explanationSchema.safeParse(howToIr).success).toBe(true)
   })
