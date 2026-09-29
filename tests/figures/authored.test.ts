@@ -1,6 +1,55 @@
 import { describe, expect, it } from "vitest"
 import { compileFigure, parseFigureElement } from "../../src/figures/authored"
 
+describe("authored element identity", () => {
+  it("preserves id and tip on compiled leaf elements", () => {
+    const { scene, warnings } = compileFigure({
+      elements: [
+        { kind: "dot", cx: 5, cy: 5, id: "pen", tip: "The pen dot" },
+        { kind: "line", x1: 0, y1: 0, x2: 5, y2: 5, id: "axis" },
+      ],
+    })
+    expect(warnings).toEqual([])
+    expect(scene.elements[0]).toMatchObject({ id: "pen", tip: "The pen dot" })
+    expect(scene.elements[1]).toMatchObject({ id: "axis" })
+    expect(scene.elements[1].tip).toBeUndefined()
+  })
+
+  it("drops an invalid id with figure-id-invalid", () => {
+    const { scene, warnings } = compileFigure({
+      elements: [{ kind: "dot", cx: 5, cy: 5, id: "not a name!" }],
+    })
+    expect(warnings.some(w => w.startsWith("figure-id-invalid"))).toBe(true)
+    expect(scene.elements[0].id).toBeUndefined()
+  })
+
+  it("drops an over-long tip with figure-tip-too-long", () => {
+    const { scene, warnings } = compileFigure({
+      elements: [{ kind: "dot", cx: 5, cy: 5, tip: "x".repeat(201) }],
+    })
+    expect(warnings.some(w => w.startsWith("figure-tip-too-long"))).toBe(true)
+    expect(scene.elements[0].tip).toBeUndefined()
+  })
+
+  it("warns figure-id-unsupported and drops group identity, keeps child identity", () => {
+    const { scene, warnings } = compileFigure({
+      elements: [
+        // Deliberately type-hostile fixture: groups must REJECT id/tip at
+        // runtime, so the FigureEl type cannot express them — hence the cast.
+        {
+          kind: "group",
+          dx: 10,
+          id: "g1",
+          tip: "group tip",
+          elements: [{ kind: "dot", cx: 0, cy: 0, id: "kid" }],
+        } as never,
+      ],
+    })
+    expect(warnings.some(w => w.startsWith("figure-id-unsupported"))).toBe(true)
+    expect(scene.elements[0].id).toBe("kid")
+  })
+})
+
 describe("compileFigure", () => {
   it("resolves numeric fields from params and derived values", () => {
     const { scene, warnings } = compileFigure({

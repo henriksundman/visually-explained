@@ -25,14 +25,14 @@ export interface XY {
 }
 
 export type FigureEl =
-  | { kind: "path"; d: string; tone?: Tone; fill?: Tone; width?: Num } // d: path data; {{expr}} slots allowed
-  | { kind: "curve"; from: XY; cp1: XY; cp2: XY; to: XY; tone?: Tone; width?: Num }
-  | { kind: "arc"; cx: Num; cy: Num; rx: Num; ry: Num; start: Num; end: Num; tone?: Tone; width?: Num }
-  | { kind: "box"; x: Num; y: Num; w: Num; h: Num; r?: Num; label?: string; tone?: Tone; fill?: Tone }
-  | { kind: "line"; x1: Num; y1: Num; x2: Num; y2: Num; tone?: Tone; width?: Num }
-  | { kind: "dot"; cx: Num; cy: Num; r?: Num; tone?: Tone }
-  | { kind: "label"; x: Num; y: Num; text: string; size?: Num; anchor?: "start" | "middle" | "end" }
-  | { kind: "group"; dx?: Num; dy?: Num; elements: FigureEl[] }
+  | { kind: "path"; d: string; tone?: Tone; fill?: Tone; width?: Num; id?: string; tip?: string } // d: path data; {{expr}} slots allowed
+  | { kind: "curve"; from: XY; cp1: XY; cp2: XY; to: XY; tone?: Tone; width?: Num; id?: string; tip?: string }
+  | { kind: "arc"; cx: Num; cy: Num; rx: Num; ry: Num; start: Num; end: Num; tone?: Tone; width?: Num; id?: string; tip?: string }
+  | { kind: "box"; x: Num; y: Num; w: Num; h: Num; r?: Num; label?: string; tone?: Tone; fill?: Tone; id?: string; tip?: string }
+  | { kind: "line"; x1: Num; y1: Num; x2: Num; y2: Num; tone?: Tone; width?: Num; id?: string; tip?: string }
+  | { kind: "dot"; cx: Num; cy: Num; r?: Num; tone?: Tone; id?: string; tip?: string }
+  | { kind: "label"; x: Num; y: Num; text: string; size?: Num; anchor?: "start" | "middle" | "end"; id?: string; tip?: string }
+  | { kind: "group"; dx?: Num; dy?: Num; elements: FigureEl[] } // identity deliberately absent (events spec §3)
 
 export interface FigureSpec {
   name: string
@@ -83,6 +83,45 @@ function parseXY(v: unknown): XY | null {
 const TONES: readonly Tone[] = ["ink", "muted", "accent"]
 function parseTone(v: unknown): Tone | undefined {
   return typeof v === "string" && (TONES as readonly string[]).includes(v) ? (v as Tone) : undefined
+}
+
+const EL_ID_RE = /^[\w][\w-]*$/
+
+/** Lenient identity parse: invalid input drops the FIELD (not the element)
+ *  with a warning; the element still renders, just anonymous (spec §3). */
+function parseId(v: unknown, warn: (m: string) => void): string | undefined {
+  if (v === undefined) return undefined
+  if (typeof v === "string" && v.length <= 100 && EL_ID_RE.test(v)) return v
+  warn("figure-id-invalid: element id must match /^[\\w][\\w-]*$/ (max 100 chars)")
+  return undefined
+}
+
+function parseTip(v: unknown, warn: (m: string) => void): string | undefined {
+  if (v === undefined) return undefined
+  if (typeof v !== "string" || v.trim() === "") return undefined
+  if (v.length > 200) {
+    warn("figure-tip-too-long: tip must be at most 200 characters")
+    return undefined
+  }
+  return v
+}
+
+/** Compile-side identity gate. parseFigureElement already dropped invalid
+ *  fields for the JSON path; this covers direct compileFigure callers, whose
+ *  elements skip parsing. Same rules, same messages, no double warnings. */
+function identityOf(el: FigureEl, warn: (m: string) => void): { id?: string; tip?: string } {
+  const out: { id?: string; tip?: string } = {}
+  const id = (el as { id?: unknown }).id
+  if (id !== undefined) {
+    if (typeof id === "string" && id.length <= 100 && EL_ID_RE.test(id)) out.id = id
+    else warn("figure-id-invalid: element id must match /^[\\w][\\w-]*$/ (max 100 chars)")
+  }
+  const tip = (el as { tip?: unknown }).tip
+  if (typeof tip === "string" && tip.trim() !== "") {
+    if (tip.length <= 200) out.tip = tip
+    else warn("figure-tip-too-long: tip must be at most 200 characters")
+  }
+  return out
 }
 
 /** Resolves one Num against the env, or null when unresolvable/non-finite. */
@@ -164,6 +203,8 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         tone: parseTone(raw.tone),
         fill: parseTone(raw.fill),
         width: parseNum(raw.width),
+        id: parseId(raw.id, warn),
+        tip: parseTip(raw.tip, warn),
       }
     }
     case "curve": {
@@ -179,7 +220,7 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         warn("figure-tone-bad: tone must be ink|muted|accent")
         return null
       }
-      return { kind: "curve", from, cp1, cp2, to, tone: parseTone(raw.tone), width: parseNum(raw.width) }
+      return { kind: "curve", from, cp1, cp2, to, tone: parseTone(raw.tone), width: parseNum(raw.width), id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "arc": {
       const cx = parseNum(raw.cx)
@@ -196,7 +237,7 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         warn("figure-tone-bad: tone must be ink|muted|accent")
         return null
       }
-      return { kind: "arc", cx, cy, rx, ry, start, end, tone: parseTone(raw.tone), width: parseNum(raw.width) }
+      return { kind: "arc", cx, cy, rx, ry, start, end, tone: parseTone(raw.tone), width: parseNum(raw.width), id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "box": {
       const x = parseNum(raw.x)
@@ -221,6 +262,8 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         label: typeof raw.label === "string" && raw.label.trim() !== "" ? raw.label : undefined,
         tone: parseTone(raw.tone),
         fill: parseTone(raw.fill),
+        id: parseId(raw.id, warn),
+        tip: parseTip(raw.tip, warn),
       }
     }
     case "line": {
@@ -236,7 +279,7 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         warn("figure-tone-bad: tone must be ink|muted|accent")
         return null
       }
-      return { kind: "line", x1, y1, x2, y2, tone: parseTone(raw.tone), width: parseNum(raw.width) }
+      return { kind: "line", x1, y1, x2, y2, tone: parseTone(raw.tone), width: parseNum(raw.width), id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "dot": {
       const cx = parseNum(raw.cx)
@@ -249,7 +292,7 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         warn("figure-tone-bad: tone must be ink|muted|accent")
         return null
       }
-      return { kind: "dot", cx, cy, r: parseNum(raw.r), tone: parseTone(raw.tone) }
+      return { kind: "dot", cx, cy, r: parseNum(raw.r), tone: parseTone(raw.tone), id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "label": {
       const x = parseNum(raw.x)
@@ -259,12 +302,15 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         return null
       }
       const anchor = raw.anchor === "middle" || raw.anchor === "end" ? raw.anchor : "start"
-      return { kind: "label", x, y, text: raw.text, size: parseNum(raw.size), anchor }
+      return { kind: "label", x, y, text: raw.text, size: parseNum(raw.size), anchor, id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "group": {
       if (depth >= 1) {
         warn("figure-group-deep: groups nest at most one level")
         return null
+      }
+      if (raw.id !== undefined || raw.tip !== undefined) {
+        warn("figure-id-unsupported: groups do not carry identity in v1")
       }
       if (!Array.isArray(raw.elements)) {
         warn("figure-group-bad: group needs an elements array")
@@ -341,7 +387,7 @@ function compileEl(
         warn("figure-path-width: width must resolve to a positive number")
         return null
       }
-      const out: FigurePathEl = { kind: "figure-path", d: expanded, tone: el.tone ?? "accent", fill: el.fill ?? null, width }
+      const out: FigurePathEl = { kind: "figure-path", d: expanded, tone: el.tone ?? "accent", fill: el.fill ?? null, width, ...identityOf(el, warn) }
       return out
     }
     case "curve": {
@@ -365,7 +411,7 @@ function compileEl(
       const d =
         `M ${nf(dx + x1!)} ${nf(dy + y1!)} C ${nf(dx + cx1!)} ${nf(dy + cy1!)} ` +
         `${nf(dx + cx2!)} ${nf(dy + cy2!)} ${nf(dx + x2!)} ${nf(dy + y2!)}`
-      const out: FigurePathEl = { kind: "figure-path", d, tone: el.tone ?? "accent", fill: null, width }
+      const out: FigurePathEl = { kind: "figure-path", d, tone: el.tone ?? "accent", fill: null, width, ...identityOf(el, warn) }
       return out
     }
     case "arc": {
@@ -390,6 +436,7 @@ function compileEl(
         tone: el.tone ?? "accent",
         fill: null,
         width,
+        ...identityOf(el, warn),
       }
       return out
     }
@@ -413,6 +460,7 @@ function compileEl(
         label: el.label ?? null,
         tone: el.tone ?? "ink",
         fill: el.fill ?? null,
+        ...identityOf(el, warn),
       }
       return out
     }
@@ -438,6 +486,7 @@ function compileEl(
         y2: dy + y2!,
         tone: el.tone ?? "ink",
         width,
+        ...identityOf(el, warn),
       }
       return out
     }
@@ -449,7 +498,7 @@ function compileEl(
         warn("figure-dot-resolve: dot fields must resolve to finite numbers with positive r")
         return null
       }
-      const out: FigureDotEl = { kind: "figure-dot", cx: dx + cx!, cy: dy + cy!, r: r === null ? 3 : r!, tone: el.tone ?? "accent" }
+      const out: FigureDotEl = { kind: "figure-dot", cx: dx + cx!, cy: dy + cy!, r: r === null ? 3 : r!, tone: el.tone ?? "accent", ...identityOf(el, warn) }
       return out
     }
     case "label": {
@@ -467,6 +516,7 @@ function compileEl(
         text: el.text,
         size: size === null ? 11 : size!,
         anchor: el.anchor ?? "start",
+        ...identityOf(el, warn),
       }
       return out
     }
@@ -490,6 +540,9 @@ function flatten(
       return
     }
     if (el.kind === "group") {
+      if ((el as { id?: unknown }).id !== undefined || (el as { tip?: unknown }).tip !== undefined) {
+        warn("figure-id-unsupported: groups do not carry identity in v1")
+      }
       if (depth >= 1) {
         warn("figure-group-deep: groups nest at most one level")
         continue
