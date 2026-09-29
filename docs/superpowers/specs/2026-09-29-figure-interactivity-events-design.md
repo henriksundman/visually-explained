@@ -55,8 +55,9 @@ fails a render.
   missing → element stays anonymous (warning `figure-id-invalid`).
 - `tip` max 200 chars; longer → dropped (warning `figure-tip-too-long`). Empty
   string treated as absent.
-- Duplicate `id` within one scene: first wins (warning `figure-id-duplicate`),
-  mirroring the existing param-duplicate rule.
+- Duplicate `id` within one scene: first wins; later duplicates emit anonymous.
+  The emit layer has no warning channel, so this is silent salvage — derived
+  ids (duplicate chart labels, parallel edges) follow the same rule.
 
 ## 4. Emit Layer (`src/figures/svg.ts`, `src/figures/sketch.ts`)
 
@@ -137,7 +138,8 @@ keyboard dismissal.
   whole existing corpus); sketch mode keeps attributes through rough drawables;
   derived arrow/point/event ids correct.
 - **Parse/validation:** authored id/tip rules (invalid id dropped + warning,
-  group id warning, tip cap, duplicate rule), chart/timeline tip paths.
+  group id warning, tip cap), emit-level duplicate first-wins, chart/timeline
+  tip paths.
 - **Pure logic:** `hitElement` (through nested children; null on chrome),
   `resolveTip` sanitization, `placePopover` placement matrix (above / flip
   below / nudge).
