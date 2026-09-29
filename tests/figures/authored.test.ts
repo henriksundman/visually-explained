@@ -140,3 +140,69 @@ describe("parseFigureElement", () => {
     expect(warnings.length).toBeGreaterThanOrEqual(6)
   })
 })
+
+describe("path slots", () => {
+  it("expands {{expr}} slots against params and derived", () => {
+    const { scene, warnings } = compileFigure({
+      params: [{ name: "t", min: 0, max: 10, step: 1, initial: 5 }],
+      derived: [{ name: "x2", expr: "t * 2" }],
+      elements: [{ kind: "path", d: "M 0 0 L {{ x2 }} {{t + 1}}" }],
+    })
+    expect(warnings).toEqual([])
+    expect((scene.elements[0] as { d: string }).d).toBe("M 0 0 L 10 6")
+  })
+
+  it("leaves a plain d byte-for-byte untouched", () => {
+    const { scene, warnings } = compileFigure({ elements: [{ kind: "path", d: "M 0 0 L 5 5" }] })
+    expect(warnings).toEqual([])
+    expect((scene.elements[0] as { d: string }).d).toBe("M 0 0 L 5 5")
+  })
+
+  it("drops the element when a slot does not resolve, and salvages the rest", () => {
+    const { scene, warnings } = compileFigure({
+      elements: [{ kind: "path", d: "M {{nope}} 0 L 5 5" }, { kind: "dot", cx: 1, cy: 1 }],
+    })
+    expect(scene.elements).toHaveLength(1)
+    expect(warnings.some(w => w.includes("figure-path-slot-expr"))).toBe(true)
+  })
+
+  it("rejects a slot expression over 80 characters", () => {
+    const long = "1+".repeat(45) + "1" // 91 chars
+    const { scene, warnings } = compileFigure({ elements: [{ kind: "path", d: `M {{${long}}} 0 L 5 5` }] })
+    expect(scene.elements).toEqual([])
+    expect(warnings.some(w => w.includes("figure-path-slot-length"))).toBe(true)
+  })
+
+  it("rejects more than 64 slots and accepts exactly 64", () => {
+    const many = "M 0 0 L " + Array.from({ length: 65 }, () => "{{1}}").join(" ")
+    const over = compileFigure({ elements: [{ kind: "path", d: many }] })
+    expect(over.scene.elements).toEqual([])
+    expect(over.warnings.some(w => w.includes("figure-path-slot-count"))).toBe(true)
+    const ok = "M 0 0 L " + Array.from({ length: 64 }, () => "{{1}}").join(" ")
+    const fit = compileFigure({ elements: [{ kind: "path", d: ok }] })
+    expect(fit.warnings).toEqual([])
+    expect(fit.scene.elements).toHaveLength(1)
+  })
+
+  it("still applies the grammar gate to the expanded string", () => {
+    const { scene, warnings } = compileFigure({
+      params: [{ name: "v", min: 0, max: 9, step: 1, initial: 1 }],
+      elements: [{ kind: "path", d: "M {{v}} 0 < {{v}}" }],
+    })
+    expect(scene.elements).toEqual([])
+    expect(warnings[0]).toContain("figure-path-unsafe")
+  })
+
+  it("applies the MAX_LEN gate after expansion, not before", () => {
+    const d = "M " + " ".repeat(4085) + "{{9^99}}" // 4096 chars raw; expansion pushes it over
+    const { scene, warnings } = compileFigure({ elements: [{ kind: "path", d }] })
+    expect(scene.elements).toEqual([])
+    expect(warnings[0]).toContain("figure-path-unsafe")
+  })
+
+  it("drops unbalanced braces via the grammar gate", () => {
+    const { scene, warnings } = compileFigure({ elements: [{ kind: "path", d: "M {{1 0 L 5 5" }] })
+    expect(scene.elements).toEqual([])
+    expect(warnings[0]).toContain("figure-path-unsafe")
+  })
+})

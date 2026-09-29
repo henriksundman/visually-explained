@@ -25,7 +25,7 @@ export interface XY {
 }
 
 export type FigureEl =
-  | { kind: "path"; d: string; tone?: Tone; fill?: Tone; width?: Num }
+  | { kind: "path"; d: string; tone?: Tone; fill?: Tone; width?: Num } // d: path data; {{expr}} slots allowed
   | { kind: "curve"; from: XY; cp1: XY; cp2: XY; to: XY; tone?: Tone; width?: Num }
   | { kind: "arc"; cx: Num; cy: Num; rx: Num; ry: Num; start: Num; end: Num; tone?: Tone; width?: Num }
   | { kind: "box"; x: Num; y: Num; w: Num; h: Num; r?: Num; label?: string; tone?: Tone; fill?: Tone }
@@ -59,6 +59,8 @@ export interface AuthoredFigure {
 const DEFAULT_W = 360
 const DEFAULT_H = 240
 const MAX_ELEMENTS = 60
+const MAX_PATH_SLOTS = 64
+const MAX_SLOT_EXPR = 80
 
 const nf = (v: number): string => String(Math.round(v * 100) / 100)
 
@@ -81,9 +83,7 @@ function parseXY(v: unknown): XY | null {
 const TONES: readonly Tone[] = ["ink", "muted", "accent"]
 function parseTone(v: unknown): Tone | undefined {
   return typeof v === "string" && (TONES as readonly string[]).includes(v) ? (v as Tone) : undefined
-}
-
-/** Resolves one Num against the env, or null when unresolvable/non-finite. */
+}/** Resolves one Num against the env, or null when unresolvable/non-finite. */
 function resolve(v: Num, env: Readonly<Record<string, number>>): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null
   try {
@@ -91,7 +91,51 @@ function resolve(v: Num, env: Readonly<Record<string, number>>): number | null {
     return Number.isFinite(out) ? out : null
   } catch {
     return null
+  }
 }
+
+/** Expands `{{expr}}` slots in an authored path d against the env (spec §1).
+ *  `{` and `}` are not path-grammar characters, so slots were previously
+ *  rejected and now render; plain d passes through byte-for-byte. The caller
+ *  runs the grammar gate on the expanded string — slots never bypass it. */
+function expandPathSlots(
+  d: string,
+  env: Readonly<Record<string, number>>,
+  warn: (m: string) => void,
+): string | null {
+  let out = ""
+  let slots = 0
+  let i = 0
+  for (;;) {
+    const open = d.indexOf("{{", i)
+    if (open === -1) {
+      out += d.slice(i)
+      return slots === 0 ? d : out
+    }
+    const close = d.indexOf("}}", open + 2)
+    if (close === -1) {
+      out += d.slice(i) // no closing braces — the grammar gate rejects the "{"
+      return slots === 0 ? d : out
+    }
+    out += d.slice(i, open)
+    const expr = d.slice(open + 2, close).trim()
+    if (expr.length === 0 || expr.length > MAX_SLOT_EXPR) {
+      warn(`figure-path-slot-length: slot expression must be 1-${MAX_SLOT_EXPR} characters`)
+      return null
+    }
+    const v = resolve(expr, env)
+    if (v === null) {
+      warn("figure-path-slot-expr: slot expression did not resolve to a finite number")
+      return null
+    }
+    out += nf(v)
+    slots++
+    if (slots > MAX_PATH_SLOTS) {
+      warn(`figure-path-slot-count: more than ${MAX_PATH_SLOTS} slots in one path d`)
+      return null
+    }
+    i = close + 2
+  }
 }
 
 /** Lenient per-element parse (spec §Salvage): garbage in → null + warning.
@@ -284,7 +328,9 @@ function compileEl(
   const widthOf = (v: Num | undefined, fallback: number): number | null => (v === undefined ? fallback : n(v))
   switch (el.kind) {
     case "path": {
-      if (!isSafePathD(el.d)) {
+      const expanded = expandPathSlots(el.d, env, warn)
+      if (expanded === null) return null
+      if (!isSafePathD(expanded)) {
         warn("figure-path-unsafe: path d rejected by the grammar")
         return null
       }
@@ -293,7 +339,7 @@ function compileEl(
         warn("figure-path-width: width must resolve to a positive number")
         return null
       }
-      const out: FigurePathEl = { kind: "figure-path", d: el.d, tone: el.tone ?? "accent", fill: el.fill ?? null, width }
+      const out: FigurePathEl = { kind: "figure-path", d: expanded, tone: el.tone ?? "accent", fill: el.fill ?? null, width }
       return out
     }
     case "curve": {
