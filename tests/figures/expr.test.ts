@@ -82,3 +82,21 @@ describe("rejection", () => {
     }
   })
 })
+
+describe("AST memoization", () => {
+  it("returns the same AST object for repeated parses of the same string", () => {
+    expect(parseExpr("1 + 2 * t")).toBe(parseExpr("1 + 2 * t"))
+  })
+
+  it("parses distinct strings to distinct ASTs", () => {
+    expect(parseExpr("1 + 2")).not.toBe(parseExpr("1 + 3"))
+  })
+
+  it("clears the cache at the cap instead of growing unbounded", () => {
+    const first = parseExpr("7 * 7")
+    for (let i = 0; i < 1000; i++) parseExpr(`${i} + t${i}`)
+    const second = parseExpr("7 * 7")
+    expect(second).not.toBe(first) // cache was cleared; re-parsed
+    expect(evalExpr(second, {})).toBe(49) // still correct
+  })
+})

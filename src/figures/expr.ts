@@ -79,7 +79,15 @@ function tokenize(src: string): Tok[] {
   return toks
 }
 
+/** Memoized parse: expression strings are immutable keys → immutable ASTs.
+ *  Bounded (cleared at the cap) so adversarial input cannot grow it forever.
+ *  This is what makes per-tick interactive recompiles cheap (spec §1). */
+const AST_CACHE = new Map<string, ExprAst>()
+const AST_CACHE_MAX = 1000
+
 export function parseExpr(src: string): ExprAst {
+  const cached = AST_CACHE.get(src)
+  if (cached) return cached
   const toks = tokenize(src)
   let pos = 0
   const peek = () => toks[pos]
@@ -157,6 +165,8 @@ export function parseExpr(src: string): ExprAst {
 
   const out = additive()
   if (pos < toks.length) throw new ExprError(`unexpected "${String(toks[pos]!.v)}"`)
+  if (AST_CACHE.size >= AST_CACHE_MAX) AST_CACHE.clear()
+  AST_CACHE.set(src, out)
   return out
 }
 
