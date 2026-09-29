@@ -40,6 +40,25 @@ describe("Explanation", () => {
     )
     expect(html).toContain("exp-fallback")
   })
+
+  it("routes figure blocks to the interactive runtime only when asked", () => {
+    const ir = { version: 1, blocks: [figureBlock] }
+    const on = renderToStaticMarkup(<Explanation ir={ir} theme="none" interactive />)
+    expect(on).toContain(`type="range"`)
+    const off = renderToStaticMarkup(<Explanation ir={ir} theme="none" />)
+    expect(off).not.toContain(`type="range"`)
+    expect(off).toContain(`class="exp-figure"`) // static path unchanged
+  })
+
+  it("lets a components override win over interactive routing", () => {
+    const MyFigure = () => <em data-test="my-figure">mine</em>
+    const ir = { version: 1, blocks: [figureBlock] }
+    const html = renderToStaticMarkup(
+      <Explanation ir={ir} theme="none" interactive components={{ figure: MyFigure }} />,
+    )
+    expect(html).toContain(`data-test="my-figure"`)
+    expect(html).not.toContain(`type="range"`)
+  })
 })
 
 const figureBlock = {
