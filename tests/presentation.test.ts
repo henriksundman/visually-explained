@@ -104,4 +104,9 @@ describe("systemPromptSnippet: figure guidance", () => {
     expect(systemPromptSnippet).toContain("tones are")
     expect(systemPromptSnippet).toContain("≤60 elements")
   })
+
+  it("documents path expression slots", () => {
+    expect(systemPromptSnippet).toContain("{{")
+    expect(systemPromptSnippet).toContain("slots")
+  })
 })
