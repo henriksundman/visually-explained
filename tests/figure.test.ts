@@ -89,4 +89,11 @@ describe("figure primitive", () => {
     const html = renderBlock("figure", { title: "T", elements: [{ kind: "dot", cx: 1, cy: 2 }] }, 1, { sketch: true })
     expect(html).toContain(`class="exp-fig-sketch"`)
   })
+
+  it("accepts sweep as an identifier and rejects non-identifiers", () => {
+    const withSweep = { ...base, blocks: [{ ...base.blocks[0], sweep: "t" }] }
+    expect(explanationSchema.safeParse(withSweep).success).toBe(true)
+    const badSweep = { ...base, blocks: [{ ...base.blocks[0], sweep: "not a name!" }] }
+    expect(explanationSchema.safeParse(badSweep).success).toBe(false)
+  })
 })

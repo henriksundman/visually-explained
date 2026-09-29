@@ -245,6 +245,9 @@ export const figureBlockSchema = z.object({
   caption: z.string().min(1).optional(),
   width: z.number().finite().int().min(80).max(1200).optional(),
   height: z.number().finite().int().min(60).max(1200).optional(),
+  // Identifer-validated on purpose: sweep names reach aria-labels, so only a
+  // bare identifier may pass. Unknown names fall back to params[0] at runtime.
+  sweep: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).optional(),
   params: z.array(figureParamSchema).max(8).optional(),
   derived: z.array(figureDerivedSchema).max(8).optional(),
   // Lenient like stack children / chart points: elements are parsed at render

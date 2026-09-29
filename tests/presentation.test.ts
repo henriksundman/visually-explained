@@ -109,4 +109,8 @@ describe("systemPromptSnippet: figure guidance", () => {
     expect(systemPromptSnippet).toContain("{{")
     expect(systemPromptSnippet).toContain("slots")
   })
+
+  it("documents the sweep field", () => {
+    expect(systemPromptSnippet).toContain("sweep")
+  })
 })

@@ -205,6 +205,7 @@ export const figuresIr = {
         "Three circles spinning at 1×, 3× and 5× speed sum to a square wave — the pen dot traces it on the right.",
       width: 720,
       height: 260,
+      sweep: "t",
       params: [
         { name: "t", min: 0, max: 360, step: 5, initial: 45 },
         { name: "r", min: 20, max: 60, step: 5, initial: 40 },
