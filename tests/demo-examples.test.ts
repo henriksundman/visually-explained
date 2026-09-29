@@ -85,4 +85,19 @@ describe("demo examples", () => {
       expect(types.has(t)).toBe(true)
     }
   })
+
+  it("interactive demo import map covers every runtime dependency of the react entry", async () => {
+    // Regression: the browser demo loads dist/react via an import map, so every
+    // bare specifier the bundle externalizes (deps + peers) must be mapped or
+    // the module graph fails to resolve and nothing mounts.
+    const fs = await import("node:fs/promises")
+    const pkg = JSON.parse(await fs.readFile("package.json", "utf8"))
+    const runtime = { ...pkg.dependencies, ...pkg.peerDependencies }
+    const html = await fs.readFile("demo/interactive.html", "utf8")
+    for (const name of Object.keys(runtime)) {
+      expect(html).toContain(`"${name}":`)
+    }
+    expect(html).toContain(`"react/jsx-runtime":`)
+    expect(html).toContain(`"react-dom/client":`)
+  })
 })
