@@ -50,6 +50,7 @@ ${section("capabilities", "light", capabilitiesIr)}
 ${section("capabilities-themed", "light", capabilitiesIr, "demo-tokens")}
 <h2>Figures</h2>
 <p>LLM-emitted diagram and chart blocks, a cause-effect chain drawn as an arrow figure — the same IR twice: clean strokes, then the rough.js sketch pass.</p>
+<p><a href="/interactive">Interactive figures →</a></p>
 ${section("figures", "light", figuresIr)}
 ${section("figures-sketch", "dark", figuresIr, "", true)}
 <h2>How-to</h2>
@@ -78,6 +79,34 @@ const server = createServer(async (req, res) => {
       const css = await readFile(new URL(`../dist${url.pathname}`, import.meta.url))
       res.writeHead(200, { "content-type": "text/css; charset=utf-8" })
       res.end(css)
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }
+    return
+  }
+  if (url.pathname === "/interactive") {
+    try {
+      const html = await readFile(new URL("./interactive.html", import.meta.url))
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
+      res.end(html)
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }
+    return
+  }
+  if (url.pathname === "/examples.js") {
+    const js = await readFile(new URL("./examples.js", import.meta.url))
+    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" })
+    res.end(js)
+    return
+  }
+  if (url.pathname.startsWith("/react/")) {
+    try {
+      const js = await readFile(new URL(`../dist${url.pathname}`, import.meta.url))
+      res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" })
+      res.end(js)
     } catch {
       res.writeHead(404, { "content-type": "text/plain" })
       res.end("not found")

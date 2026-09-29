@@ -23,6 +23,12 @@ decisions that survive across sessions.
   after expansion); the demo gains a Fourier-epicycles figure exercising
   params, derived chains, expression-offset groups and slots. Spec:
   `docs/superpowers/specs/2026-09-29-path-slots-epicycles-demo-design.md`.
+- **Interactive figure runtime** (2026-09-29) — React client component
+  consuming the bespoke-figure format unchanged: sliders bound to `params`,
+  play sweep over an author-declared `sweep` param, re-render via
+  `compileFigure`/`sceneToSvg` with memoized expression ASTs. `interactive`
+  opt-in on `<Explanation>`; static render remains the SSR path. Spec:
+  `docs/superpowers/specs/2026-09-29-interactive-figure-runtime-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -55,9 +61,6 @@ sub-projects, each its own spec → plan → build:
 
 ## Backlog
 
-- **Interactive figure runtime** (next up): React runtime consuming the
-  bespoke-figure format *unchanged* (format shipped 2026-09-28) — sliders
-  bound to `params`, play/scrub controls, re-render via the cached expression
-  ASTs in `src/figures/expr.ts`, SSR fallback = the static render that already
-  ships.
+- Schema guard: params must not be named `PI`/`E`/`TAU` (evaluator constants
+  silently shadow them).
 - Steps 2–3 specs (see arc above) — write when their turn comes.
