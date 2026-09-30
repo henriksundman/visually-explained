@@ -59,9 +59,31 @@ The README contains, in order:
 7. **Pipeline 2 — compile** — `compileDocument(topic, { client, ... })` →
    `{ document, events, warnings }`; `LlmClient` type shown verbatim;
    options (`maxRepairs` default 2, `maxSections` default 12, `guidance`);
-   the event `kind` table; failure semantics (outline exhausted after repairs
-   → throw; a bad section → dropped with a warning, never failing the
-   compile).
+   failure semantics (outline exhausted after repairs → throw; a bad section
+   → dropped with a warning, never failing the compile).
+   - **Event types documented in full.** The README transcribes the complete
+     `CompileEvent` kind union with per-kind payload fields (verified against
+     `src/compiler/client.ts` and `src/compiler/compile.ts`) so hosts can
+     type progress UIs without reading source:
+
+     | `kind` | Payload |
+     | --- | --- |
+     | `outline-start` | `{ topic }` |
+     | `outline-done` | `{ title, sections, visualHints }` |
+     | `section-start` | `{ index, title }` |
+     | `section-done` | `{ index, title, blocks }` |
+     | `section-failed` | `{ index, title }` |
+     | `repair-attempt` | `{ stage: "outline" \| "section", index?, attempt, issues: string[] }` |
+
+     (`index` is absent on outline-stage `repair-attempt` events.)
+   - The README also states two typing facts hosts rely on: `CompileEvent`
+     carries open extra fields (`[key: string]: unknown`), and
+     `CompileResult.document` is typed `unknown` but contract-locked to
+     `documentSchema` in tests — hosts validate or cast at their boundary.
+   - A short example event stream for a two-section compile shows the order
+     hosts can rely on: `outline-start` → `outline-done` → per section
+     (`section-start` → zero or more `repair-attempt` → `section-done` or
+     `section-failed`).
 8. **LLM authoring contract** — for hosts doing their own prompting:
    `systemPromptSnippet`, `documentSystemPromptSnippet`,
    `explanationJsonSchema`, `documentJsonSchema`, `BLOCK_TYPE_DOCS`.
@@ -87,5 +109,6 @@ existing convention.
 
 ## 6. Plan Sizing (input to writing-plans)
 
-Estimated 1–2 tasks: draft README (with per-snippet source verification) →
-ROADMAP line + build/typecheck sanity pass.
+Estimated 1–2 tasks: draft README (with per-snippet source verification,
+including the event table against `src/compiler/client.ts` and
+`src/compiler/compile.ts`) → ROADMAP line + build/typecheck sanity pass.
