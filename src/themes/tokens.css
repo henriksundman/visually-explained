@@ -775,6 +775,15 @@
   text-decoration: underline;
 }
 
+/* Active state for scroll-spy hosts: toggle aria-current="true" on the link
+   whose section is on screen (standard ARIA, one-line script in the host).
+   Styled here so hosts get the treatment for free, like the sticky pin. */
+.exp-doc-toc-list a[aria-current="true"] {
+  color: var(--exp-accent);
+  font-weight: 650;
+  text-decoration: underline;
+}
+
 .exp-doc-section {
   margin: calc(var(--exp-gap) * 2) 0 0;
 }

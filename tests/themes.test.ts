@@ -26,6 +26,12 @@ describe("themes", () => {
     expect(css).toMatch(/\.exp-doc-toc-inline\s*{[^}]*float: none/)
   })
 
+  it("styles the TOC's active (aria-current) link for scroll-spy hosts", () => {
+    const css = readFileSync("src/themes/tokens.css", "utf8")
+    expect(css).toMatch(/\.exp-doc-toc-list a\[aria-current="true"\]\s*{[^}]*font-weight/)
+    expect(css).toMatch(/\.exp-doc-toc-list a\[aria-current="true"\]\s*{[^}]*text-decoration: underline/)
+  })
+
   it("dark theme overrides surface tokens under .exp-theme-dark", () => {
     const dark = readFileSync("src/themes/dark.css", "utf8")
     expect(dark).toContain(".exp-theme-dark")

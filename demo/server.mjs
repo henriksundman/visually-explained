@@ -16,6 +16,45 @@ function section(id, theme, ir, extraClass = "", sketch = false) {
   return `<section id="${id}" class="exp exp-theme-${theme}${extraClass ? ` ${extraClass}` : ""}${sketch ? " exp-sketch" : ""}">${html}</section>`
 }
 
+// Scroll-spy: mark the TOC link of the section currently in the reading band
+// with aria-current="true" — the theme styles that state, so the script stays a
+// dumb attribute toggle. Demo chrome only: the library's SSR output is
+// script-free by contract.
+const tocScrollSpy = `
+<script>
+(() => {
+  const links = Array.from(document.querySelectorAll(".exp-doc-toc-list a"))
+  if (!links.length || !("IntersectionObserver" in window)) return
+  const byId = new Map(links.map(a => [a.hash.slice(1), a]))
+  const inBand = new Set()
+  const apply = id => {
+    for (const a of links) a.removeAttribute("aria-current")
+    const link = byId.get(id)
+    if (link) link.setAttribute("aria-current", "true")
+  }
+  const io = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (e.isIntersecting) inBand.add(e.target.id)
+      else inBand.delete(e.target.id)
+    }
+    // Topmost section in the band wins; otherwise keep the last known current.
+    const head = links.map(a => a.hash.slice(1)).find(id => inBand.has(id))
+    if (head) apply(head)
+  }, { rootMargin: "-20% 0px -70% 0px" })
+  for (const id of byId.keys()) {
+    const el = document.getElementById(id)
+    if (el) io.observe(el)
+  }
+  // A short last section may never reach the band: mark it at page bottom.
+  addEventListener("scroll", () => {
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+      apply(links[links.length - 1].hash.slice(1))
+    }
+  }, { passive: true })
+  apply(links[0].hash.slice(1))
+})()
+</script>`
+
 const page = `<!doctype html>
 <html lang="en">
 <head>
@@ -104,6 +143,7 @@ const server = createServer(async (req, res) => {
 ${html}
 <h2>Compile audit</h2>
 ${audit}
+${tocScrollSpy}
 </body>
 </html>`
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
@@ -130,6 +170,7 @@ ${audit}
 <body>
 <p><a href="/">← all examples</a></p>
 ${html}
+${tocScrollSpy}
 </body>
 </html>`
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
