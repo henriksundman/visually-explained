@@ -40,7 +40,11 @@ const tocScrollSpy = `
     // Topmost section in the band wins; otherwise keep the last known current.
     const head = links.map(a => a.hash.slice(1)).find(id => inBand.has(id))
     if (head) apply(head)
-  }, { rootMargin: "-20% 0px -70% 0px" })
+  // Reading line at 40% of the viewport: a section wins only once its tail
+  // has scrolled ~40% up from the bottom (scrolling up) — 20% flipped while
+  // the incoming section was still half-visible. The band's bottom edge is
+  // inert (membership + topmost pick); it just needs to straddle the line.
+  }, { rootMargin: "-40% 0px -55% 0px" })
   for (const id of byId.keys()) {
     const el = document.getElementById(id)
     if (el) io.observe(el)
