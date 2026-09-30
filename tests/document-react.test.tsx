@@ -41,6 +41,14 @@ describe("Document (React)", () => {
     expect((html.match(/exp-doc-section-title/g) ?? []).length).toBe(1)
   })
 
+  it("TOC is sticky by default; tocSticky: false adds the inline opt-out class", () => {
+    const html = renderToStaticMarkup(<Document ir={doc} theme="none" />)
+    expect(html).toContain(`class="exp-doc-toc"`)
+    expect(html).not.toContain("exp-doc-toc-inline")
+    const inline = renderToStaticMarkup(<Document ir={doc} theme="none" tocSticky={false} />)
+    expect(inline).toContain(`class="exp-doc-toc exp-doc-toc-inline"`)
+  })
+
   it("strict mode throws; toc: false omits the nav", () => {
     expect(() =>
       renderToStaticMarkup(<Document ir={{ version: 2, title: "T", sections: [{ title: "S", blocks: [] }] }} strict />),

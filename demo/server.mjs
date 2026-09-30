@@ -95,7 +95,9 @@ const server = createServer(async (req, res) => {
 <link rel="stylesheet" href="/themes/tokens.css">
 <link rel="stylesheet" href="/themes/light.css">
 <link rel="stylesheet" href="/themes/dark.css">
-<style>body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; }</style>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; }
+</style>
 </head>
 <body>
 <p><a href="/">← all examples</a></p>
@@ -123,7 +125,6 @@ ${audit}
 <link rel="stylesheet" href="/themes/dark.css">
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; }
-  nav.exp-doc-toc { position: sticky; top: 1rem; float: right; max-width: 12rem; margin: 0 0 1rem 1.5rem; font-size: 0.85em; }
 </style>
 </head>
 <body>

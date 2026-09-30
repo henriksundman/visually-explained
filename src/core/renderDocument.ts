@@ -12,6 +12,8 @@ export interface RenderDocumentOptions {
   sketch?: boolean
   /** Render the table of contents. Default true. */
   toc?: boolean
+  /** Emit exp-doc-toc-inline to un-pin the TOC (themes default to sticky). Default false. */
+  tocSticky?: boolean
 }
 
 export interface RenderDocumentResult {
@@ -45,11 +47,14 @@ function renderSectionBlocks(rawBlocks: unknown[], warnings: string[], sketch: b
   return blocks.map(b => renderSalvagedBlock(b, 1, warnings, sketch)).join("")
 }
 
-function renderToc(sections: { title: string; anchor: string }[]): string {
+function renderToc(sections: { title: string; anchor: string }[], tocSticky: boolean): string {
   const items = sections
     .map(s => `<li><a href="#${s.anchor}">${renderInline(s.title)}</a></li>`)
     .join("")
-  return `<nav class="exp-doc-toc" aria-label="On this page"><ol class="exp-doc-toc-list">${items}</ol></nav>`
+  // Sticky comes from the theme (default); tocSticky: false adds the opt-out
+  // class so the nav renders in normal flow instead of pinning.
+  const cls = tocSticky ? "exp-doc-toc" : "exp-doc-toc exp-doc-toc-inline"
+  return `<nav class="${cls}" aria-label="On this page"><ol class="exp-doc-toc-list">${items}</ol></nav>`
 }
 
 export function renderDocument(input: unknown, opts: RenderDocumentOptions = {}): RenderDocumentResult {
@@ -101,7 +106,7 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
 
   const toc =
     opts.toc !== false && good.length > 0
-      ? renderToc(good.map((s, i) => ({ title: s.title, anchor: anchors[i] })))
+      ? renderToc(good.map((s, i) => ({ title: s.title, anchor: anchors[i] })), opts.tocSticky !== false)
       : ""
   const body = good
     .map((s, i) => {

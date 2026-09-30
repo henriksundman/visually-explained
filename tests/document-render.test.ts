@@ -39,6 +39,14 @@ describe("renderDocument", () => {
     expect(html).not.toContain("exp-doc-toc")
   })
 
+  it("TOC is sticky by default; tocSticky: false adds the inline opt-out class", () => {
+    const { html } = renderDocument(doc)
+    expect(html).toContain(`class="exp-doc-toc"`)
+    expect(html).not.toContain("exp-doc-toc-inline")
+    const { html: inline } = renderDocument(doc, { tocSticky: false })
+    expect(inline).toContain(`class="exp-doc-toc exp-doc-toc-inline"`)
+  })
+
   it("theme and sketch options land on the root", () => {
     const { html } = renderDocument(doc, { theme: "dark", sketch: true })
     expect(html).toContain(`<article class="exp exp-doc exp-theme-dark exp-sketch">`)

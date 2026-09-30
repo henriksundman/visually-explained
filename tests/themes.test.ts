@@ -20,6 +20,12 @@ describe("themes", () => {
     expect(missing).toEqual([])
   })
 
+  it("pins the document TOC by default with an inline opt-out", () => {
+    const css = readFileSync("src/themes/tokens.css", "utf8")
+    expect(css).toMatch(/\.exp-doc-toc\s*{[^}]*position: sticky/)
+    expect(css).toMatch(/\.exp-doc-toc-inline\s*{[^}]*float: none/)
+  })
+
   it("dark theme overrides surface tokens under .exp-theme-dark", () => {
     const dark = readFileSync("src/themes/dark.css", "utf8")
     expect(dark).toContain(".exp-theme-dark")

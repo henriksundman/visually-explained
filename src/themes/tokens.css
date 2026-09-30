@@ -734,7 +734,27 @@
   border: 1px solid var(--exp-border);
   border-radius: var(--exp-radius);
   padding: 10px 14px;
-  margin: 0 0 calc(var(--exp-gap) * 1.5);
+  /* Positioning is the library's problem now: pinned as a compact right-hand
+     card by default, so the nav stays usable while scrolling. This is the
+     treatment every host was re-declaring per page (and one demo shipped
+     without, leaving the TOC dead off-screen) — now the default, opt out
+     per instance with exp-doc-toc-inline or by overriding this rule. */
+  position: sticky;
+  top: 1rem;
+  float: right;
+  max-width: 12rem;
+  margin: 0 0 1rem 1.5rem;
+  font-size: 0.85em;
+}
+
+/* Opt-out: restore normal flow (drop the pin and the float layout). */
+.exp-doc-toc-inline {
+  position: static;
+  float: none;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  font-size: inherit;
 }
 
 .exp-doc-toc-list {

@@ -12,6 +12,8 @@ export interface DocumentProps {
   strict?: boolean
   /** Render the table of contents. Default true. */
   toc?: boolean
+  /** Emit exp-doc-toc-inline to un-pin the TOC (themes default to sticky). Default false. */
+  tocSticky?: boolean
   /** Hand-drawn (rough.js) stroke pass, matching renderDocument's option. */
   sketch?: boolean
 }
@@ -23,7 +25,7 @@ export interface DocumentProps {
  * renderBlock (model text only ever passes through renderInline), matching
  * the Explanation component's pattern.
  */
-export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc = true, sketch = false }) => {
+export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc = true, tocSticky = true, sketch = false }) => {
   if (strict) {
     const v = validateDocument(ir)
     if (!v.ok) throw new Error(`invalid document: ${v.diagnostics.map(d => d.message).join("; ")}`)
@@ -56,7 +58,9 @@ export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc =
         </header>
       )}
       {toc && sections.length > 0 && (
-        <nav className="exp-doc-toc" aria-label="On this page">
+        // Sticky comes from the theme (default); tocSticky: false adds the
+        // opt-out class so the nav renders in normal flow instead of pinning.
+        <nav className={tocSticky ? "exp-doc-toc" : "exp-doc-toc exp-doc-toc-inline"} aria-label="On this page">
           <ol className="exp-doc-toc-list">
             {sections.map((s, i) => (
               <li key={anchors[i]}>
