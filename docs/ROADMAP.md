@@ -97,4 +97,37 @@ sub-projects, each its own spec → plan → build:
 
 ## Backlog
 
-The arc is complete; new work starts here.
+The arc is complete; new work starts here. Candidate threads (recorded
+2026-09-30, unplanned — each needs its own spec → plan → build cycle):
+
+- **Grounded authoring** — hosts supply source material (documents, notes)
+  that constrains outline/section prompts; output carries provenance:
+  citation blocks or inline references, which need a link inline element
+  (renderInline's v1 subset is bold/italic/code only). The gap between a
+  demo and real content.
+- **Real data for visual blocks** — host-supplied datasets (keyed,
+  schema-validated) interpolated into `chart`/`data-callout`/`timeline` at
+  render time, so numbers are true instead of model-guessed. Renderer/schema
+  work; no LLM-surface changes.
+- **Retrieval practice** — an assessment primitive in the block library
+  (quiz / reveal-the-answer), the missing complement to the exposition-side
+  blocks; retrieval beats re-reading for learning that sticks.
+- **Streaming compile** — async-generator API at the compiler's existing
+  seams (compiler spec §9): header/TOC render immediately, sections append
+  as they resolve. The highest-leverage host UX win left on the table.
+- **Drag-to-vary simulations** — the interactive runtime has sliders +
+  play; direct manipulation (drag a point, scrub a timeline) was deferred
+  from the interactive-runtime cycle and is what makes a card a simulation
+  rather than an animation player.
+- **Math typesetting subset** — hand-rolled sup/sub inline syntax and
+  fraction stacking for derivation steps; most of KaTeX's benefit without
+  breaking the dependency rule.
+- **Compiler v1 deferrals** (spec §9) — parallel section calls; client
+  surface growth (usage reporting, abort signals, retries); caching;
+  human-in-the-loop outline approval.
+- **Curio Editorial Learning theme tokens** — the Stitch destination look,
+  off `docs/design/stitch/*/DESIGN.md`; deliberately kept out of the
+  compiler cycle.
+- **Figure-events minors** — no direct test asserting `dot:<label>` id
+  derivation; `placePopover` can place negative-left on stages < ~268px
+  (progress ledger, figure-events cycle).
