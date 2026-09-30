@@ -4,7 +4,7 @@
 
 **Goal:** Ship a document IR (multi-section pages composing the existing block system), a `renderDocument()` HTML composer, a static React `<Document>`, the LLM contract (JSON schema + prompt snippet), and a demo page — per spec `docs/superpowers/specs/2026-09-30-document-ir-sections-design.md`.
 
-**Architecture:** `documentSchema` is a sibling of `explanationSchema` (never extends it). `renderDocument()` salvages the top level leniently, salvages sections individually, and composes the existing `renderBlock` pipeline per block inside an `exp-doc` skeleton with a derived TOC. The React component renders the same skeleton via `renderBlock` + `renderInline`, so HTML and React share one anchor helper and stay parity-tested. The LLM contract shares the block-type prompt text with the existing snippet by extraction.
+**Architecture:** `documentSchema` is a sibling of `explanationSchema` (never extends it). `renderDocument()` salvages the top level leniently, salvages sections individually, and composes the existing `renderBlock` pipeline per block inside an `exp-doc` skeleton with a derived TOC — reusing `render.ts`'s block renderer rather than duplicating it. The React component renders the same skeleton via `renderBlock` + `renderInline`, so HTML and React share one anchor helper and stay parity-tested. The LLM contract shares the block-type prompt text with the existing snippet by extraction.
 
 **Tech Stack:** TypeScript, zod (v4-style API already in use), vitest, React 18 (`renderToStaticMarkup` in tests), zero new runtime deps.
 
@@ -23,12 +23,12 @@
 ## File Structure
 
 - Create `src/core/documentSchema.ts` — document/section schemas + slug/anchor helpers. One responsibility: the document IR contract and its anchor math.
-- Create `src/core/renderDocument.ts` — salvage + skeleton composition. Consumes `renderBlock` per block; owns the TOC/nav/section markup.
+- Create `src/core/renderDocument.ts` — salvage + skeleton composition. Reuses `render.ts`'s (now-exported) `renderSalvagedBlock` per block; owns the TOC/nav/section markup.
 - Create `src/core/documentValidate.ts` — `validateDocument` for the React strict path (mirrors `validate.ts`, which is explanation-scoped).
-- Create `src/react/Document.tsx` — static RSC-safe component; reuses the skeleton markup as JSX.
+- Create `src/react/Document.tsx` — static RSC-safe component; reuses the skeleton markup as JSX. Like `Explanation`, it renders block HTML through `renderBlock` + `dangerouslySetInnerHTML` — the block payload is library-generated markup, never model text (model text only ever passes through `renderInline`).
 - Create `src/core/blockTypes.ts` — shared block-type prompt text extracted from `llm.ts`.
 - Modify `src/core/llm.ts` — interpolate the shared text; add `documentJsonSchema` + `documentSystemPromptSnippet`.
-- Modify `src/index.ts` (add `./core/documentSchema`, `./core/documentValidate`, `./core/renderDocument` exports), `src/react/index.ts` (add `./Document`), `src/core/render.ts` (only if folding `renderDocument` there — this plan keeps it a separate file, so no change).
+- Modify `src/index.ts` (add `./core/documentSchema`, `./core/documentValidate`, `./core/renderDocument` exports), `src/react/index.ts` (add `./Document`), `src/core/render.ts` (add `export` to `renderSalvagedBlock` — Task 2).
 - Modify `demo/examples.js` (add `demoDocIr`), `demo/server.mjs` (add `/document` route).
 - Modify `src/themes/tokens.css` (append `exp-doc*` styles), `docs/ROADMAP.md` (mark step 2 shipped).
 - Tests: `tests/document-schema.test.ts`, `tests/document-render.test.ts`, `tests/document-react.test.tsx`, `tests/document-llm.test.ts`, plus extensions to `tests/llm.test.ts`, `tests/demo-examples.test.ts`.
@@ -204,10 +204,11 @@ git commit -m "feat(core): document IR schema with anchor/slug helpers"
 
 **Files:**
 - Create: `src/core/renderDocument.ts`
+- Modify: `src/core/render.ts` (add `export` to `renderSalvagedBlock` — one word)
 - Test: `tests/document-render.test.ts`
 
 **Interfaces:**
-- Consumes: `sectionAnchor` from Task 1; `salvageBlock`/`Diagnostic` from `src/core/salvage.ts` (existing, exact signatures: `salvageBlock(raw: unknown, index: number, diagnostics: Diagnostic[])`, `Diagnostic.code: "invalid-explanation" | "wrong-version" | "invalid-block" | "unknown-type"`); `renderSalvagedBlock` is NOT exported — instead reuse `renderExplanation`'s exact block-loop approach: salvage each raw block with `salvageBlock`, render valid/unknown ones through the registry via a local `renderOne` copied structurally from `render.ts`'s private `renderSalvagedBlock` (invalid → `""`, unknown → fallback div, valid → `registry[type].render(b.data, ctx)`); `escapeHtml`, `renderInline` from `src/core/inline.ts`; registry context shape `{ depth, sketch, addWarning, renderChildren }` from `src/core/registry.ts`.
+- Consumes: `sectionAnchor` from Task 1; `salvageBlock`/`Diagnostic` from `src/core/salvage.ts` (existing, exact signatures: `salvageBlock(raw: unknown, index: number, diagnostics: Diagnostic[])`); `renderSalvagedBlock` from `src/core/render.ts` — this task FIRST adds the `export` keyword to that one private function (its internal `renderFallback` and `renderChildrenLenient` stay private and come along for free, including `escapeHtml` on unknown-type labels); `renderInline` from `src/core/inline.ts`. No local copy of the block-rendering logic: reusing render.ts's renderer is deliberate — one implementation, no drift, and the fallback path stays escaped.
 - Produces: `renderDocument(input: unknown, opts: RenderDocumentOptions = {}): { html: string; warnings: string[] }` where `RenderDocumentOptions = { strict?: boolean; theme?: "light" | "dark" | "none"; sketch?: boolean; toc?: boolean }` (defaults: theme `"none"`, toc `true`). Also `validateDocument` lives in Task 4 — Task 2 does NOT create it.
 
 - [ ] **Step 1: Write the failing tests**
@@ -314,6 +315,8 @@ describe("renderDocument", () => {
       { sketch: true },
     )
     expect(sketched.html).toContain("rough") // sketch pass reached the block layer
+    const unknown = renderDocument({ version: 1, title: "T", sections: [{ title: "S", blocks: [{ type: "mindmap", title: "Sales" }] }] })
+    expect(unknown.html).toContain("exp-fallback") // unknown types reuse render.ts's escaped fallback
   })
 })
 ```
@@ -325,14 +328,15 @@ Expected: FAIL — "Cannot find module '../src/core/renderDocument'"
 
 - [ ] **Step 3: Write the implementation**
 
+First, in `src/core/render.ts`, change `function renderSalvagedBlock(` to `export function renderSalvagedBlock(` — the only edit to that file (its internal `renderFallback`/`renderChildrenLenient` come along via the call, no other change).
+
 Create `src/core/renderDocument.ts`:
 
 ```ts
 import { sectionAnchor, type DocumentSection } from "./documentSchema"
-import { registry, type RenderContext } from "./registry"
-import { salvageBlock, type Diagnostic, type SalvagedBlock } from "./salvage"
+import { renderSalvagedBlock } from "./render"
+import { salvageBlock, type Diagnostic } from "./salvage"
 import { renderInline } from "./inline"
-import type { Block } from "./schema"
 
 export interface RenderDocumentOptions {
   /** Throw instead of degrading when any document-level or section-level diagnostic exists. */
@@ -365,41 +369,13 @@ function blockWarning(d: Diagnostic): string {
   return `[${d.code}] ${d.message}`
 }
 
-/** Renders one already-salvaged block. Structurally identical to
- *  render.ts's private renderSalvagedBlock; kept local because that one is
- *  private and duplicating its 15 lines beats changing render.ts's surface. */
-function renderOne(b: SalvagedBlock, warnings: string[], sketch: boolean): string {
-  if (b.kind === "invalid") return ""
-  const entry = registry[b.type]
-  if (b.kind === "unknown" || !entry) {
-    const d = typeof b.data === "object" && b.data !== null ? (b.data as Record<string, unknown>) : {}
-    const label = typeof d.title === "string" ? d.title : typeof d.body === "string" ? d.body : null
-    return (
-      `<div class="exp-block exp-fallback">` +
-      `<span class="exp-fallback-label">${b.type}</span>` +
-      (label ? `<p class="exp-fallback-body">${renderInline(label)}</p>` : "") +
-      `</div>`
-    )
-  }
-  const ctx: RenderContext = {
-    depth: 1,
-    sketch,
-    addWarning: m => warnings.push(m),
-    renderChildren: (children, d) => {
-      const diagnostics: Diagnostic[] = []
-      const blocks = children.map((raw, i) => salvageBlock(raw, i, diagnostics))
-      for (const diag of diagnostics) warnings.push(blockWarning(diag))
-      return blocks.map(child => renderOne(child, warnings, sketch)).join("")
-    },
-  }
-  return entry.render(b.data as Block, ctx)
-}
-
 function renderSectionBlocks(rawBlocks: unknown[], warnings: string[], sketch: boolean): string {
   const diagnostics: Diagnostic[] = []
   const blocks = rawBlocks.map((raw, i) => salvageBlock(raw, i, diagnostics))
   for (const d of diagnostics) warnings.push(blockWarning(d))
-  return blocks.map(b => renderOne(b, warnings, sketch)).join("")
+  // render.ts's renderer owns invalid ("") / unknown (escaped fallback) /
+  // valid (registry) dispatch and stack children — one implementation, no drift.
+  return blocks.map(b => renderSalvagedBlock(b, 1, warnings, sketch)).join("")
 }
 
 function renderToc(sections: { title: string; anchor: string }[]): string {
@@ -491,8 +467,8 @@ Expected: typecheck clean; all tests pass (existing suites unaffected — no exi
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/core/renderDocument.ts tests/document-render.test.ts
-git commit -m "feat(core): renderDocument composer with TOC and lenient sections"
+git add src/core/render.ts src/core/renderDocument.ts tests/document-render.test.ts
+git commit -m "feat(core): renderDocument composer reusing the block renderer"
 ```
 
 ---
