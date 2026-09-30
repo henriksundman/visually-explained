@@ -76,6 +76,12 @@ describe("renderDocument", () => {
 
   it("strict mode throws on any diagnostic", () => {
     expect(() => renderDocument({ version: 2, title: "T", sections: [{ title: "S", blocks: [] }] }, { strict: true })).toThrow(/version/)
+    expect(() =>
+      renderDocument(
+        { version: 1, title: "T", sections: [{ title: "S", blocks: [] }, { title: "", blocks: [] }] },
+        { strict: true },
+      ),
+    ).toThrow(/section 1/) // section-level diagnostics count in strict mode too
     expect(() => renderDocument(doc, { strict: true })).not.toThrow()
   })
 

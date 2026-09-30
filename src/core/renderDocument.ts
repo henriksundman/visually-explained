@@ -59,24 +59,21 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
   const root = `<article class="exp exp-doc${themeClass}${opts.sketch ? " exp-sketch" : ""}">`
 
   const rec = typeof input === "object" && input !== null && !Array.isArray(input) ? (input as Record<string, unknown>) : null
+  let docBroken = false
   if (!rec || rec.version !== 1) {
     warnings.push("[wrong-version] expected version 1, got " + JSON.stringify(rec?.version ?? null))
+    docBroken = true
   }
   if (!rec || typeof rec.title !== "string" || rec.title.length === 0) {
     warnings.push("[invalid-document] title must be a non-empty string")
+    docBroken = true
   }
   if (!rec || !Array.isArray(rec.sections) || rec.sections.length === 0) {
     warnings.push("[invalid-document] sections must be a non-empty array")
-  }
-  if (opts.strict && warnings.length > 0) {
-    throw new Error(`invalid document: ${warnings.join("; ")}`)
-  }
-  // Any document-level diagnostic degrades to the empty shell (lenient path).
-  if (warnings.length > 0 || !rec) {
-    return { html: `${root}</article>`, warnings }
+    docBroken = true
   }
 
-  const rawSections = rec.sections as unknown[]
+  const rawSections = docBroken ? [] : (rec!.sections as unknown[])
   const sectionOk = (raw: unknown): raw is DocumentSection =>
     typeof raw === "object" && raw !== null && !Array.isArray(raw) &&
     typeof (raw as Record<string, unknown>).title === "string" &&
@@ -87,6 +84,15 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
     if (!sectionOk(rawSections[i])) {
       warnings.push(`[invalid-section] section ${i}: dropped — title must be a non-empty string and blocks an array`)
     }
+  }
+
+  // Strict throws on document-level AND section-level diagnostics; lenient
+  // degrades: broken top level to the empty shell, bad section alone dropped.
+  if (opts.strict && warnings.length > 0) {
+    throw new Error(`invalid document: ${warnings.join("; ")}`)
+  }
+  if (docBroken) {
+    return { html: `${root}</article>`, warnings }
   }
 
   // Anchors over the survivors, in survivor order: a dropped section never
@@ -109,8 +115,8 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
     })
     .join("")
 
-  const title = rec.title as string
-  const summary = typeof rec.summary === "string" && rec.summary.length > 0 ? rec.summary : null
+  const title = rec!.title as string
+  const summary = typeof rec!.summary === "string" && rec!.summary.length > 0 ? rec!.summary : null
   const header =
     `<header class="exp-doc-header">` +
     `<h1 class="exp-doc-title">${renderInline(title)}</h1>` +

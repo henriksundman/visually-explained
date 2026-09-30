@@ -50,7 +50,7 @@ ${section("capabilities", "light", capabilitiesIr)}
 ${section("capabilities-themed", "light", capabilitiesIr, "demo-tokens")}
 <h2>Figures</h2>
 <p>LLM-emitted diagram and chart blocks, a cause-effect chain drawn as an arrow figure — the same IR twice: clean strokes, then the rough.js sketch pass.</p>
-<p><a href="/interactive">Interactive figures →</a></p>
+<p><a href="/interactive">Interactive figures →</a> · <a href="/document">Document page →</a></p>
 ${section("figures", "light", figuresIr)}
 ${section("figures-sketch", "dark", figuresIr, "", true)}
 <h2>How-to</h2>
