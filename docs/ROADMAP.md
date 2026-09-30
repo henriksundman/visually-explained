@@ -47,6 +47,18 @@ decisions that survive across sessions.
   outline titles, structured events + warnings; provider-agnostic via a
   minimal host-injected text-in/text-out client; `/compile` demo on a stub
   client. Spec: `docs/superpowers/specs/2026-09-30-curio-compiler-design.md`.
+- **Sticky document TOC by default** (2026-09-30) — `.exp-doc-toc` pins itself
+  as a compact right-hand card in `tokens.css`: the treatment every host was
+  re-declaring per page, and one demo shipped without, leaving the nav dead
+  off-screen. `tocSticky: false` on `renderDocument` / `<Document>` opts out
+  per instance via an `exp-doc-toc-inline` modifier; demo pages consume the
+  default with no per-page TOC rules.
+- **TOC active-section styling** (2026-09-30) — theme styles the standard
+  `aria-current="true"` state on `.exp-doc-toc-list a` (accent, weight,
+  underline), so scroll-spy hosts get the treatment for free while the
+  library's script-free SSR contract holds; the script stays host-side —
+  `/document` and `/compile` demo a ~15-line IntersectionObserver reading-band
+  spy with a page-bottom fallback.
 
 ## Decisions That Bind Future Work
 
