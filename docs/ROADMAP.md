@@ -131,3 +131,22 @@ The arc is complete; new work starts here. Candidate threads (recorded
 - **Figure-events minors** — no direct test asserting `dot:<label>` id
   derivation; `placePopover` can place negative-left on stages < ~268px
   (progress ledger, figure-events cycle).
+- **AI-generated raster imagery** (discussed 2026-09-30, shape undecided) —
+  the host runs an image model and hands the library a catalog of images
+  with instructions; the library stitches them into guides/explanations
+  (step-by-step sequences, explanation-by-analogy). Real images, even
+  mediocre ones, add atmospheric variety the vector layer can't. Design
+  constraints surfaced in discussion: images enter as *references*
+  (src/alt/width/height/caption — never bytes, never fetched at render,
+  lenient salvage on broken refs); `alt` and dimensions required at schema
+  level (a11y + no layout shift); "no text in image" in the prompt contract
+  (labels are HTML overlays/captions); per-document `imageStyle` hint passed
+  through (cross-image consistency stays host-side via style templates);
+  editorial role rules in `BLOCK_TYPE_DOCS` (images anchor analogies and
+  set scenes, they don't illustrate derivations). Candidate shapes, in
+  ascending ambition: **(a)** `image` block + host-supplied catalog, LLM
+  assigns to sections; **(b)** compiler-driven: outline gains image briefs,
+  host-injected image client materializes them mid-compile; **(c)**
+  `analogy` composite block: image + `[{ imagePart, conceptPart }]` mapping
+  rendered as a caption-side table — the novel differentiator. Decision
+  pending: which shape specs first (leaning a → c, b later).
