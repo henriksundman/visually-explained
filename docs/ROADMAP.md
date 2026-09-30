@@ -59,6 +59,12 @@ decisions that survive across sessions.
   library's script-free SSR contract holds; the script stays host-side —
   `/document` and `/compile` demo a ~15-line IntersectionObserver reading-band
   spy with a page-bottom fallback.
+- **Host README** (2026-09-30) — root `README.md` for hosts (primary audience:
+  coding agents): both pipelines with verified snippets, block-type groups,
+  figures/interactive, theme + sticky-TOC contract, `compileDocument` with the
+  full event table and failure semantics, the LLM authoring contract, explicit
+  host responsibilities, and a codebase map. Spec:
+  `docs/superpowers/specs/2026-09-30-readme-for-hosts-design.md`.
 
 ## Decisions That Bind Future Work
 
