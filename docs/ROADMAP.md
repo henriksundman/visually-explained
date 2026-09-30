@@ -41,6 +41,12 @@ decisions that survive across sessions.
   React `<Document>` with parity guarantees, LLM contract (JSON schema + prompt
   snippet sharing block-type text), demo `/document` page. Spec:
   `docs/superpowers/specs/2026-09-30-document-ir-sections-design.md`.
+- **Curio compiler / orchestrator** (2026-09-30) — `compileDocument(topic,
+  { client })`: outline call → per-section calls with bounded repair (zod
+  issues + offending fragment re-asks), lenient section salvage, canonical
+  outline titles, structured events + warnings; provider-agnostic via a
+  minimal host-injected text-in/text-out client; `/compile` demo on a stub
+  client. Spec: `docs/superpowers/specs/2026-09-30-curio-compiler-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -73,4 +79,4 @@ sub-projects, each its own spec → plan → build:
 
 ## Backlog
 
-- Step 3 spec (Curio compiler / orchestrator) — write when its turn comes.
+The arc is complete; new work starts here.
