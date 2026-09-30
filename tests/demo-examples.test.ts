@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import { explanationSchema } from "../src/core/schema"
+import { documentSchema } from "../src/core/documentSchema"
 import { renderExplanation } from "../src/core/render"
+import { renderDocument } from "../src/core/renderDocument"
 import "../src/core/registerAll"
-import { educationIr, dataIr, capabilitiesIr, figuresIr, howToIr } from "../demo/examples.js"
+import { educationIr, dataIr, capabilitiesIr, figuresIr, howToIr, demoDocIr } from "../demo/examples.js"
 
 function collectTypes(ir: { blocks: unknown[] }): Set<string> {
   const types = new Set<string>()
@@ -110,5 +112,20 @@ describe("demo examples", () => {
     }
     expect(html).toContain(`"react/jsx-runtime":`)
     expect(html).toContain(`"react-dom/client":`)
+  })
+})
+
+describe("demoDocIr (document fixture)", () => {
+  it("parses against documentSchema", () => {
+    expect(documentSchema.safeParse(demoDocIr).success).toBe(true)
+  })
+
+  it("renders a page with a TOC and all four sections", () => {
+    const { html } = renderDocument(demoDocIr, { theme: "none" })
+    expect((html.match(/class="exp-doc-section"/g) ?? []).length).toBe(4)
+    expect(html).toContain("exp-doc-toc")
+    expect(html).toContain(`href="#sec-fig-epicycles"`)
+    // The interactive epicycles figure composes into a section unchanged.
+    expect(html).toContain(`data-el-id="pen"`)
   })
 })

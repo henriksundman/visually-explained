@@ -709,3 +709,60 @@
 .exp-popover-below {
   transform: none;
 }
+
+/* Document layer (document spec 2026-09-30): exp-doc* classes emitted by
+   renderDocument and <Document>. Token-driven like everything else. */
+.exp-doc-header {
+  margin-bottom: calc(var(--exp-gap) * 1.5);
+}
+
+.exp-doc-title {
+  margin: 0 0 6px;
+  font-size: 1.9em;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.exp-doc-summary {
+  margin: 0;
+  color: var(--exp-text-muted);
+  font-size: 1.05em;
+}
+
+.exp-doc-toc {
+  background: var(--exp-surface-muted);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-radius);
+  padding: 10px 14px;
+  margin: 0 0 calc(var(--exp-gap) * 1.5);
+}
+
+.exp-doc-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.exp-doc-toc-list a {
+  color: var(--exp-accent);
+  text-decoration: none;
+}
+
+.exp-doc-toc-list a:hover {
+  text-decoration: underline;
+}
+
+.exp-doc-section {
+  margin: calc(var(--exp-gap) * 2) 0 0;
+}
+
+.exp-doc-section-title {
+  margin: 0 0 var(--exp-gap);
+  font-size: 1.4em;
+  font-weight: 650;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--exp-border);
+}

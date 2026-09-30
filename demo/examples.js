@@ -413,3 +413,17 @@ export const howToIr = {
     },
   ],
 }
+
+// Curio-style editorial page: the four existing explanations composed as one
+// multi-section document. Schema-checked by tests/demo-examples.test.ts.
+export const demoDocIr = {
+  version: 1,
+  title: "How signals become pictures",
+  summary: "Four angles on one pipeline — the concept, the data, the drawing, the rollout.",
+  sections: [
+    { id: "fig-concept", title: "The concept", blocks: educationIr.blocks },
+    { id: "fig-data", title: "What the data says", blocks: dataIr.blocks },
+    { id: "fig-figures", title: "Drawing it", blocks: figuresIr.blocks },
+    { id: "fig-epicycles", title: "Epicycles", blocks: howToIr.blocks },
+  ],
+}

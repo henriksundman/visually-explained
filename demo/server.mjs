@@ -2,8 +2,8 @@
 // smoke test of the published artifact shape. `npm run demo` builds first.
 import { createServer } from "node:http"
 import { readFile } from "node:fs/promises"
-import { renderExplanation } from "../dist/index.js"
-import { educationIr, dataIr, capabilitiesIr, figuresIr, howToIr } from "./examples.js"
+import { renderExplanation, renderDocument } from "../dist/index.js"
+import { educationIr, dataIr, capabilitiesIr, figuresIr, howToIr, demoDocIr } from "./examples.js"
 
 const port = Number(process.env.PORT ?? 4173)
 
@@ -72,6 +72,33 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
     res.end(page)
+    return
+  }
+  if (url.pathname === "/document") {
+    // The document root is the token-bearing .exp scope; theme "none" keeps
+    // the demo chrome in charge of the page background.
+    const { html } = renderDocument(demoDocIr, { theme: "none" })
+    const docPage = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>explanations — document demo</title>
+<link rel="stylesheet" href="/themes/tokens.css">
+<link rel="stylesheet" href="/themes/light.css">
+<link rel="stylesheet" href="/themes/dark.css">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; }
+  nav.exp-doc-toc { position: sticky; top: 1rem; float: right; max-width: 12rem; margin: 0 0 1rem 1.5rem; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<p><a href="/">← all examples</a></p>
+${html}
+</body>
+</html>`
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
+    res.end(docPage)
     return
   }
   if (url.pathname.startsWith("/themes/")) {
