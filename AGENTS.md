@@ -26,6 +26,15 @@ subcommands: `search --json <terms>`, `capsule "<query>"`, `skeleton <file>`,
 `impact <file>::<Symbol>`, `flow <a> <b>`, `verify`. The wrapper auto-resolves
 the newest extension binary and targets this repo as VEXP_WORKSPACE.
 
+### Plan execution: inline only, no CLI subagents
+Do NOT dispatch subagents via external CLIs (claude, gemini, ...) — they are
+unauthenticated/unreliable headless on this machine. Execute plan tasks inline
+in-session, but keep the SDD quality gates: per-task commits, the plan's
+verification steps (commands + expected output), and a fresh-eyes review pass
+against the spec before calling a multi-task plan done. Task briefs live in
+`.superpowers/sdd/` (git-ignored scratch); progress ledger at
+`.superpowers/sdd/progress.md`.
+
 ### Running the demo server
 The server (`demo/server.mjs`) serves the BUILT package (`dist/`) plus the demo
 fixtures, on port 4173 (`PORT` env to override). Routes: `/` (all examples),
