@@ -35,6 +35,12 @@ decisions that survive across sessions.
   twin-stroke hit areas, delegated React events (`onElementEvent`) and a
   built-in popover. Spec:
   `docs/superpowers/specs/2026-09-29-figure-interactivity-events-design.md`.
+- **Document IR + sections** (2026-09-30) — sibling `documentSchema` composing
+  the existing block union into flat h2 sections with a derived, data-only
+  TOC; `renderDocument()` HTML composer with lenient section salvage, static
+  React `<Document>` with parity guarantees, LLM contract (JSON schema + prompt
+  snippet sharing block-type text), demo `/document` page. Spec:
+  `docs/superpowers/specs/2026-09-30-document-ir-sections-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -67,4 +73,4 @@ sub-projects, each its own spec → plan → build:
 
 ## Backlog
 
-- Steps 2–3 specs (see arc above) — write when their turn comes.
+- Step 3 spec (Curio compiler / orchestrator) — write when its turn comes.
