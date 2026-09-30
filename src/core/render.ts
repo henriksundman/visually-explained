@@ -55,7 +55,10 @@ export function renderBlock(type: string, data: unknown, depth = 1, opts: { sket
   return renderSalvagedBlock(b, depth, [], opts.sketch ?? false)
 }
 
-function renderSalvagedBlock(b: SalvagedBlock, depth: number, warnings: string[], sketch: boolean): string {
+// Exported for renderDocument (document spec §4): the document composer
+// reuses this block renderer verbatim so fallback/stack/leniency stay in one
+// implementation. Not part of the public surface beyond internal reuse.
+export function renderSalvagedBlock(b: SalvagedBlock, depth: number, warnings: string[], sketch: boolean): string {
   if (b.kind === "invalid") return ""
   const entry = registry[b.type]
   if (b.kind === "unknown" || !entry) return renderFallback(b.type, b.data)
