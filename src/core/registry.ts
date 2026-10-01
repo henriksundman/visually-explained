@@ -8,6 +8,8 @@ export interface RenderContext {
   depth: number
   /** Sketch pass on (exp-sketch): primitives render rough.js strokes. */
   sketch: boolean
+  /** Host datasets for blocks carrying a `dataset` key (real-data spec §4). */
+  datasets?: Record<string, unknown>
   addWarning(message: string): void
   /** Leniently renders child blocks (used by stack); depth defaults to ctx.depth + 1. */
   renderChildren(blocks: unknown[], depth?: number): string

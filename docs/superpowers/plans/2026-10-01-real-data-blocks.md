@@ -294,12 +294,12 @@ export * from "./core/datasets"
 - [ ] **Step 8: Run the tests to verify they pass**
 
 Run: `npx vitest run tests/datasets.test.ts`
-Expected: PASS — 6/6.
+Expected: PASS — 5/5. (Amendment: the "keeps the dataset key" schema test moved to Task 2 — it needs the schema key Task 2 adds.)
 
 - [ ] **Step 9: Full suite + typecheck**
 
 Run: `npx vitest run && npx tsc --noEmit && echo OK`
-Expected: 297/297 tests (291 existing + 6 new — all existing green unchanged proves the no-option path is untouched), tsc clean.
+Expected: 296/296 tests (291 existing + 5 new — all existing green unchanged proves the no-option path is untouched), tsc clean.
 
 - [ ] **Step 10: Commit**
 
@@ -921,7 +921,7 @@ curl -s http://localhost:4173/document | grep -c "deploys-true"
 
 Expected: tsc clean; 311/311; build ok; all curls 200; the served `/document` HTML contains the dataset-driven chart (`deploys-true` → count ≥ 1); `vexp verify` clean (run any tests it flags).
 
-**Test-count ledger:** 291 base → Task 1 +6 (297) → Task 2 +6 (303) → Task 3 +4 (307) → Task 4 +4 (311). The demoDocIr section-count assertion changes value but not count.
+**Test-count ledger:** 291 base → Task 1 +5 (296) → Task 2 +7 (303) → Task 3 +4 (307) → Task 4 +4 (311). The demoDocIr section-count assertion changes value but not count.
 
 - [ ] **Step 6: Commit docs + demo**
 
