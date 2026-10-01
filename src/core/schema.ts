@@ -162,6 +162,24 @@ export const stackBlockSchema = z.object({
   blocks: z.array(z.unknown()),
 })
 
+export const sourcesBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("sources"),
+  title: z.string().min(1).max(200).optional(),
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        title: z.string().min(1).max(200),
+        url: z.string().min(1).max(500).optional(),
+        detail: z.string().min(1).max(400).optional(),
+      }),
+    )
+    .min(1)
+    .max(24),
+})
+export type SourcesBlock = z.infer<typeof sourcesBlockSchema>
+
 export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
   z.discriminatedUnion("type", [
     stepListBlockSchema,
@@ -179,6 +197,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     diagramBlockSchema,
     chartBlockSchema,
     figureBlockSchema,
+    sourcesBlockSchema,
   ]) as unknown as z.ZodType<Block>,
 )
 

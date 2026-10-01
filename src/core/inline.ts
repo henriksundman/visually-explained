@@ -17,7 +17,10 @@ export function escapeHtml(s: string): string {
  * labels; markers render literally when unmatched. */
 const LINK_RE = /\[([^\]]+)\]\(([^)\s]+)\)/g
 
-function safeHref(href: string): string | null {
+/** Shared href gate (link-inline spec §4): normalize control chars + spaces,
+ *  then allowlist https/http/mailto/#anchor. Second consumer: the sources
+ *  primitive (two link emitters, one policy). */
+export function safeHref(href: string): string | null {
   const normalized = href.replace(/[\u0000-\u0020]/g, "")
   // A raw "<" in the candidate can only be emphasis markup that leaked into
   // the URL (a paired *…* before the link pass) — real "<" arrives escaped as
