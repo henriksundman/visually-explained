@@ -116,7 +116,16 @@ export const dataIr = {
     {
       type: "callout",
       variant: "warning",
-      body: "The spike overlaps a `pricing-page` experiment — part of the lift may not be onboarding-related.",
+      body: "The spike overlaps a `pricing-page` experiment — part of the lift may not be onboarding-related. Latency context: [the latency study](#source-latency-numbers).",
+    },
+    {
+      type: "sources",
+      id: "refs",
+      title: "Sources",
+      items: [
+        { id: "latency-numbers", title: "Frontend latency study", url: "https://web.dev/articles/vitals", detail: "Where the p95 thresholds come from." },
+        { id: "deploy-log", title: "Deploy log, week 38", detail: "Internal — the deploy-day spike is visible in the raw log." },
+      ],
     },
   ],
 }
