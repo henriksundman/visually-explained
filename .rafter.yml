@@ -1,0 +1,45 @@
+# Rafter policy for the explanations repo.
+#
+# Suppression discipline (docs/finding-triage): only rule groups triaged as
+# false positives *for this codebase*, with the traced dataflow evidence in
+# the reason. Everything else must surface — the ReDoS finding from the
+# 2026-10-01 audit was real work and stayed unsuppressed (fixed instead:
+# 20k code-payload cap, commit 003fbd1).
+#
+# Rule ids are the canonical identifiers from the scan JSON payload
+# (`rafter get <id> --format json` → vulnerabilities[].rule_id); the short
+# R-xxxx hashes in the markdown report do not match.
+ignore:
+  # Demo server responses are static constants: file bytes from disk,
+  # "not found" literals, and hard-coded page HTML. No req.* value is ever
+  # concatenated into a response body — the router keys off req.url but the
+  # URL never flows into output. (Traced all 7 sink lines, 2026-10-01.)
+  - paths: ["demo/server.mjs"]
+    rules:
+      - "rules.rafter.javascript.express.xss-taint.rafter.javascript.express.xss-taint.xss-reflected-taint"
+      - "rules.rafter.javascript.express.xss-taint"
+    reason: "static-response server: no request data reaches any res.end() payload; reflected-XSS flow does not exist"
+
+  # React dangerouslySetInnerHTML sinks are fed exclusively by the library's
+  # own escape-then-render pipeline: all model text passes escapeHtml /
+  # renderInline (quote-escaping blocks attribute breakout), hrefs pass the
+  # shared safeHref scheme gate (javascript:/data: degrade to literal text).
+  # The library IS the sanitizer — that is the documented architecture; test
+  # suites lock the gate + escape behavior. (Link-inline security walk,
+  # rafter-secure-design ingestion sub-doc, 2026-10-01.)
+  - paths: ["src/react/**"]
+    rules:
+      - "react/no-danger"
+      - "rules.rafter.javascript.react.rafter.javascript.react.dangerously-set-innerhtml"
+      - "rules.rafter.javascript.react.dangerously-set-innerhtml"
+    reason: "every sink receives library-generated HTML built from escaped model text via escapeHtml/renderInline/safeHref; no path bypasses the escape layer (test-enforced)"
+
+  # Flagged regexes are linear-shaped (chart: two bounded groups, no
+  # alternation overlap; highlight: no outer quantifier over the
+  # alternation) — no catastrophic-backtracking shape. The real finding in
+  # this group (unbounded input to the highlighter pass) was fixed, not
+  # suppressed: code payloads are capped at 20k in codeBlockSchema with a
+  # render-time truncation warning (commit 003fbd1).
+  - paths: ["src/primitives/chart.ts", "src/core/highlight.ts"]
+    rules: ["security/detect-unsafe-regex"]
+    reason: "linear-shaped patterns, no ReDoS shape; the unbounded-input concern is closed by the 20k code-payload cap in codeBlockSchema"
