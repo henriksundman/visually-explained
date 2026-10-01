@@ -33,7 +33,9 @@ in-session, but keep the SDD quality gates: per-task commits, the plan's
 verification steps (commands + expected output), and a fresh-eyes review pass
 against the spec before calling a multi-task plan done. Task briefs live in
 `.superpowers/sdd/` (git-ignored scratch); progress ledger at
-`.superpowers/sdd/progress.md`.
+`.superpowers/sdd/progress.md`. Finishing a branch includes appending a
+"Branch finished" line to that ledger (merge state, tests on merged result,
+push state, branch deletion) — part of the finish step, not an afterthought.
 
 ### Running the demo server
 The server (`demo/server.mjs`) serves the BUILT package (`dist/`) plus the demo
