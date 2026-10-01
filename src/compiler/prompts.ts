@@ -35,7 +35,7 @@ Shape: { "title": string, "blocks": Block[] } — you are writing ONE section: n
 
 Rules:
 - Each section's "blocks" follow exactly the same rules as a single explanation. Pick the most specific block type for each idea; do not repeat content in two places; group related blocks with "stack".
-- Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`.
+- Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`, [text](url).
 - Math and expressions go in plain strings (e.g. derivation "expression"); no LaTeX delimiters.
 - cause-effect/timeline/data-callout accept presentation?: "auto"|"text"|"figure". Default auto draws a figure when the data fits. Leave it as auto unless asked otherwise.
 

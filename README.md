@@ -121,7 +121,9 @@ prompts interpolate, so it never drifts:
 import { BLOCK_TYPE_DOCS } from "explanations"
 ```
 
-Inline emphasis only: `**bold**`, `*italic*`, `` `code` ``. No HTML in any
+Inline emphasis only: `**bold**`, `*italic*`, `` `code` ``, `[text](url)` —
+links are scheme-gated to http(s), `mailto:`, and `#anchors`; anything else
+degrades to literal text. No HTML in any
 field.
 
 ## Figures

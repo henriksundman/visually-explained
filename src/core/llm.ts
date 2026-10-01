@@ -18,7 +18,7 @@ Rules:
 - "version" must be exactly 1.
 - Pick the most specific block type for each idea; do not repeat the same content in two blocks.
 - Group related blocks with "stack". A stack may contain a stack at most one level deep.
-- Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`.
+- Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`, [text](url).
 - Math and expressions go in plain strings (e.g. derivation "expression"); no LaTeX delimiters.
 - comparison: "items" are the columns (min 2), each dimension has one value per item, in the same order.
 - cause-effect/timeline/data-callout accept presentation?: "auto"|"text"|"figure". Default auto draws a figure when the data fits (cause-effect ≤5 links, timeline ≤12 events, data-callout with a series). Leave it as auto unless asked otherwise.
@@ -42,7 +42,7 @@ Rules:
 - Each section's "blocks" follow exactly the same rules as a single explanation. Pick the most specific block type for each idea; do not repeat content in two places; group related blocks with "stack".
 - Give a section "id" only when a stable anchor matters (cross-page links); otherwise leave it off and the renderer derives one from the title.
 - Section titles are heading-style: short, no trailing punctuation.
-- Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`.
+- Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`, [text](url).
 
 Block types:
 ${BLOCK_TYPE_DOCS}

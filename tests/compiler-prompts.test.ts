@@ -31,6 +31,10 @@ describe("section prompts", () => {
     expect(sectionSystemPrompt()).toContain("no HTML")
   })
 
+  it("teaches the link inline form", () => {
+    expect(sectionSystemPrompt()).toContain("[text](url)")
+  })
+
   it("forbids sections and version keys in section output", () => {
     const p = sectionSystemPrompt()
     expect(p).toContain('never emit a "sections" key')
