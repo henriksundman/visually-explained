@@ -239,3 +239,12 @@ describe("element popover wiring (SSR)", () => {
     expect(html).toContain(`data-tip="Node A"`)
   })
 })
+
+describe("link smoke (react)", () => {
+  it("renders links through the shared inline parser", () => {
+    const html = renderToStaticMarkup(
+      <Explanation ir={{ version: 1, blocks: [{ type: "text", body: "[x](https://e.com)" }] }} />,
+    )
+    expect(html).toContain(`<a href="https://e.com">x</a>`)
+  })
+})
