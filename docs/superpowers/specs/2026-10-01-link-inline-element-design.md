@@ -49,8 +49,13 @@ impossible by construction.
   nested quantifiers, linear scan (ReDoS-safe). Applied to the **escaped**
   text, so the label and href are already entity-safe when matched.
 - Labels pass through already-applied emphasis, so `[**x**](u)` nests:
-  `<a href="u"><strong>x</strong></a>`. A URL containing `*` with no pairing
-  star survives intact (tested).
+  `<a href="u"><strong>x</strong></a>`. A URL containing a **paired** `*…*`
+  gets emphasized before the link pass sees it, leaking `<em>` into the href
+  candidate — the gate rejects any candidate containing a raw `<` (only our
+  own emphasis markup can produce one; real `<` arrives escaped) and the
+  link degrades to the post-emphasis literal. Unpaired stars survive intact
+  (both tested; amendment from the fresh-eyes pass — the paired-star case
+  surfaced during implementation).
 - Malformed pairs — `[x](y z)` (space in href), `[x]`, `[x](` — render
   literally. The regex's `[^)\s]+` href class stops at whitespace, so a
   space-punctuated pair can never form an href token.
