@@ -182,6 +182,11 @@ describe("placePopover", () => {
     const p = placePopover(anchor, stage)
     expect(p.left).toBe(136) // stage.right - MAX_W(260) - 4
   })
+  it("pins the left edge on stages narrower than the popover", () => {
+    const anchor = { left: 50, top: 80, width: 20, height: 20, right: 70, bottom: 100 }
+    const p = placePopover(anchor, { left: 0, top: 0, right: 200 })
+    expect(p.left).toBe(4) // stage.left + 4 — never negative
+  })
 })
 
 const tippedFigure = {

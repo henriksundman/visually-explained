@@ -86,4 +86,22 @@ describe("chart", () => {
     expect(html).toContain(`data-el-id="bar:Mon"`) // id present, no tip → no tabindex
     expect(html).toContain(`data-tip="Deploy day spike"`)
   })
+
+  it("derives dot ids for line charts", () => {
+    const { html } = renderExplanation({
+      version: 1,
+      blocks: [
+        {
+          type: "chart",
+          kind: "line",
+          points: [
+            { label: "Mon", value: 1 },
+            { label: "Tue", value: 3, tip: "Spike" },
+          ],
+        },
+      ],
+    })
+    expect(html).toContain(`data-el-id="dot:Mon"`) // id present, no tip → no tabindex
+    expect(html).toContain(`<g class="exp-el" data-el-id="dot:Tue" data-tip="Spike" tabindex="0">`)
+  })
 })

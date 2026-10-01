@@ -128,9 +128,6 @@ The arc is complete; new work starts here. Candidate threads (recorded
 - **Curio Editorial Learning theme tokens** — the Stitch destination look,
   off `docs/design/stitch/*/DESIGN.md`; deliberately kept out of the
   compiler cycle.
-- **Figure-events minors** — no direct test asserting `dot:<label>` id
-  derivation; `placePopover` can place negative-left on stages < ~268px
-  (progress ledger, figure-events cycle).
 - **AI-generated raster imagery** (discussed 2026-09-30, shape undecided) —
   the host runs an image model and hands the library a catalog of images
   with instructions; the library stitches them into guides/explanations

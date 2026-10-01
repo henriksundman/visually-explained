@@ -44,13 +44,15 @@ const HEADROOM = 60 // rough popover height allowance for the above/below flip
 
 /** Position a max-width popover relative to the stage box. Prefer above the
  *  anchor (bottom edge sits GAP above it — the component adds translateY(-100%)),
- *  flip below when clipped, nudge horizontally inside the stage. */
+ *  flip below when clipped, nudge horizontally inside the stage. Clamp lower
+ *  bound last: on stages narrower than the popover the upper bound is
+ *  negative and min-then-max would pin the popover past the left edge. */
 export function placePopover(
   anchor: { left: number; top: number; width: number; height: number; right: number; bottom: number },
   stage: { left: number; top: number; right: number },
 ): Placement {
   let left = anchor.left + anchor.width / 2 - MAX_W / 2
-  left = Math.min(Math.max(left, stage.left + 4), stage.right - MAX_W - 4)
+  left = Math.max(Math.min(left, stage.right - MAX_W - 4), stage.left + 4)
   const above = anchor.top - stage.top >= HEADROOM
   const top = above ? anchor.top - stage.top - GAP : anchor.bottom - stage.top + GAP
   return { top, left: left - stage.left, placement: above ? "above" : "below" }
