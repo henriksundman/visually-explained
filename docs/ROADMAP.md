@@ -71,6 +71,13 @@ decisions that survive across sessions.
   is a drain of the stream (one code path, contract tests lock both APIs);
   `/compile` consumes the stream client-side with a paced stub. Spec:
   `docs/superpowers/specs/2026-10-01-streaming-compile-design.md`.
+- **Real data for visual blocks** (2026-10-01) — hosts pass
+  `datasets?: Record<string, unknown>` to any render entry point;
+  `chart`/`data-callout`/`timeline` blocks carrying `dataset: "<key>"`
+  materialize their data fields from the validated payload at render time
+  (field-by-field override; miss/invalid → warning + literal fallback, never
+  a throw). Exported per-type dataset schemas; LLM surface untouched. Spec:
+  `docs/superpowers/specs/2026-10-01-real-data-visual-blocks-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -111,10 +118,6 @@ The arc is complete; new work starts here. Candidate threads (recorded
   citation blocks or inline references, which need a link inline element
   (renderInline's v1 subset is bold/italic/code only). The gap between a
   demo and real content.
-- **Real data for visual blocks** — host-supplied datasets (keyed,
-  schema-validated) interpolated into `chart`/`data-callout`/`timeline` at
-  render time, so numbers are true instead of model-guessed. Renderer/schema
-  work; no LLM-surface changes.
 - **Retrieval practice** — an assessment primitive in the block library
   (quiz / reveal-the-answer), the missing complement to the exposition-side
   blocks; retrieval beats re-reading for learning that sticks.

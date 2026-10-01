@@ -133,7 +133,29 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/document") {
     // The document root is the token-bearing .exp scope; theme "none" keeps
     // the demo chrome in charge of the page background.
-    const { html } = renderDocument(demoDocIr, { theme: "none" })
+    const { html } = renderDocument(demoDocIr, {
+      theme: "none",
+      datasets: {
+        "weekly-deploys": {
+          kind: "bar",
+          unit: "deploys",
+          points: [
+            { label: "Mon", value: 4 },
+            { label: "Tue", value: 9, tip: "Deploy day" },
+            { label: "Wed", value: 18 },
+            { label: "Thu", value: 11 },
+            { label: "Fri", value: 7 },
+          ],
+        },
+        milestones: {
+          events: [
+            { when: "2024-Q1", what: "Design partners", tip: "Five teams" },
+            { when: "2024-Q3", what: "Beta" },
+            { when: "2025-Q1", what: "GA", tip: "Host announcement" },
+          ],
+        },
+      },
+    })
     const docPage = `<!doctype html>
 <html lang="en">
 <head>

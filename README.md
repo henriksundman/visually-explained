@@ -54,6 +54,7 @@ const { html, warnings } = renderDocument(ir, { theme: "light", sketch: true })
 | `sketch` | `false` | Hand-drawn (rough.js) stroke pass on every figure |
 | `strict` | `false` | Throw on an invalid top level instead of degrading |
 | `root` | `true` | `false` emits no `.exp` wrapper — style tokens on your own element |
+| `datasets` | — | Keyed host data for blocks carrying a `dataset` key — a miss or invalid payload warns and falls back to the block's literal fields |
 
 `renderDocument` options (all optional):
 
@@ -64,6 +65,7 @@ const { html, warnings } = renderDocument(ir, { theme: "light", sketch: true })
 | `strict` | `false` | Throw on document- or section-level diagnostics |
 | `toc` | `true` | Emit the derived table of contents |
 | `tocSticky` | `true` | `false` renders the TOC in normal flow (theme default pins it) |
+| `datasets` | — | Keyed host data for blocks carrying a `dataset` key — a miss or invalid payload warns and falls back to the block's literal fields |
 
 Both return `{ html, warnings }`. Every degraded piece appends a
 `"[code] message"` string to `warnings` — surface or log them. Prefer a
@@ -99,6 +101,18 @@ import { Explanation, Document } from "explanations/react"
 - **Pedagogy:** `concept`, `worked-example`, `derivation`, `comparison`,
   `cause-effect`, `callout`, `data-callout`
 - **Visuals:** `timeline`, `diagram`, `chart`, `figure`
+
+Host data, not model guesses: `chart`, `data-callout`, and `timeline` accept
+`dataset: "<key>"`. At render time the key is looked up in the `datasets`
+option and the validated payload's fields override the block's literals
+(omitted fields keep the literal). A missing key or invalid payload warns and
+renders the literal fields — never a failed render. Payload schemas are
+exported for pre-validation: `chartDatasetSchema`, `dataCalloutDatasetSchema`,
+`timelineDatasetSchema`.
+
+```ts
+renderDocument(ir, { datasets: { "weekly-deploys": { kind: "bar", unit: "deploys", points: [...] } } })
+```
 
 Exact payloads are documented in `BLOCK_TYPE_DOCS` — the same string the LLM
 prompts interpolate, so it never drifts:
@@ -247,6 +261,7 @@ The library deliberately leaves to the embedding application:
 | Path | Responsibility |
 | --- | --- |
 | `src/core/` | Schemas, salvage, validators, HTML renderers, LLM contract exports |
+| `src/core/datasets.ts` | Dataset schemas + lenient resolver shared by the visual primitives |
 | `src/primitives/` | One file per block type, wired via `registerPrimitive` |
 | `src/figures/` | Scene IR → SVG: diagram/chart/timeline layout, expression evaluator, path grammar, rough.js sketch pass, authored figures |
 | `src/react/` | RSC components, interactive figure runtime, element events/popover |

@@ -916,11 +916,11 @@ sleep 1
 curl -s -o /dev/null -w "document:%{http_code} " http://localhost:4173/document
 curl -s -o /dev/null -w "compile:%{http_code} " http://localhost:4173/compile
 curl -s -o /dev/null -w "root:%{http_code}\n" http://localhost:4173/
-curl -s http://localhost:4173/document | grep -c "deploys-true"
+curl -s http://localhost:4173/document | grep -c "4deploys"  # dataset value renders; (amendment: block ids don't appear in HTML — grep the dataset-derived value instead)
 ./scripts/vexp verify
 ```
 
-Expected: tsc clean; 311/311; build ok; all curls 200; the served `/document` HTML contains the dataset-driven chart (`deploys-true` → count ≥ 1); `vexp verify` clean (run any tests it flags).
+Expected: tsc clean; 311/311; build ok; all curls 200; the served `/document` HTML contains the dataset-driven value (`4deploys` → count ≥ 1 — block ids don't render, so grep the value); `vexp verify` clean (run any tests it flags).
 
 **Test-count ledger:** 291 base → Task 1 +5 (296) → Task 2 +7 (303) → Task 3 +4 (307) → Task 4 +4 (311). The demoDocIr section-count assertion changes value but not count.
 

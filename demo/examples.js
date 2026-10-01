@@ -419,11 +419,21 @@ export const howToIr = {
 export const demoDocIr = {
   version: 1,
   title: "How signals become pictures",
-  summary: "Four angles on one pipeline — the concept, the data, the drawing, the rollout.",
+  summary: "Five angles on one pipeline — the concept, the data, the drawing, the rollout, and true numbers from the host.",
   sections: [
     { id: "fig-concept", title: "The concept", blocks: educationIr.blocks },
     { id: "fig-data", title: "What the data says", blocks: dataIr.blocks },
     { id: "fig-figures", title: "Drawing it", blocks: figuresIr.blocks },
     { id: "fig-epicycles", title: "Epicycles", blocks: howToIr.blocks },
+    {
+      id: "fig-real-data",
+      title: "Real data",
+      blocks: [
+        { type: "text", body: "The same chart block twice: the first one carries a `dataset` key, so its numbers come from the host — not from the model. The second is the literal IR, model-guessed." },
+        { type: "chart", id: "deploys-true", kind: "bar", points: [{ label: "Mon", value: 120 }], dataset: "weekly-deploys" },
+        { type: "chart", id: "deploys-guessed", kind: "bar", points: [{ label: "Mon", value: 120 }] },
+        { type: "timeline", id: "milestones-true", events: [{ when: "someday", what: "model-guessed" }], dataset: "milestones" },
+      ],
+    },
   ],
 }
