@@ -47,6 +47,12 @@ Before deep-diving, test the failure against these recurring patterns:
 
 ## Part 2 — Entries
 
+### 2026-10-01 — Emphasis markup leaked into link hrefs
+- **Symptom:** GREEN run failed one test — `[x](https://e.com/a*b*c)` rendered as `<a href="https://e.com/a<em>b</em>c">x</a>`: a paired `*…*` inside the URL was emphasized *before* the link pass matched, so the href candidate carried `<em>` into the attribute.
+- **Root cause:** two passes over the same escaped string (emphasis, then links) — ordering prevents markup pairing *into* an already-emitted href, but not markup *inside a future* href. The link pass sees post-emphasis text, so its "literal fallback" is also post-emphasis (original stars unrecoverable at that layer).
+- **Fix:** the href gate rejects any candidate containing a raw `<` — only the library's own emphasis markup can produce one (real `<` arrives escaped as `&lt;`) — degrading the link instead of emitting a corrupted attribute.
+- **Rule:** when consecutive passes transform overlapping text, test their interaction (paired markers spanning a boundary), not just each pass in isolation; a structural tell like "only our own pass emits `<`" is a cheap, complete guard.
+
 ### 2026-10-01 — Popover pinned past the left edge on narrow stages
 - **Symptom:** unit RED — expected `4`, got `-64`, for a 200px-wide stage.
 - **Root cause:** `placePopover` clamped `min(max(left, stage.left+4), stage.right-MAX_W-4)`; when the stage is narrower than the popover the clamp interval degenerates and the negative upper bound wins.
