@@ -7,7 +7,7 @@ export const educationIr = {
   title: "Why does dividing by a fraction multiply?",
   summary: "A classic confusion, resolved with a picture you can hold in your head.",
   blocks: [
-    { type: "text", body: "Division asks a **counting** question: *how many of these fit in that?* The surprise is what happens when `these` is smaller than one." },
+    { type: "text", body: "Division asks a **counting** question: *how many of these fit in that?* The surprise is what happens when `these` is smaller than one. See [fraction division, visually](https://mathworld.wolfram.com/Fraction.html) for more." },
     {
       type: "step-list",
       steps: [

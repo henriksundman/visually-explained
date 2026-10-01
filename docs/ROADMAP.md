@@ -78,6 +78,12 @@ decisions that survive across sessions.
   (field-by-field override; miss/invalid → warning + literal fallback, never
   a throw). Exported per-type dataset schemas; LLM surface untouched. Spec:
   `docs/superpowers/specs/2026-10-01-real-data-visual-blocks-design.md`.
+- **Link inline element** (2026-10-01) — `renderInline` gains
+  `[label](href)`: scheme-gated (https/http/mailto/#anchor after
+  control-char/space normalization), escaped, lenient (gated or malformed
+  links render literally); the LLM prompt contracts teach the form. The
+  grounded-authoring prerequisite. Spec:
+  `docs/superpowers/specs/2026-10-01-link-inline-element-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -115,8 +121,8 @@ The arc is complete; new work starts here. Candidate threads (recorded
 
 - **Grounded authoring** — hosts supply source material (documents, notes)
   that constrains outline/section prompts; output carries provenance:
-  citation blocks or inline references, which need a link inline element
-  (renderInline's v1 subset is bold/italic/code only). The gap between a
+  citation blocks or inline references (the link inline element shipped
+  2026-10-01 unblocks this). The gap between a
   demo and real content.
 - **Retrieval practice** — an assessment primitive in the block library
   (quiz / reveal-the-answer), the missing complement to the exposition-side
