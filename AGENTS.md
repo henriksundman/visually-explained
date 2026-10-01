@@ -36,6 +36,9 @@ against the spec before calling a multi-task plan done. Task briefs live in
 `.superpowers/sdd/progress.md`. Finishing a branch includes appending a
 "Branch finished" line to that ledger (merge state, tests on merged result,
 push state, branch deletion) — part of the finish step, not an afterthought.
+A debugging session that surfaces a reusable lesson appends a dated entry to
+`docs/DEBUGGING.md` (symptom → root cause → fix → rule) before the branch
+finishes; consult its Part 1 triage list before deep-diving on a bug.
 
 ### Running the demo server
 The server (`demo/server.mjs`) serves the BUILT package (`dist/`) plus the demo
