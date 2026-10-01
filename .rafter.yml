@@ -18,6 +18,7 @@ ignore:
     rules:
       - "rules.rafter.javascript.express.xss-taint.rafter.javascript.express.xss-taint.xss-reflected-taint"
       - "rules.rafter.javascript.express.xss-taint"
+      - "R-B43E7"
     reason: "static-response server: no request data reaches any res.end() payload; reflected-XSS flow does not exist"
 
   # React dangerouslySetInnerHTML sinks are fed exclusively by the library's
@@ -32,6 +33,8 @@ ignore:
       - "react/no-danger"
       - "rules.rafter.javascript.react.rafter.javascript.react.dangerously-set-innerhtml"
       - "rules.rafter.javascript.react.dangerously-set-innerhtml"
+      - "R-882BF"
+      - "R-CDBCD"
     reason: "every sink receives library-generated HTML built from escaped model text via escapeHtml/renderInline/safeHref; no path bypasses the escape layer (test-enforced)"
 
   # Flagged regexes are linear-shaped (chart: two bounded groups, no
