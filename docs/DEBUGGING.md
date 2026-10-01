@@ -47,6 +47,12 @@ Before deep-diving, test the failure against these recurring patterns:
 
 ## Part 2 — Entries
 
+### 2026-10-01 — SAST flagged the whole output pipeline; four rule groups, one real action
+- **Symptom:** `rafter run` on the sources-block cycle reported 35 findings: "XSS" in the demo server, `dangerouslySetInnerHTML` ×13, "unsafe regex" ×2.
+- **Root cause:** the scanner inferred flows, not paths: demo responses are static constants (no `req.*` in any body); React sinks are fed exclusively by the library's escape-then-render pipeline (the library *is* the sanitizer — that's the architecture, per the link-inline security walk); the flagged regexes are linear-shaped, but `highlightCode` did run an unbounded attacker-controlled string.
+- **Fix:** three false-positive verdicts with traced dataflow (recorded, not suppressed); one real hardening — `code` payload capped at 20k in the schema + render-time truncation warning, closing the ReDoS-input class regardless of regex internals.
+- **Rule:** triage SAST output by tracing input→sink in *this* codebase — scanners flag families, not exploits; but treat "unbounded input to a regex pass" as a real finding even when the regex itself is safe.
+
 ### 2026-10-01 — Emphasis markup leaked into link hrefs
 - **Symptom:** GREEN run failed one test — `[x](https://e.com/a*b*c)` rendered as `<a href="https://e.com/a<em>b</em>c">x</a>`: a paired `*…*` inside the URL was emphasized *before* the link pass matched, so the href candidate carried `<em>` into the attribute.
 - **Root cause:** two passes over the same escaped string (emphasis, then links) — ordering prevents markup pairing *into* an already-emitted href, but not markup *inside a future* href. The link pass sees post-emphasis text, so its "literal fallback" is also post-emphasis (original stars unrecoverable at that layer).
