@@ -256,7 +256,17 @@ The library deliberately leaves to the embedding application:
 - the LLM client and API keys (`LlmClient` is injected);
 - page scripts such as scroll-spy;
 - progress/streaming UI built on compile events;
-- collections, routing, and caching of generated documents.
+- collections, routing, and caching of generated documents;
+- link opening behavior — the library emits plain `<a href>` (no `target`/
+  `rel`). To open external links in a new tab, add a delegated listener
+  host-side (scope it however you like):
+
+  ```js
+  document.addEventListener("click", e => {
+    const a = e.target.closest('.exp a[href^="http"]')
+    if (a) window.open(a.href, "_blank", "noopener")
+  })
+  ```
 
 ## Codebase map
 
