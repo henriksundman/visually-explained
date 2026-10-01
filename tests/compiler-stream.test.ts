@@ -140,3 +140,50 @@ describe("compileDocument (drain)", () => {
     expect(warnings).toEqual(a.warnings)
   })
 })
+
+describe("stream semantics (contract locks)", () => {
+  it("delivers section-done before the next section call starts", async () => {
+    const outline = {
+      version: 1,
+      title: "T",
+      sections: [
+        { title: "First", goal: "g" },
+        { title: "Second", goal: "g" },
+      ],
+    }
+    const timeline: string[] = []
+    const client: LlmClient = async req => {
+      await new Promise(r => setTimeout(r, 20))
+      if (outlineMatch.test(req.user)) {
+        timeline.push("call:outline")
+        return JSON.stringify(outline)
+      }
+      if (sectionMatch("First").test(req.user)) {
+        timeline.push("call:first")
+        return JSON.stringify(goodSection("First"))
+      }
+      timeline.push("call:second")
+      return JSON.stringify(goodSection("Second"))
+    }
+    for await (const e of compileDocumentStream("signals", { client })) {
+      if (e.kind === "section-done") timeline.push(`done:${e.index}`)
+    }
+    // The whole point: delivery of done:0 happens before call:second is made.
+    expect(timeline).toEqual(["call:outline", "call:first", "done:0", "call:second", "done:1"])
+  })
+
+  it("stops issuing calls when the consumer breaks early", async () => {
+    let calls = 0
+    const client: LlmClient = async req => {
+      calls++
+      if (outlineMatch.test(req.user)) {
+        return JSON.stringify({ ...cannedOutline, sections: cannedOutline.sections.slice(0, 1) })
+      }
+      return JSON.stringify(goodSection("What is a signal"))
+    }
+    for await (const e of compileDocumentStream("signals", { client })) {
+      if (e.kind === "outline-done") break
+    }
+    expect(calls).toBe(1) // outline only — the section call never started
+  })
+})
