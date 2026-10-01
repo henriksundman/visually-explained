@@ -140,7 +140,8 @@
 .exp-timeline,
 .exp-callout,
 .exp-diagram,
-.exp-chart {
+.exp-chart,
+.exp-sources {
   min-width: 0;
 }
 
@@ -794,4 +795,38 @@
   font-weight: 650;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--exp-border);
+}
+
+/* Sources block: numbered, anchorable reference list (grounded authoring). */
+.exp-sources-title {
+  margin: 0 0 var(--exp-gap);
+  font-weight: 650;
+}
+
+.exp-sources-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.exp-source {
+  padding: 6px 0;
+}
+
+.exp-source + .exp-source {
+  border-top: 1px solid var(--exp-border);
+}
+
+.exp-source-link {
+  color: var(--exp-accent);
+  text-decoration: none;
+}
+
+.exp-source-link:hover {
+  text-decoration: underline;
+}
+
+.exp-source-detail {
+  margin: 2px 0 0;
+  font-size: 0.9em;
+  color: var(--exp-text-muted);
 }
