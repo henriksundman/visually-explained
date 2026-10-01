@@ -125,7 +125,10 @@ export const codeBlockSchema = z.object({
   id: idSchema,
   type: z.literal("code"),
   language: z.string().min(1).optional(),
-  code: z.string().min(1),
+  // Display-snippet cap: bounds the highlighter's regex pass (ReDoS
+  // defense-in-depth — the TOKEN_RE is linear-shaped but unbounded input is
+  // still attacker-controlled work). Salvage-degraded at render.
+  code: z.string().min(1).max(20000),
 })
 export type CodeBlock = z.infer<typeof codeBlockSchema>
 

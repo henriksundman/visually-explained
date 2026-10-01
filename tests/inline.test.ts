@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { escapeHtml, renderInline } from "../src/core/inline"
+import { codeBlockSchema } from "../src/core/schema"
 
 describe("escapeHtml", () => {
   it("escapes html-significant characters", () => {
@@ -86,5 +87,12 @@ describe("renderInline", () => {
     expect(renderInline("plain **b** *i* `c` [ not a link (x")).toBe(
       "plain <strong>b</strong> <em>i</em> <code>c</code> [ not a link (x",
     )
+  })
+})
+
+describe("code payload bounds (rafter hardening)", () => {
+  it("caps code at 20k chars in the schema", () => {
+    expect(codeBlockSchema.safeParse({ id: "c", type: "code", code: "x".repeat(20000) }).success).toBe(true)
+    expect(codeBlockSchema.safeParse({ id: "c", type: "code", code: "x".repeat(20001) }).success).toBe(false)
   })
 })
