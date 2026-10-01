@@ -1,5 +1,6 @@
 import { registerPrimitive, type RenderContext } from "../core/registry"
 import { chartBlockSchema, type ChartBlock } from "../core/schema"
+import { resolveDataset, applyDatasetFields, chartDatasetSchema } from "../core/datasets"
 import { renderInline } from "../core/inline"
 import { layoutChart, type ChartPoint } from "../figures/layoutChart"
 import { sceneToSvg } from "../figures/svg"
@@ -38,15 +39,20 @@ function parsePoints(raw: unknown[], warnings: string[]): ChartPoint[] {
 
 export function renderChart(block: ChartBlock, ctx: RenderContext): string {
   const warnings: string[] = []
-  const points = parsePoints(block.points, warnings)
+  let b: ChartBlock = block
+  if (block.dataset) {
+    const r = resolveDataset(ctx, "chart", block.id, block.dataset, chartDatasetSchema)
+    if (r.ok) b = applyDatasetFields(block, r.data)
+  }
+  const points = parsePoints(b.points, warnings)
   for (const w of warnings) ctx.addWarning(w)
   if (points.length === 0) {
     return `<div class="exp-block exp-chart"><p class="exp-fig-empty">Chart data could not be read.</p></div>`
   }
-  const { scene } = layoutChart({ kind: block.kind, points, unit: block.unit, caption: block.caption })
-  const aria = block.caption ?? `Chart: ${points.map(p => p.label).join(" → ")}`
-  const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: block.id ?? hashSeed(aria) })
-  const caption = block.caption ? `<p class="exp-fig-caption">${renderInline(block.caption)}</p>` : ""
+  const { scene } = layoutChart({ kind: b.kind, points, unit: b.unit, caption: b.caption })
+  const aria = b.caption ?? `Chart: ${points.map(p => p.label).join(" → ")}`
+  const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: b.id ?? hashSeed(aria) })
+  const caption = b.caption ? `<p class="exp-fig-caption">${renderInline(b.caption)}</p>` : ""
   return `<div class="exp-block exp-chart">${svg}${caption}</div>`
 }
 

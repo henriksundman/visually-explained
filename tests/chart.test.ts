@@ -104,4 +104,99 @@ describe("chart", () => {
     expect(html).toContain(`data-el-id="dot:Mon"`) // id present, no tip → no tabindex
     expect(html).toContain(`<g class="exp-el" data-el-id="dot:Tue" data-tip="Spike" tabindex="0">`)
   })
+
+  it("keeps the dataset key on an otherwise-valid chart block", () => {
+    const parsed = chartBlockSchema.safeParse({
+      id: "c1",
+      type: "chart",
+      kind: "bar",
+      points: [{ label: "Mon", value: 4 }],
+      dataset: "weekly-deploys",
+    })
+    expect(parsed.success).toBe(true)
+    expect(parsed.success && parsed.data.dataset).toBe("weekly-deploys")
+  })
+})
+
+const deploysDataset = {
+  kind: "bar" as const,
+  points: [
+    { label: "Mon", value: 4 },
+    { label: "Tue", value: 9, tip: "Deploy day" },
+  ],
+  unit: "deploys",
+}
+
+describe("chart datasets", () => {
+  it("renders dataset numbers over literal fields", () => {
+    const { html, warnings } = renderExplanation(
+      {
+        version: 1,
+        blocks: [{ type: "chart", id: "dep", kind: "bar", points: [{ label: "Mon", value: 120 }], dataset: "deploys" }],
+      },
+      { datasets: { deploys: deploysDataset } },
+    )
+    expect(html).toContain(">4deploys</text>")
+    expect(html).toContain(`data-tip="Deploy day"`)
+    expect(html).not.toContain(">120")
+    expect(warnings).toEqual([])
+  })
+
+  it("keeps literals for fields the dataset omits", () => {
+    const { html } = renderExplanation(
+      {
+        version: 1,
+        blocks: [{ type: "chart", id: "dep", kind: "bar", points: [{ label: "Mon", value: 120 }], unit: "ms", caption: "kept", dataset: "partial" }],
+      },
+      { datasets: { partial: { kind: "bar", points: [{ label: "Mon", value: 7 }] } } },
+    )
+    expect(html).toContain(">7")
+    expect(html).toContain("kept</p>")
+    expect(html).toContain(">7ms</text>")
+  })
+
+  it("warns and renders literals on a key miss", () => {
+    const { html, warnings } = renderExplanation({
+      version: 1,
+      blocks: [{ type: "chart", id: "dep", kind: "bar", points: [{ label: "Mon", value: 120 }], dataset: "nope" }],
+    })
+    expect(html).toContain(">120")
+    expect(warnings).toEqual([`[dataset] chart dep: no dataset named "nope"`])
+  })
+
+  it("warns and renders literals on an invalid payload", () => {
+    const { html, warnings } = renderExplanation(
+      {
+        version: 1,
+        blocks: [{ type: "chart", id: "dep", kind: "bar", points: [{ label: "Mon", value: 120 }], dataset: "bad" }],
+      },
+      { datasets: { bad: { kind: "pie" } } },
+    )
+    expect(html).toContain(">120")
+    expect(warnings[0]).toMatch(/^\[dataset\] chart dep: invalid payload — /)
+  })
+
+  it("never throws under strict for a dataset miss", () => {
+    const { html, warnings } = renderExplanation(
+      {
+        version: 1,
+        blocks: [{ type: "chart", id: "dep", kind: "bar", points: [{ label: "Mon", value: 120 }], dataset: "nope" }],
+      },
+      { strict: true },
+    )
+    expect(html).toContain(">120")
+    expect(warnings).toHaveLength(1)
+  })
+
+  it("applies per-point salvage to dataset points", () => {
+    const { html, warnings } = renderExplanation(
+      {
+        version: 1,
+        blocks: [{ type: "chart", id: "dep", kind: "bar", points: [{ label: "Mon", value: 120 }], dataset: "mixed" }],
+      },
+      { datasets: { mixed: { kind: "bar", points: [{ label: "ok", value: 1 }, { label: "bad" }, "junk"] } } },
+    )
+    expect(warnings.filter(w => w.includes("figure-point-invalid"))).toHaveLength(2)
+    expect((html.match(/>ok<\/text>/g) ?? []).length).toBe(1)
+  })
 })

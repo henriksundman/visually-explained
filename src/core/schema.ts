@@ -221,6 +221,8 @@ export const chartBlockSchema = z.object({
   points: z.array(z.unknown()),
   unit: z.string().min(1).optional(),
   caption: z.string().min(1).optional(),
+  // Host dataset key: materializes data fields at render time (real-data spec §3).
+  dataset: z.string().min(1).optional(),
 })
 export type ChartBlock = z.infer<typeof chartBlockSchema>
 
