@@ -95,8 +95,10 @@ One rule, lenient everywhere. Per visual block with `dataset` set:
 
 ## 6. Testing
 
-- **Schema acceptance:** blocks with `dataset` parse; salvage keeps the key
-  on otherwise-invalid blocks.
+- **Schema acceptance:** blocks with `dataset` parse. (Amended during the
+  fresh-eyes pass: block salvage is all-or-nothing — a block that fails its
+  own schema is skipped wholesale, dataset key or not. The key only matters
+  for schema-valid blocks; there is no partial payload for it to survive on.)
 - **Resolver matrix:** hit / hit-invalid / miss / absent — resolved fields,
   fallback fields, and warning text for each of the three block types.
 - **Override semantics:** per-field precedence (dataset field wins, omitted
