@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { compileDocumentStream, type StreamCompileEvent } from "../src/compiler/stream"
+import { compileDocument } from "../src/compiler/compile"
 import { documentSchema } from "../src/core/documentSchema"
 import type { LlmClient } from "../src/compiler/client"
 
@@ -109,5 +110,33 @@ describe("compileDocumentStream", () => {
       }
     }
     await expect(consume).rejects.toThrow(/outline/)
+  })
+})
+
+describe("compileDocument (drain)", () => {
+  it("shares the stream's grown payloads", async () => {
+    const { events } = await compileDocument("signals", { client: happyClient() })
+    const outlineDone = events.find(e => e.kind === "outline-done") as { sectionTitles?: string[] }
+    expect(outlineDone.sectionTitles).toEqual(["What is a signal", "Reading data", "Broken section"])
+    const sectionDone = events.find(e => e.kind === "section-done") as { blocks?: unknown }
+    expect(Array.isArray(sectionDone.blocks)).toBe(true)
+  })
+
+  it("drained stream deep-equals compileDocument", async () => {
+    const a = await compileDocument("signals", { client: happyClient() })
+    const events: StreamCompileEvent[] = []
+    let document: unknown
+    let warnings: string[] = []
+    for await (const e of compileDocumentStream("signals", { client: happyClient() })) {
+      if (e.kind === "compile-done") {
+        document = e.document
+        warnings = e.warnings
+      } else {
+        events.push(e)
+      }
+    }
+    expect(events).toEqual(a.events)
+    expect(document).toEqual(a.document)
+    expect(warnings).toEqual(a.warnings)
   })
 })
