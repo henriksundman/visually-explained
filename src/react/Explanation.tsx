@@ -23,6 +23,8 @@ export interface ExplanationProps {
   strict?: boolean
   /** Hand-drawn (rough.js) stroke pass on every figure. */
   sketch?: boolean
+  /** Host-supplied datasets for blocks carrying a `dataset` key. */
+  datasets?: Record<string, unknown>
   /** Route figure blocks to the interactive runtime (sliders + play).
    *  Default false — keeps this component RSC-safe. */
   interactive?: boolean
@@ -46,6 +48,7 @@ export function Explanation({
   components,
   strict,
   sketch,
+  datasets,
   interactive,
   onElementEvent,
 }: ExplanationProps) {
@@ -74,10 +77,10 @@ export function Explanation({
           return <InteractiveFigure key={b.index} block={b.data} sketch={sketch} />
         }
         if (onElementEvent && b.kind === "valid" && (b.type === "figure" || b.type === "diagram" || b.type === "chart")) {
-          const html = renderBlock(b.type, b.data, 1, { sketch })
+          const html = renderBlock(b.type, b.data, 1, { sketch, datasets })
           return <FigureEvents key={b.index} html={html} onEvent={onElementEvent} />
         }
-        return <div key={b.index} dangerouslySetInnerHTML={{ __html: renderBlock(b.type, b.data, 1, { sketch }) }} />
+        return <div key={b.index} dangerouslySetInnerHTML={{ __html: renderBlock(b.type, b.data, 1, { sketch, datasets }) }} />
       })}
     </div>
   )
