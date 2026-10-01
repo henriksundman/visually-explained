@@ -68,6 +68,7 @@
       renderDoc()
     } else if (e.kind === "section-failed") {
       dropped.push(e.title)
+      statusEl.textContent = `Section "${e.title}" failed validation and was dropped`
     } else if (e.kind === "compile-done") {
       warnings = e.warnings
       statusEl.textContent =
