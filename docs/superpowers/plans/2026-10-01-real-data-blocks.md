@@ -514,8 +514,9 @@ describe("data-callout datasets", () => {
       blocks: [{ type: "data-callout", id: "dc", metric: "9", label: "kept", delta: "+2", dataset: "p" }],
     }, { datasets: { p: { metric: "77", label: "overridden" } } })
     expect(partial.html).toContain(`class="exp-metric">77<`)
-    expect(partial.html).toContain("kept")
-    expect(partial.html).toContain("+2")
+    expect(partial.html).toContain("overridden") // dataset-defined label wins
+    expect(partial.html).toContain("+2") // delta omitted by the dataset → literal kept
+    expect(partial.html).not.toContain("kept")
 
     const miss = renderExplanation({
       version: 1,

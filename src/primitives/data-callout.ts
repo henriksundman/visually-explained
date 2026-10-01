@@ -1,5 +1,6 @@
 import { registerPrimitive, type RenderContext } from "../core/registry"
 import { dataCalloutBlockSchema, type DataCalloutBlock } from "../core/schema"
+import { resolveDataset, applyDatasetFields, dataCalloutDatasetSchema } from "../core/datasets"
 import { escapeHtml, renderInline } from "../core/inline"
 import { layoutSparkline } from "../figures/layoutChart"
 import { sceneToSvg } from "../figures/svg"
@@ -7,18 +8,23 @@ import { hashSeed } from "../figures/seed"
 import type { Scene } from "../figures/scene"
 
 export function renderDataCallout(block: DataCalloutBlock, ctx: RenderContext): string {
-  const spark = resolveSparkline(block)
+  let b: DataCalloutBlock = block
+  if (block.dataset) {
+    const r = resolveDataset(ctx, "data-callout", block.id, block.dataset, dataCalloutDatasetSchema)
+    if (r.ok) b = applyDatasetFields(block, r.data)
+  }
+  const spark = resolveSparkline(b)
   const sparkSvg = spark
     ? sceneToSvg(spark.scene, { ariaLabel: spark.aria, sketch: ctx.sketch, seed: spark.seed })
     : ""
-  const delta = block.delta
-    ? `<span class="exp-delta${block.trend ? ` exp-delta-${block.trend}` : ""}">${escapeHtml(block.delta)}</span>`
+  const delta = b.delta
+    ? `<span class="exp-delta${b.trend ? ` exp-delta-${b.trend}` : ""}">${escapeHtml(b.delta)}</span>`
     : ""
-  const context = block.context ? `<p class="exp-context">${renderInline(block.context)}</p>` : ""
+  const context = b.context ? `<p class="exp-context">${renderInline(b.context)}</p>` : ""
   return (
     `<div class="exp-block exp-data-callout">` +
-    `<span class="exp-metric">${escapeHtml(block.metric)}</span>` +
-    `<span class="exp-metric-label">${renderInline(block.label)}</span>` +
+    `<span class="exp-metric">${escapeHtml(b.metric)}</span>` +
+    `<span class="exp-metric-label">${renderInline(b.label)}</span>` +
     delta +
     (sparkSvg ? `<div class="exp-spark-box">${sparkSvg}</div>` : "") +
     context +

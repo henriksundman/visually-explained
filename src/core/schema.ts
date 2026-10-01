@@ -82,6 +82,8 @@ export const dataCalloutBlockSchema = z.object({
   series: z.array(z.number()).min(2).max(24).optional(),
   presentation: presentationSchema.optional(),
   context: z.string().min(1).optional(),
+  // Host dataset key: materializes data fields at render time (real-data spec §3).
+  dataset: z.string().min(1).optional(),
 })
 export type DataCalloutBlock = z.infer<typeof dataCalloutBlockSchema>
 
@@ -99,6 +101,8 @@ export const timelineBlockSchema = z.object({
     )
     .min(1),
   presentation: presentationSchema.optional(),
+  // Host dataset key: materializes data fields at render time (real-data spec §3).
+  dataset: z.string().min(1).optional(),
 })
 export type TimelineBlock = z.infer<typeof timelineBlockSchema>
 

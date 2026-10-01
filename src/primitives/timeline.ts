@@ -1,5 +1,6 @@
 import { registerPrimitive, type RenderContext } from "../core/registry"
 import { timelineBlockSchema, type TimelineBlock } from "../core/schema"
+import { resolveDataset, applyDatasetFields, timelineDatasetSchema } from "../core/datasets"
 import { renderInline } from "../core/inline"
 import { layoutTimeline } from "../figures/layoutTimeline"
 import { sceneToSvg } from "../figures/svg"
@@ -28,11 +29,16 @@ function renderTextForm(block: TimelineBlock): string {
 }
 
 export function renderTimeline(block: TimelineBlock, ctx: RenderContext): string {
-  if (resolvePresentation(block) === "text") return renderTextForm(block)
-  const { scene } = layoutTimeline(block.events.map(e => ({ when: e.when, what: e.what, tip: e.tip })))
+  let b: TimelineBlock = block
+  if (block.dataset) {
+    const r = resolveDataset(ctx, "timeline", block.id, block.dataset, timelineDatasetSchema)
+    if (r.ok) b = applyDatasetFields(block, r.data)
+  }
+  if (resolvePresentation(b) === "text") return renderTextForm(b)
+  const { scene } = layoutTimeline(b.events.map(e => ({ when: e.when, what: e.what, tip: e.tip })))
   // `detail` is prose too long for figure labels; the text form carries it (spec §1).
-  const aria = `Timeline: ${block.events.map(e => `${e.when} ${e.what}`).join(" → ")}`
-  const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: block.id ?? hashSeed(aria) })
+  const aria = `Timeline: ${b.events.map(e => `${e.when} ${e.what}`).join(" → ")}`
+  const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: b.id ?? hashSeed(aria) })
   return `<div class="exp-block exp-timeline exp-timeline-figure">${svg}</div>`
 }
 
