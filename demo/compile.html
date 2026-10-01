@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>explanations — compile demo</title>
+<script type="importmap">
+{
+  "imports": {
+    "zod": "https://esm.sh/zod@4",
+    "roughjs": "https://esm.sh/roughjs@4.6.6",
+    "explanations": "/index.js"
+  }
+}
+</script>
+<link rel="stylesheet" href="/themes/tokens.css">
+<link rel="stylesheet" href="/themes/light.css">
+<link rel="stylesheet" href="/themes/dark.css">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; }
+  #status { font-family: ui-monospace, monospace; font-size: 0.85em; color: #666; min-height: 1.2em; }
+  #audit { font-size: 0.75em; background: #f4f3f0; border: 1px solid #e4e1d9; border-radius: 8px; padding: 12px; overflow-x: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<p><a href="/">← all examples</a></p>
+<h1>explanations — compile demo</h1>
+<p>This page consumes <code>compileDocumentStream</code> live: the header and TOC appear when the outline resolves, sections append as they land, and the audit log fills with events as they are yielded. (Scroll-spy is demoed on <a href="/document">/document</a>.)</p>
+<div id="status"></div>
+<div id="doc-root"></div>
+<h2>Compile audit</h2>
+<pre id="audit">(waiting for events)</pre>
+<script type="module">
+  import { renderDocument, compileDocumentStream } from "explanations"
+  import { stubClient } from "/compileClient.js"
+
+  const root = document.getElementById("doc-root")
+  const statusEl = document.getElementById("status")
+  const auditEl = document.getElementById("audit")
+
+  const events = []
+  let warnings = []
+  let outline = null
+  const sections = []
+  const dropped = []
+
+  function renderDoc() {
+    if (!outline) { root.innerHTML = ""; return }
+    const { html } = renderDocument(
+      { version: 1, title: outline.title, summary: outline.summary, sections: sections.slice() },
+      { theme: "light" },
+    )
+    root.innerHTML = html
+  }
+
+  for await (const e of compileDocumentStream("How signals become pictures", { client: stubClient(true) })) {
+    events.push(e)
+    if (e.kind === "outline-done") {
+      outline = e
+      renderDoc()
+      statusEl.textContent = `Outlined "${e.title}" — ${e.sections} sections to write`
+    } else if (e.kind === "section-start") {
+      statusEl.textContent = `Writing section ${e.index + 1}/${outline.sections} — "${e.title}"…`
+    } else if (e.kind === "repair-attempt") {
+      statusEl.textContent = `Repairing ${e.stage}${e.index !== undefined ? ` (section ${e.index})` : ""} — attempt ${e.attempt}…`
+    } else if (e.kind === "section-done") {
+      sections.push({ title: e.title, blocks: e.blocks })
+      renderDoc()
+    } else if (e.kind === "section-failed") {
+      dropped.push(e.title)
+    } else if (e.kind === "compile-done") {
+      warnings = e.warnings
+      statusEl.textContent =
+        `Done — ${sections.length} section(s)${dropped.length ? `, dropped: ${dropped.join(", ")}` : ""}` +
+        `${e.warnings.length ? `, ${e.warnings.length} warning(s)` : ""}`
+    }
+    auditEl.textContent =
+      events.map(ev => JSON.stringify(ev)).join("\n") +
+      `\nwarnings: ${warnings.join(" | ") || "(none)"}`
+  }
+</script>
+</body>
+</html>

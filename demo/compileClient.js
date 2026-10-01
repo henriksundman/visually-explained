@@ -23,9 +23,13 @@ function goodReadingSection() {
   })
 }
 
-export function stubClient() {
+/** paced=true delays every reply ~300-600ms so the streamed progression is
+ *  visible in the browser; default unpaced for fast SSR/audit consumers. */
+export function stubClient(paced = false) {
   let readingCalls = 0
+  const wait = (ms) => new Promise(r => setTimeout(r, ms))
   return async ({ user }) => {
+    if (paced) await wait(300 + Math.random() * 300)
     if (/Design the outline/.test(user)) {
       return JSON.stringify({
         version: 1,

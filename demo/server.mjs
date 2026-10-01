@@ -2,9 +2,8 @@
 // smoke test of the published artifact shape. `npm run demo` builds first.
 import { createServer } from "node:http"
 import { readFile } from "node:fs/promises"
-import { renderExplanation, renderDocument, compileDocument } from "../dist/index.js"
+import { renderExplanation, renderDocument } from "../dist/index.js"
 import { educationIr, dataIr, capabilitiesIr, figuresIr, howToIr, demoDocIr } from "./examples.js"
-import { stubClient } from "./compileClient.js"
 
 const port = Number(process.env.PORT ?? 4173)
 
@@ -119,39 +118,16 @@ const server = createServer(async (req, res) => {
     return
   }
   if (url.pathname === "/compile") {
-    // Proves the compiler end-to-end with a stub client — no API key. The
-    // rendered page comes from the same renderDocument path as /document.
-    const { document: docIr, events, warnings } = await compileDocument("signals", { client: stubClient() })
-    const { html } = renderDocument(docIr, { theme: "none" })
-    const audit = [
-      `<pre style="font-size:0.75em;background:#f4f3f0;border:1px solid #e4e1d9;border-radius:8px;padding:12px;overflow-x:auto;">`,
-      `events:\n${events.map(e => JSON.stringify(e)).join("\n")}`,
-      `\nwarnings (${warnings.length}):\n${warnings.join("\n") || "(none)"}`,
-      `</pre>`,
-    ].join("\n")
-    const compilePage = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>explanations — compile demo</title>
-<link rel="stylesheet" href="/themes/tokens.css">
-<link rel="stylesheet" href="/themes/light.css">
-<link rel="stylesheet" href="/themes/dark.css">
-<style>
-  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; }
-</style>
-</head>
-<body>
-<p><a href="/">← all examples</a></p>
-${html}
-<h2>Compile audit</h2>
-${audit}
-${tocScrollSpy}
-</body>
-</html>`
-    res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
-    res.end(compilePage)
+    // Streaming demo: the shell is static; the compile runs client-side via
+    // compileDocumentStream so the progression is visible in the browser.
+    try {
+      const html = await readFile(new URL("./compile.html", import.meta.url))
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
+      res.end(html)
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }
     return
   }
   if (url.pathname === "/document") {
@@ -205,6 +181,18 @@ ${tocScrollSpy}
   }
   if (url.pathname === "/examples.js") {
     const js = await readFile(new URL("./examples.js", import.meta.url))
+    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" })
+    res.end(js)
+    return
+  }
+  if (url.pathname === "/compileClient.js") {
+    const js = await readFile(new URL("./compileClient.js", import.meta.url))
+    res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" })
+    res.end(js)
+    return
+  }
+  if (url.pathname === "/index.js") {
+    const js = await readFile(new URL("../dist/index.js", import.meta.url))
     res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" })
     res.end(js)
     return
