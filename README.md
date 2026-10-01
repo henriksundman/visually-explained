@@ -181,16 +181,44 @@ Events — one entry per notable step, in this order
 | `kind` | Payload |
 | --- | --- |
 | `outline-start` | `{ topic }` |
-| `outline-done` | `{ title, sections, visualHints }` |
+| `outline-done` | `{ title, summary?, sections, visualHints, sectionTitles }` |
 | `section-start` | `{ index, title }` |
-| `section-done` | `{ index, title, blocks }` |
+| `section-done` | `{ index, title, blocks: Block[] }` |
 | `section-failed` | `{ index, title }` |
 | `repair-attempt` | `{ stage: "outline" \| "section", index?, attempt, issues }` |
+| `compile-done` | `{ document, warnings }` — terminal, stream API only |
 
 `index` is absent on outline-stage `repair-attempt` events. Events resolve
-with the result (no streaming in v1). `CompileEvent` carries open extra
+with the result — or stream live via `compileDocumentStream` (below).
+`CompileEvent` carries open extra
 fields; `CompileResult.document` is typed `unknown` but contract-locked to
 `documentSchema` in tests — validate at your boundary.
+
+### Streaming
+
+`compileDocumentStream` yields the same events live as an async generator,
+plus a terminal `compile-done` carrying `{ document, warnings }`:
+
+```ts
+import { compileDocumentStream } from "explanations"
+
+for await (const event of compileDocumentStream("How Fourier series work", { client })) {
+  if (event.kind === "outline-done") renderShell(event.title, event.summary, event.sectionTitles)
+  if (event.kind === "section-done") appendSection(event.title, event.blocks)
+  if (event.kind === "compile-done") finish(event.document, event.warnings)
+}
+```
+
+`outline-done` additionally carries `summary` and the clamped
+`sectionTitles` — the shell always matches the final document — and
+`section-done` carries the section's `blocks` array for live appending.
+Both APIs emit from one code path; `compileDocument` is a drain of the
+stream. Outline exhaustion still throws through `for await`.
+
+Abandonment: `break` stops event delivery immediately and no further LLM
+calls are started, but the in-flight call still completes in the background
+and its result is discarded. For true cancellation, wrap your own
+`LlmClient` with an abort signal.
 
 ## Authoring prompts yourself
 
@@ -222,8 +250,8 @@ The library deliberately leaves to the embedding application:
 | `src/primitives/` | One file per block type, wired via `registerPrimitive` |
 | `src/figures/` | Scene IR → SVG: diagram/chart/timeline layout, expression evaluator, path grammar, rough.js sketch pass, authored figures |
 | `src/react/` | RSC components, interactive figure runtime, element events/popover |
-| `src/compiler/` | `compileDocument`: prompts, JSON extraction, repair, events |
-| `demo/` | Static server over `dist/` — all examples, `/document`, `/interactive`, `/compile` (stub client) |
+| `src/compiler/` | `compileDocument` + `compileDocumentStream`: prompts, JSON extraction, repair, events |
+| `demo/` | Static server over `dist/` — all examples, `/document`, `/interactive`, `/compile` (stub client, streamed live) |
 
 Docs: `docs/ROADMAP.md` (the arc and binding decisions);
 `docs/superpowers/specs/` (one design spec per shipped feature);

@@ -65,6 +65,12 @@ decisions that survive across sessions.
   full event table and failure semantics, the LLM authoring contract, explicit
   host responsibilities, and a codebase map. Spec:
   `docs/superpowers/specs/2026-09-30-readme-for-hosts-design.md`.
+- **Streaming compile** (2026-10-01) — `compileDocumentStream(topic, { client })`:
+  async generator yielding the v1 event vocabulary live plus a terminal
+  `compile-done` event carrying `{ document, warnings }`; `compileDocument`
+  is a drain of the stream (one code path, contract tests lock both APIs);
+  `/compile` consumes the stream client-side with a paced stub. Spec:
+  `docs/superpowers/specs/2026-10-01-streaming-compile-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -112,9 +118,6 @@ The arc is complete; new work starts here. Candidate threads (recorded
 - **Retrieval practice** — an assessment primitive in the block library
   (quiz / reveal-the-answer), the missing complement to the exposition-side
   blocks; retrieval beats re-reading for learning that sticks.
-- **Streaming compile** — async-generator API at the compiler's existing
-  seams (compiler spec §9): header/TOC render immediately, sections append
-  as they resolve. The highest-leverage host UX win left on the table.
 - **Drag-to-vary simulations** — the interactive runtime has sliders +
   play; direct manipulation (drag a point, scrub a timeline) was deferred
   from the interactive-runtime cycle and is what makes a card a simulation
