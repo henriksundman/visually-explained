@@ -30,14 +30,20 @@
 <h2>Retrieval practice</h2>
 <p>A <code>quiz</code> block through the same runtime: pick an option, check it, and the per-option whys explain themselves.</p>
 <div id="quiz-root"></div>
+<h2>Drag to vary</h2>
+<p>Direct manipulation: grab the weight on the spring. It writes the same value the <code>stretch</code> slider does, so the slider thumb follows your hand.</p>
+<div id="drag-root"></div>
 <script type="module">
   import { createElement } from "react"
   import { createRoot } from "react-dom/client"
   import { Explanation } from "explanations/react"
-  import { figuresIr, quizIr } from "/examples.js"
+  import { figuresIr, quizIr, dragIr } from "/examples.js"
   createRoot(document.getElementById("root")).render(createElement(Explanation, { ir: figuresIr, interactive: true }))
   createRoot(document.getElementById("quiz-root")).render(
     createElement(Explanation, { ir: quizIr, interactive: true }),
+  )
+  createRoot(document.getElementById("drag-root")).render(
+    createElement(Explanation, { ir: dragIr, interactive: true }),
   )
 </script>
 </body>

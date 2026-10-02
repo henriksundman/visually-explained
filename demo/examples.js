@@ -501,3 +501,66 @@ export const demoDocIr = {
     { id: "fig-quiz", title: "Retrieval practice", blocks: [quizBlock] },
   ],
 }
+
+/** Drag-to-vary demo (drag-to-vary spec). A mass on a spring: drag the weight
+ *  and the whole trace re-solves around it. The `stretch` slider is bound to
+ *  the same param the drag writes, so its thumb follows the handle — that
+ *  shared state is the point of the feature, and it is only visible when both
+ *  controls exist. */
+export const dragIr = {
+  version: 1,
+  title: "Drag the weight",
+  summary: "Direct manipulation: the figure re-solves around the handle you move.",
+  blocks: [
+    {
+      type: "figure",
+      title: "Spring response",
+      caption:
+        "Drag the weight left and right, or use the slider — they drive the same value. Keyboard: focus the handle, then arrow keys (Shift for bigger steps), Home/End for the ends.",
+      width: 360,
+      height: 240,
+      params: [
+        { name: "stretch", min: 60, max: 320, step: 1, initial: 200 },
+        { name: "damping", min: 0, max: 1, step: 0.01, initial: 0.18 },
+      ],
+      // `bx` IS the param, not its negation: a drag moves the handle with the
+      // cursor 1:1. An inverted mapping (rest - stretch) makes the handle slip
+      // away from the pointer, which reads as the control being broken.
+      derived: [
+        { name: "anchor", expr: "40" },
+        { name: "bx", expr: "stretch" },
+        { name: "amp", expr: "(stretch - anchor) * 0.34" },
+        { name: "wallX", expr: "340" },
+      ],
+      draggable: [{ id: "weight", x: "stretch" }],
+      elements: [
+        { kind: "line", x1: 20, y1: 120, x2: 340, y2: 120, tone: "muted", width: 1 },
+        { kind: "line", x1: "wallX", y1: 80, x2: "wallX", y2: 160, tone: "muted", width: 2 },
+        { kind: "line", x1: "anchor", y1: 60, x2: "anchor", y2: 180, tone: "muted", width: 2 },
+        { kind: "line", x1: "anchor", y1: 120, x2: "stretch", y2: 120, tone: "accent", width: 2 },
+        { kind: "arc", cx: "stretch", cy: 120, rx: 34, ry: 34, start: 90, end: 270, tone: "muted" },
+        { kind: "line", x1: "stretch", y1: 154, x2: "wallX", y2: 154, tone: "muted", width: 1 },
+        {
+          kind: "path",
+          d: `M ${"anchor"} 120 Q ${"anchor + (stretch - anchor) * 0.5"} ${"120 - amp"} ${"stretch"} 120`,
+          tone: "accent",
+          width: 2,
+        },
+        {
+          kind: "box",
+          id: "weight",
+          x: "stretch - 16",
+          y: 104,
+          w: 32,
+          h: 32,
+          label: "m",
+          tone: "ink",
+          fill: "accent",
+          tip: "Drag me — the spring re-solves as you move",
+        },
+        { kind: "label", x: "anchor", y: 200, text: "anchor", anchor: "middle", size: 11 },
+        { kind: "label", x: "wallX", y: 200, text: "wall", anchor: "middle", size: 11 },
+      ],
+    },
+  ],
+}
