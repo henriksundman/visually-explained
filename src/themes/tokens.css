@@ -830,3 +830,103 @@
   font-size: 0.9em;
   color: var(--exp-text-muted);
 }
+
+/* Quiz — retrieval practice (retrieval-practice spec §4) */
+.exp-quiz {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-radius);
+  background: var(--exp-surface);
+  padding: 1rem;
+}
+.exp-quiz-question {
+  margin: 0;
+  font-weight: 600;
+}
+.exp-quiz-options {
+  margin: 0;
+  padding-left: 1.5rem;
+  display: grid;
+  gap: 0.25rem;
+}
+.exp-quiz-check {
+  margin-top: 0.25rem;
+}
+.exp-quiz-check summary {
+  cursor: pointer;
+  color: var(--exp-accent);
+  font-weight: 600;
+}
+.exp-quiz-check summary::marker,
+.exp-quiz-check summary::-webkit-details-marker {
+  color: var(--exp-accent);
+}
+.exp-quiz-result {
+  display: grid;
+  gap: 0.25rem;
+  padding-top: 0.5rem;
+}
+.exp-quiz-result p {
+  margin: 0;
+}
+.exp-quiz-answer {
+  color: var(--exp-up);
+}
+.exp-quiz-miss {
+  color: var(--exp-down);
+}
+.exp-quiz-explanation {
+  color: var(--exp-text-muted);
+}
+
+/* Interactive grading (React) reuses the block classes above and adds: */
+.exp-quiz-choice {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: calc(var(--exp-radius) / 2);
+}
+.exp-quiz-choice:hover {
+  background: var(--exp-surface-muted);
+}
+.exp-quiz-option-selected .exp-quiz-choice {
+  background: var(--exp-accent-soft);
+}
+.exp-quiz-option-correct .exp-quiz-choice {
+  color: var(--exp-up);
+  font-weight: 600;
+}
+.exp-quiz-option-wrong .exp-quiz-choice {
+  color: var(--exp-down);
+}
+.exp-quiz-checked .exp-quiz-choice {
+  cursor: default;
+}
+.exp-quiz-checked .exp-quiz-option:not(.exp-quiz-option-correct):not(.exp-quiz-option-wrong) .exp-quiz-choice:hover {
+  background: transparent;
+}
+.exp-quiz-why {
+  margin: 0.25rem 0 0;
+  color: var(--exp-text-muted);
+}
+.exp-quiz-check-button {
+  all: unset;
+  cursor: pointer;
+  justify-self: start;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-radius);
+  background: var(--exp-surface);
+  font-weight: 600;
+}
+.exp-quiz-check-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.exp-quiz-check-button:not(:disabled):hover {
+  background: var(--exp-accent-soft);
+}
