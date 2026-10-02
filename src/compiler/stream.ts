@@ -49,6 +49,19 @@ function sourcesBlockFrom(excerpts: SourceExcerpt[]) {
   }
 }
 
+/** Whether a block tree contains a quiz anywhere, recursing into `stack`
+ *  children (quiz-placement spec §5). Tolerates raw/unvalidated children —
+ *  blocks are z.unknown() until render, and one malformed child must not
+ *  crash the audit. */
+function hasQuiz(blocks: unknown[]): boolean {
+  return blocks.some(b => {
+    if (typeof b !== "object" || b === null) return false
+    const rec = b as { type?: unknown; blocks?: unknown }
+    if (rec.type === "quiz") return true
+    return rec.type === "stack" && Array.isArray(rec.blocks) && hasQuiz(rec.blocks)
+  })
+}
+
 interface StageArgs<T> {
   client: CompileOptions["client"]
   maxRepairs: number
@@ -101,13 +114,17 @@ export async function* compileDocumentStream(
   const knownSourceIds = new Set(excerpts.map(s => s.id))
   const citedIds = new Set<string>()
 
+  // Retrieval checks (quiz-placement spec §3): flag-gated. Off ⇒ byte-identical
+  // prompts, events, and warnings.
+  const checksOn = opts.checks === true
+
   yield { kind: "outline-start", topic }
   const outlineOutcome = yield* runStage<Outline>({
     client: opts.client,
     maxRepairs,
     stage: "outline",
     system: outlineSystemPrompt(maxSections),
-    user: outlineUserPrompt(topic, opts.guidance, grounded),
+    user: outlineUserPrompt(topic, opts.guidance, grounded, checksOn),
     rules: outlineSystemPrompt(maxSections),
     schema: outlineSchema,
   })
@@ -129,6 +146,7 @@ export async function* compileDocumentStream(
     sections: clamped.sections.length,
     visualHints: clamped.sections.filter(s => s.visual).length,
     sectionTitles: clamped.sections.map(s => s.title),
+    ...(checksOn ? { checks: clamped.sections.filter(s => s.check === true).length } : {}),
   }
 
   const sections: DocumentSection[] = []
@@ -147,6 +165,7 @@ export async function* compileDocumentStream(
         visual: entry.visual,
         guidance: opts.guidance,
         sources: grounded,
+        check: checksOn && entry.check === true,
       }),
       rules:
         'Shape: { "title": string, "blocks": Block[] }. A section has "title" and "blocks" only — never "sections", never "version".',
@@ -169,6 +188,12 @@ export async function* compileDocumentStream(
       if (grounded && !knownSourceIds.has(id)) {
         warnings.push(`[grounding] section ${i} cites unknown source "${id.slice(0, 64)}"`)
       }
+    }
+
+    // Checks audit (quiz-placement spec §5): a declared check must place a
+    // quiz — recurse into stack children; constrain-and-warn only, never drop.
+    if (checksOn && entry.check === true && !hasQuiz(outcome.value.blocks)) {
+      warnings.push(`[checks] section ${i} declared a check but placed no quiz`)
     }
 
     yield { kind: "section-done", index: i, title: entry.title, blocks: outcome.value.blocks }

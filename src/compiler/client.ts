@@ -28,6 +28,11 @@ export interface CompileOptions {
   maxSections?: number
   /** Grounding material interpolated into the prompts; validated leniently. */
   sources?: SourceExcerpt[]
+  /** Retrieval practice (quiz placement spec §3): invite the outline to mark
+   *  sections where a quiz consolidates the learning, and audit declared
+   *  sections for a placed quiz. Off by default — absent the flag, compiles
+   *  are byte-identical to unflagged ones. */
+  checks?: boolean
 }
 
 /** Largest excerpt set the compiler accepts — matches the sources block

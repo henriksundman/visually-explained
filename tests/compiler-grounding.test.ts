@@ -248,3 +248,146 @@ describe("grounded compile", () => {
     expect(warnings).toEqual(a.warnings)
   })
 })
+
+/** A minimal quiz-free section reply. Cites s2 so grounded checks-compile
+ *  fixtures don't trip the never-cited audit. */
+const goodSection = (title: string) => ({
+  title,
+  blocks: [{ type: "text", body: "Reading [counts](#source-s2)." }],
+})
+
+const checksOutline = {
+  version: 1,
+  title: "Signals",
+  summary: "How signals work.",
+  sections: [
+    { title: "What is a signal", goal: "Define it.", check: true },
+    { title: "Reading data", goal: "Show values." },
+  ],
+}
+
+/** Section reply whose blocks end with a quiz (any blocks before it). */
+const quizTail = (body: string) => ({
+  title: "What is a signal",
+  blocks: [
+    { type: "text", body },
+    {
+      type: "quiz",
+      question: "Which view shows frequency **directly**?",
+      options: [
+        { text: "Fourier view", why: "Energy per frequency." },
+        { text: "Histogram", why: "Bins amplitudes." },
+      ],
+      answer: 0,
+    },
+  ],
+})
+
+/** Outline → declared-check section → plain section, in that reply order.
+ *  `declared.blocks` is deliberately untyped: fixtures carry valid block
+ *  arrays, stack trees, and one deliberately-invalid "not an array". */
+const checksClient = (declared: { title: string; blocks: unknown }) =>
+  scriptedClient([
+    { match: /Design the outline/, reply: JSON.stringify(checksOutline) },
+    { match: /Write section .*"What is a signal"/, reply: JSON.stringify(declared) },
+    { match: /failed validation/, reply: JSON.stringify(declared) },
+    { match: /Write section .*"Reading data"/, reply: JSON.stringify(goodSection("Reading data")) },
+  ])
+
+describe("checks compile", () => {
+  it("plans, writes, and audits a declared check silently when it lands", async () => {
+    const { client, calls } = checksClient(quizTail("Body about signals."))
+    const { document, warnings, events } = await compileDocument("signals", { client, checks: true })
+    expect(warnings).toEqual([])
+    expect(documentSchema.safeParse(document).success).toBe(true)
+    const doc = document as { sections: { blocks: { type: string }[] }[] }
+    expect(doc.sections[0].blocks.some(b => b.type === "quiz")).toBe(true)
+    const outlineDone = events.find(e => e.kind === "outline-done") as { checks?: number }
+    expect(outlineDone.checks).toBe(1)
+    // The outline prompt carried the fragment; the declared section's prompt
+    // carried the quiz instruction.
+    expect(calls[0]).toContain("Checks: mark sections")
+    expect(calls[1]).toContain("ONE quiz block")
+  })
+
+  it("warns when a declared check places no quiz", async () => {
+    const { client } = checksClient(goodSection("What is a signal"))
+    const { warnings } = await compileDocument("signals", { client, checks: true })
+    expect(warnings).toEqual(["[checks] section 0 declared a check but placed no quiz"])
+  })
+
+  it("counts a stack-nested quiz as satisfying the declaration", async () => {
+    const stacked = {
+      title: "What is a signal",
+      blocks: [{ type: "stack", blocks: [(quizTail("Nested.") as { blocks: unknown[] }).blocks[1]] }],
+    }
+    const { client } = checksClient(stacked)
+    const { warnings } = await compileDocument("signals", { client, checks: true })
+    expect(warnings).toEqual([])
+  })
+
+  it("leaves undeclared sections and bonus quizzes alone", async () => {
+    // Section 1 is NOT declared but its reply contains a quiz anyway.
+    const quizReading = {
+      title: "Reading data",
+      blocks: [
+        { type: "text", body: "Reading [counts](#source-s2)." },
+        { type: "quiz", question: "Bonus?", options: [{ text: "a" }, { text: "b" }], answer: 0 },
+      ],
+    }
+    const { client } = scriptedClient([
+      { match: /Design the outline/, reply: JSON.stringify(checksOutline) },
+      { match: /Write section .*"What is a signal"/, reply: JSON.stringify(quizTail("Declared one.")) },
+      { match: /Write section .*"Reading data"/, reply: JSON.stringify(quizReading) },
+    ])
+    const { warnings } = await compileDocument("signals", { client, checks: true })
+    expect(warnings).toEqual([]) // declared landed + bonus quiz tolerated
+  })
+
+  it("omits the outline-done checks field when the flag is off (byte-identity)", async () => {
+    const { client, calls } = checksClient(goodSection("What is a signal"))
+    const { warnings, events } = await compileDocument("signals", { client })
+    expect(warnings).toEqual([]) // no drift audit when off
+    expect(calls[0]).not.toContain("Checks:")
+    expect(calls[1]).not.toContain("ONE quiz block")
+    expect("checks" in (events.find(e => e.kind === "outline-done") as object)).toBe(false)
+  })
+
+  it("audits citations inside quiz content (grounding × checks)", async () => {
+    const citing = quizTail("Body [Signals 101](#source-s1).")
+    ;(citing.blocks[1] as { options: { text: string; why?: string }[] }).options[0].why =
+      "See [paper](#source-nope)."
+    const { client } = checksClient(citing)
+    const { warnings } = await compileDocument("signals", { client, checks: true, sources })
+    expect(warnings).toEqual(['[grounding] section 0 cites unknown source "nope"'])
+  })
+
+  it("yields the section-dropped warning, not a checks warning, for a failed declared check", async () => {
+    const { client } = checksClient({ title: "x", blocks: "not an array" })
+    const { warnings } = await compileDocument("signals", { client, checks: true })
+    expect(warnings).toEqual([
+      "[compile] section 0 dropped — blocks: Invalid input: expected array, received string",
+    ])
+  })
+
+  it("compileDocument and the drained stream agree with checks on", async () => {
+    const a = await compileDocument("signals", { client: checksClient(quizTail("Body.")).client, checks: true })
+    const events: StreamCompileEvent[] = []
+    let document: unknown
+    let warnings: string[] = []
+    for await (const e of compileDocumentStream("signals", {
+      client: checksClient(quizTail("Body.")).client,
+      checks: true,
+    })) {
+      if (e.kind === "compile-done") {
+        document = e.document
+        warnings = e.warnings
+      } else {
+        events.push(e)
+      }
+    }
+    expect(events).toEqual(a.events)
+    expect(document).toEqual(a.document)
+    expect(warnings).toEqual(a.warnings)
+  })
+})
