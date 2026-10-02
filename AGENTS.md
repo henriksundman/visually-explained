@@ -40,6 +40,17 @@ A debugging session that surfaces a reusable lesson appends a dated entry to
 `docs/DEBUGGING.md` (symptom → root cause → fix → rule) before the branch
 finishes; consult its Part 1 triage list before deep-diving on a bug.
 
+### Open threads: read before changing shipped code
+`docs/OPEN_THREADS.md` records the judgement calls shipped work was left with —
+the deliberate decisions, the known-rough edges, and what to revisit if. **Read
+it first when picking up a session, and before touching code it names.** A
+divergence that looks like a bug may be a decision with a reason behind it
+(a drag ignoring the param's `step`, the timeline's 825px budget, focus
+restoration being browser-verified only). Shipping a deliberate choice without
+recording it leaves the next session to re-derive it — or to "fix" it.
+Append a thread when a session ends with a judgement call that is not visible
+in the code, the spec, or the ledger.
+
 ### Merge gate: user reviews before main
 The user wants to review a finished branch before it lands. Complete all
 other finish steps (verification, review, ledger), then **stop and present
