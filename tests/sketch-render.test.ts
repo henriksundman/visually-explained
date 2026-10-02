@@ -33,3 +33,44 @@ describe("sketch option", () => {
     expect(html).toContain(`class="exp-fig-sketch"`)
   })
 })
+
+describe("sketch keeps text labels", () => {
+  const labelled = {
+    version: 1,
+    blocks: [
+      {
+        type: "diagram",
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+        edges: [{ from: "a", to: "b", label: "canary only" }],
+      },
+    ],
+  }
+
+  it("keeps edge labels crisp in the sketch pass (text is never roughed)", () => {
+    // rough.js cannot draw text, so sketchElementSvg deliberately returns
+    // nothing for labels; sceneToSvg owns emitting them. It used to do so
+    // only for node boxes and plain labels, silently dropping edge labels.
+    const clean = renderExplanation(labelled).html
+    const sketchy = renderExplanation(labelled, { sketch: true }).html
+    expect(clean).toContain("canary only")
+    expect(sketchy).toContain("canary only")
+    expect(sketchy).toContain(`class="exp-fig-sketch"`) // strokes still roughed
+  })
+
+  it("keeps a wrapped multi-line edge label whole in the sketch pass", () => {
+    const long = {
+      version: 1,
+      blocks: [
+        {
+          type: "diagram",
+          nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+          edges: [{ from: "a", to: "b", label: "a label far too long for one gutter to hold" }],
+        },
+      ],
+    }
+    const sketchy = renderExplanation(long, { sketch: true }).html
+    const lines = [...sketchy.matchAll(/<tspan[^>]*>([^<]*)</g)].map(m => m[1])
+    expect(lines.length).toBeGreaterThan(1)
+    expect(lines.join(" ")).toBe("a label far too long for one gutter to hold")
+  })
+})

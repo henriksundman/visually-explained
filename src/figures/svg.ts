@@ -259,8 +259,17 @@ export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
     ? scene.elements
         .map((el, i) => {
           const roughPart = sketchElementSvg(el, opts.seed ?? "", i)
+          // rough.js cannot draw text, so sketchElementSvg deliberately skips
+          // every label — sceneToSvg owns emitting them. Arrows belong here
+          // too, or the sketch pass silently loses edge labels.
           const labelPart =
-            el.kind === "node-box" ? nodeLabel(el) : el.kind === "label" ? label(el, i) : ""
+            el.kind === "node-box"
+              ? nodeLabel(el)
+              : el.kind === "arrow"
+                ? arrowLabel(el)
+                : el.kind === "label"
+                  ? label(el, i)
+                  : ""
           const identity = hasIdentity(el) || hasTip(el)
           return wrapIdentity(el, roughPart + labelPart + (identity ? twinStroke(el) : ""), id => {
             if (claimed.has(id)) return false
