@@ -100,12 +100,32 @@ function nodeBox(el: NodeBoxEl, i: number): string {
   )
 }
 
+function arrowLabel(el: ArrowEl): string {
+  if (!el.label || el.labelX === undefined || el.labelY === undefined) return ""
+  const open =
+    `<text class="exp-fig-label exp-edge-label" text-anchor="middle" ` +
+    `transform="translate(${n2(el.labelX)},${n2(el.labelY)})"`
+  const lines = el.lines && el.lines.length > 0 ? el.lines : [el.label]
+  // Single line: exactly the markup shipped before, so nothing downstream
+  // churns (spec §2.6).
+  if (lines.length === 1) return `${open}>${escapeHtml(lines[0])}</text>`
+  // tspan coordinates resolve INSIDE the translated group, so they are local:
+  // x stays 0 (text-anchor=middle centres on the translate point) and y is the
+  // offset from the block centre. Baking labelX into the tspan x as well would
+  // double-offset the block.
+  const pitch = 15
+  const tspans = lines
+    .map((line, i) => {
+      const y = -((lines.length - 1) * pitch) / 2 + i * pitch
+      return `<tspan x="0" y="${n2(y)}">${escapeHtml(line)}</tspan>`
+    })
+    .join("")
+  return `${open}>${tspans}</text>`
+}
+
 function arrow(el: ArrowEl, i: number): string {
   const cls = el.edgeKind === "causes" || el.edgeKind === "leads" ? "exp-edge" : `exp-edge exp-edge-${el.edgeKind}`
-  const label =
-    el.label && el.labelX !== undefined && el.labelY !== undefined
-      ? `<text class="exp-fig-label exp-edge-label" text-anchor="middle" transform="translate(${n2(el.labelX)},${n2(el.labelY)})">${escapeHtml(el.label)}</text>`
-      : ""
+  const label = arrowLabel(el)
   return (
     `<g class="exp-arrow" style="--draw-i:${i}">` +
     `<path class="${cls}" d="${el.d}"/>` +

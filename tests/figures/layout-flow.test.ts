@@ -136,3 +136,101 @@ describe("layoutFlow", () => {
     expect(orthogonal).toBeDefined()
   })
 })
+
+// 11px .exp-edge-label class: ~6.0px per character.
+const EDGE_CHAR_W = 6.0
+const edgeTextW = (s: string) => Math.round(s.length * EDGE_CHAR_W)
+
+const overflowIr = {
+  direction: "lr" as const,
+  nodes: [
+    { id: "sun", label: "Sun", shape: "round" as const },
+    { id: "air", label: "Atmosphere", shape: "box" as const },
+    { id: "eye", label: "Your eye", shape: "pill" as const },
+  ],
+  edges: [
+    { from: "sun", to: "air", label: "slant path — up to 38× the vertical", kind: "leads" as const },
+    { from: "air", to: "eye", label: "back-scattered light, blue mostly gone", kind: "leads" as const },
+  ],
+}
+
+function mustArrow(scene: Scene, id: string): Extract<Scene["elements"][number], { kind: "arrow" }> {
+  const el = scene.elements.find(e => e.kind === "arrow" && e.id === id)
+  if (!el || el.kind !== "arrow") throw new Error(`arrow "${id}" not found`)
+  return el
+}
+
+describe("edge label overflow", () => {
+  it("wraps every edge label line to the gutter between the nodes", () => {
+    const { scene, warnings } = layoutFlow(overflowIr)
+    expect(warnings).toEqual([])
+    const nodes = overflowIr.nodes.map(n => mustNode(scene, n.id))
+    const gutter = nodes[1].x - (nodes[0].x + nodes[0].w)
+
+    const arrow = mustArrow(scene, "sun->air")
+    const lines = arrow.lines ?? [arrow.label!]
+    expect(lines.length).toBeGreaterThan(1)
+    for (const line of lines) {
+      expect(edgeTextW(line)).toBeLessThanOrEqual(gutter)
+    }
+  })
+
+  it("keeps a wrapped label clear of every node box", () => {
+    const { scene } = layoutFlow(overflowIr)
+    for (const id of ["sun->air", "air->eye"]) {
+      const arrow = mustArrow(scene, id)
+      const lines = arrow.lines ?? [arrow.label!]
+      const half = Math.max(...lines.map(edgeTextW)) / 2
+      const left = arrow.labelX! - half
+      const right = arrow.labelX! + half
+      for (const el of scene.elements) {
+        if (el.kind !== "node-box") continue
+        // The label lives BETWEEN two nodes — right of one, left of the other.
+        // The invariant is that the two intervals never intersect.
+        const overlaps = right > el.x && left < el.x + el.w
+        expect(`${id} vs ${el.id}: ${overlaps ? "OVERLAPS" : "clear"}`).toBe(`${id} vs ${el.id}: clear`)
+      }
+    }
+  })
+
+  it("hard-splits a single word wider than the gutter", () => {
+    const { scene } = layoutFlow({
+      nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+      edges: [{ from: "a", to: "b", label: "extraordinarily" }],
+      direction: "lr",
+    })
+    const arrow = mustArrow(scene, "a->b")
+    const lines = arrow.lines ?? [arrow.label!]
+    expect(lines.length).toBeGreaterThan(1)
+    expect(lines.join("")).toBe("extraordinarily")
+    const gutter = mustNode(scene, "b").x - (mustNode(scene, "a").x + mustNode(scene, "a").w)
+    for (const line of lines) expect(edgeTextW(line)).toBeLessThanOrEqual(gutter)
+  })
+
+  it("leaves a short label single-line, with no lines field (byte-identical emit)", () => {
+    const { scene } = layoutFlow({
+      nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+      edges: [{ from: "a", to: "b", label: "hit" }],
+      direction: "lr",
+    })
+    const arrow = mustArrow(scene, "a->b")
+    expect(arrow.lines).toBeUndefined()
+    expect(arrow.label).toBe("hit")
+  })
+
+  it("grows the scene so a tall wrapped label is not clipped", () => {
+    const { scene } = layoutFlow(overflowIr)
+    let checked = 0
+    for (const el of scene.elements) {
+      if (el.kind !== "arrow") continue
+      const lines = el.lines ?? (el.label ? [el.label] : [])
+      if (lines.length < 2) continue
+      checked++
+      const blockH = ((lines.length - 1) * 15) / 2
+      expect(el.labelY! + blockH).toBeLessThanOrEqual(scene.height)
+      expect(el.labelY! - blockH).toBeGreaterThanOrEqual(0)
+    }
+    // Guards the guard: without this the loop can pass by never running.
+    expect(checked).toBeGreaterThan(0)
+  })
+})

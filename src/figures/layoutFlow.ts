@@ -33,6 +33,38 @@ const GAP_MAIN = 64 // gap between columns (lr) or rows (tb)
 const GAP_CROSS = 28 // gap between rows (lr) or columns (tb)
 const PAD = 16
 const CHAR_W = 7.5 // width estimate per character at 13px
+const EDGE_CHAR_W = 6.0 // per-char estimate at the 11px .exp-edge-label size
+export const EDGE_LABEL_PITCH = 15 // line pitch at that size
+
+/** Wrap an EDGE label to the gutter it is routed through. Unlike `wrapLabel`
+ *  there is no node padding to reserve, and any single word wider than the
+ *  gutter is hard-split — an edge label is never dropped, so it must never
+ *  overflow either (figure label-overflow spec §3.1). */
+export function wrapEdgeLabel(label: string, avail: number): string[] {
+  const maxChars = Math.max(4, Math.floor(avail / EDGE_CHAR_W))
+  const words = label.split(/\s+/).filter(Boolean)
+  const lines: string[] = []
+  let current = ""
+  for (const word of words) {
+    if (word.length > maxChars) {
+      if (current) {
+        lines.push(current)
+        current = ""
+      }
+      for (let i = 0; i < word.length; i += maxChars) lines.push(word.slice(i, i + maxChars))
+      continue
+    }
+    const candidate = current ? `${current} ${word}` : word
+    if (candidate.length > maxChars) {
+      lines.push(current)
+      current = word
+    } else {
+      current = candidate
+    }
+  }
+  if (current) lines.push(current)
+  return lines.length > 0 ? lines : [label]
+}
 
 /** Deterministic width estimate for a single-line label, clamped. */
 export function nodeWidth(label: string): number {
@@ -164,7 +196,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     mainOffset += Math.max(0, ...rankIds.map(id => placed.get(id)!.w)) + GAP_MAIN
   })
   const width = direction === "lr" ? mainOffset - GAP_MAIN + PAD : crossExtent + PAD
-  const height = direction === "lr" ? crossExtent + PAD : mainOffset - GAP_MAIN + PAD
+  let height = direction === "lr" ? crossExtent + PAD : mainOffset - GAP_MAIN + PAD
 
   // 6. Edges FIRST (so opaque node fills cover any crossing line), with
   //    skip-rank edges routed orthogonally through the column gutter.
@@ -214,7 +246,28 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         labelY = gutterY - 6
       }
     }
-    elements.push({ kind: "arrow", d, head, edgeKind: e.kind ?? "leads", label: e.label, labelX, labelY, id: `${e.from}->${e.to}` })
+    // Available label width is the gutter this edge is routed through: for an
+    // adjacent edge, the gap between the two boxes; for a skip-rank edge, the
+    // same horizontal span the orthogonal route uses. Wrapping to it is what
+    // guarantees the label cannot reach a node box (spec §2.2).
+    const gutterW = Math.max(8, b.x - (a.x + a.w))
+    const lines = e.label ? wrapEdgeLabel(e.label, gutterW) : []
+
+    // labelY from the path maths is where the FIRST line sits; shift it up by
+    // half the block so the block as a whole is centred on the edge.
+    const shift = ((lines.length - 1) * EDGE_LABEL_PITCH) / 2
+
+    elements.push({
+      kind: "arrow",
+      d,
+      head,
+      edgeKind: e.kind ?? "leads",
+      label: e.label,
+      ...(lines.length > 1 ? { lines } : {}),
+      labelX,
+      labelY: labelY - shift,
+      id: `${e.from}->${e.to}`,
+    })
   }
 
   // 7. Nodes AFTER edges: their opaque fill covers crossings.
@@ -231,6 +284,29 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       lines: p.lines,
       tip: p.tip,
     })
+  }
+
+  // 8. Scene extent must CONTAIN every wrapped label block: a multi-line edge
+  //    label can reach past the node bounds it was laid out against, and a
+  //    viewBox clips whatever falls outside it.
+  let minY = 0
+  let maxY = height
+  for (const el of elements) {
+    if (el.kind !== "arrow" || el.labelY === undefined) continue
+    const n = el.lines?.length ?? 1
+    const half = ((n - 1) * EDGE_LABEL_PITCH) / 2 + n * 2
+    minY = Math.min(minY, el.labelY - half)
+    maxY = Math.max(maxY, el.labelY + half)
+  }
+  if (minY < 0 || maxY > height) {
+    const grow = maxY - height
+    // Shift everything down when a block hangs above the origin; grow the box
+    // when it hangs below. Either way nothing is clipped.
+    for (const el of elements) {
+      if (el.kind === "node-box") el.y -= minY
+      else if (el.kind === "arrow" && el.labelY !== undefined) el.labelY -= minY
+    }
+    height = Math.max(height - minY, height + grow)
   }
 
   return { scene: { width: Math.max(width, 240), height: Math.max(height, 76), elements }, warnings }

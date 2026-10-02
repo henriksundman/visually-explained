@@ -35,7 +35,11 @@ export interface ArrowEl {
   /** Closed triangle path for the arrowhead. */
   head: string
   label?: string
-  /** Label anchor point (computed by the layout, absolute scene coordinates). */
+  /** Pre-wrapped label lines (layout-owned), mirroring NodeBoxEl.lines.
+   *  Absent or single-entry ⇒ the emit layer writes one plain <text>. */
+  lines?: string[]
+  /** Label anchor point (computed by the layout, absolute scene coordinates).
+   *  For a wrapped label this is the block's vertical CENTRE. */
   labelX?: number
   labelY?: number
   edgeKind: EdgeKind
