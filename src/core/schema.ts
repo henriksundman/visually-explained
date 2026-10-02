@@ -155,6 +155,7 @@ export type Block =
   | DiagramBlock
   | ChartBlock
   | FigureBlock
+  | SourcesBlock
   | QuizBlock
 
 export const stackBlockSchema = z.object({
