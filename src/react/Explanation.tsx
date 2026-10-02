@@ -4,6 +4,7 @@ import { renderBlock } from "../core/render"
 import { renderInline } from "../core/inline"
 import { validateExplanation } from "../core/validate"
 import { InteractiveFigure } from "./InteractiveFigure"
+import { Quiz } from "./Quiz"
 import { FigureEvents } from "./ElementPopover"
 import type { FigureElementEvent } from "./figureEvents"
 import type { Block } from "../core/schema"
@@ -75,6 +76,9 @@ export function Explanation({
         }
         if (interactive && b.kind === "valid" && b.type === "figure") {
           return <InteractiveFigure key={b.index} block={b.data} sketch={sketch} />
+        }
+        if (interactive && b.kind === "valid" && b.type === "quiz") {
+          return <Quiz key={b.index} block={b.data} />
         }
         if (onElementEvent && b.kind === "valid" && (b.type === "figure" || b.type === "diagram" || b.type === "chart")) {
           const html = renderBlock(b.type, b.data, 1, { sketch, datasets })

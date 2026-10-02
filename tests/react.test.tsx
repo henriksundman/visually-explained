@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Explanation } from "../src/react/Explanation"
 import { InteractiveFigure, nextSweepValue, valueColumnCh } from "../src/react/InteractiveFigure"
+import { Quiz, initialQuizState, quizPick, quizCheck } from "../src/react/Quiz"
 import { hitElement, placePopover, resolveTip } from "../src/react/figureEvents"
 import type { TextBlock } from "../src/core/schema"
 
@@ -246,5 +247,56 @@ describe("link smoke (react)", () => {
       <Explanation ir={{ version: 1, blocks: [{ type: "text", body: "[x](https://e.com)" }] }} />,
     )
     expect(html).toContain(`<a href="https://e.com">x</a>`)
+  })
+})
+
+const quizIr = {
+  version: 1,
+  blocks: [
+    {
+      type: "quiz",
+      question: "Which pass turns a **signal** into frequencies?",
+      options: [
+        { text: "Fourier transform", why: "It decomposes the signal into frequencies." },
+        { text: "Moving average", why: "It smooths in the time domain." },
+      ],
+      answer: 0,
+      explanation: "The frequency view is the Fourier view.",
+    },
+  ],
+}
+
+describe("Quiz (react)", () => {
+  it("stays static unless interactive is set, and starts unchecked when it is", () => {
+    const off = renderToStaticMarkup(<Explanation ir={quizIr} theme="none" />)
+    expect(off).toContain("exp-quiz-check") // the static details reveal
+    expect(off).not.toContain("exp-quiz-choice")
+
+    const on = renderToStaticMarkup(<Explanation ir={quizIr} theme="none" interactive />)
+    expect(on).toContain(`class="exp-quiz-choice"`)
+    expect(on).toContain(`disabled`) // check button disabled before a pick
+    expect(on).not.toContain("exp-quiz-why") // whys hidden before checking
+    expect(on).not.toContain("exp-quiz-checked")
+  })
+
+  it("degrades to the static path for a bad answer index", () => {
+    const html = renderToStaticMarkup(
+      <Explanation ir={{ version: 1, blocks: [{ ...quizIr.blocks[0], answer: 9 }] }} theme="none" interactive />,
+    )
+    // Same degraded markup as the static renderer: question + options survive,
+    // the check reveal is hidden, and no interactive buttons mount.
+    expect(html).toContain("exp-quiz-options")
+    expect(html).not.toContain("exp-quiz-check")
+    expect(html).not.toContain("exp-quiz-choice")
+  })
+
+  it("transitions: pick before check, lock after check", () => {
+    const picked = quizPick(initialQuizState, 1)
+    expect(picked).toEqual({ picked: 1, checked: false })
+    const checked = quizCheck(picked)
+    expect(checked).toEqual({ picked: 1, checked: true })
+    expect(quizCheck(initialQuizState)).toEqual(initialQuizState) // no pick → no check
+    expect(quizPick(checked, 0)).toEqual(checked) // locked
+    expect(quizCheck(checked)).toEqual(checked) // idempotent
   })
 })
