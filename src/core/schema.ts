@@ -296,6 +296,18 @@ export const figureDerivedSchema = z.object({
 })
 export type FigureDerived = z.infer<typeof figureDerivedSchema>
 
+// Element ids, NOT figureNamePattern: a draggable handle is matched against a
+// `data-el-id`, which uses the authored element-id rule (hyphens allowed).
+// figureNamePattern exists to keep evaluator bindings clear of PI/E/TAU and
+// correctly rejects hyphens, so reusing it here would refuse valid ids.
+const figureElementIdPattern = /^[\w][\w-]*$/
+
+export const figureDraggableSchema = z.object({
+  id: z.string().regex(figureElementIdPattern, "must be an element id"),
+  x: z.string().optional(),
+  y: z.string().optional(),
+})
+
 export const figureBlockSchema = z.object({
   id: idSchema,
   type: z.literal("figure"),
@@ -310,6 +322,10 @@ export const figureBlockSchema = z.object({
   sweep: z.string().regex(figureNamePattern, figureNameMessage).optional(),
   params: z.array(figureParamSchema).max(8).optional(),
   derived: z.array(figureDerivedSchema).max(8).optional(),
+  // Direct-manipulation handles (drag-to-vary spec §4). A handle names an
+  // element and the params its drag writes; the element's own coordinate must
+  // be expression-driven. Unparseable entries drop individually.
+  draggable: z.array(figureDraggableSchema).max(16).optional(),
   // Lenient like stack children / chart points: elements are parsed at render
   // time so one malformed element drops alone instead of the whole figure.
   elements: z.array(z.unknown()),

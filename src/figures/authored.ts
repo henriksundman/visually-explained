@@ -53,6 +53,9 @@ export interface AuthoredFigure {
   height?: number
   params?: FigureSpec[]
   derived?: DerivedSpec[]
+  /** Declared drag handles. Consumed by the React runtime only — the static
+   *  renderer ignores this field entirely. */
+  draggable?: DraggableSpec[]
   elements: FigureEl[]
 }
 
@@ -86,6 +89,58 @@ function parseTone(v: unknown): Tone | undefined {
 }
 
 const EL_ID_RE = /^[\w][\w-]*$/
+
+/** A declared direct-manipulation handle (drag-to-vary spec §4). `x`/`y` name
+ *  the params the drag writes; an absent axis is fixed, not free. */
+export interface DraggableSpec {
+  id: string
+  x?: string
+  y?: string
+}
+
+const MAX_DRAGGABLES = 16
+
+/** Lenient parse of the block's `draggable` list. A malformed entry drops
+ *  ALONE (with a warning) rather than taking the figure with it, matching how
+ *  elements and chart points salvage. Returns undefined when absent so the
+ *  overwhelmingly common no-drag case carries no extra field.
+ *
+ *  Lives here, not in primitives/figure.ts, so it can reuse the module-private
+ *  EL_ID_RE — there must be exactly one element-id rule in the codebase. */
+export function parseDraggables(raw: unknown, warn: (m: string) => void): DraggableSpec[] | undefined {
+  if (raw === undefined) return undefined
+  if (!Array.isArray(raw)) {
+    warn("figure-drag-not-a-list: draggable must be an array; ignored")
+    return undefined
+  }
+  const out: DraggableSpec[] = []
+  for (const item of raw) {
+    if (out.length >= MAX_DRAGGABLES) {
+      warn(`figure-drag-too-many: more than ${MAX_DRAGGABLES} draggable entries; excess dropped`)
+      break
+    }
+    if (typeof item !== "object" || item === null) {
+      warn("figure-drag-entry-invalid: draggable entry must be an object; dropped")
+      continue
+    }
+    const r = item as Record<string, unknown>
+    const id = r.id
+    if (typeof id !== "string" || id.length > 100 || !EL_ID_RE.test(id)) {
+      warn("figure-drag-id-invalid: draggable id must match /^[\\w][\\w-]*$/ (max 100 chars); entry dropped")
+      continue
+    }
+    const x = typeof r.x === "string" && r.x !== "" ? r.x : undefined
+    const y = typeof r.y === "string" && r.y !== "" ? r.y : undefined
+    // A handle on neither axis is not a handle: it would be grabbable and do
+    // nothing, which reads as a broken figure rather than a rejected entry.
+    if (x === undefined && y === undefined) {
+      warn(`figure-drag-no-axis: draggable "${id}" names no axis; entry dropped`)
+      continue
+    }
+    out.push({ id, ...(x !== undefined ? { x } : {}), ...(y !== undefined ? { y } : {}) })
+  }
+  return out
+}
 
 /** Lenient identity parse: invalid input drops the FIELD (not the element)
  *  with a warning; the element still renders, just anonymous (spec §3). */

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { renderBlock, renderExplanation } from "../src/core/render"
 import { explanationSchema } from "../src/core/schema"
 import "../src/core/registerAll"
+import { buildAuthored } from "../src/primitives/figure"
 
 const base = {
   version: 1 as const,
@@ -129,5 +130,50 @@ describe("figure primitive", () => {
       ],
     }
     expect(explanationSchema.safeParse(ok).success).toBe(true)
+  })
+})
+
+describe("draggable parsing", () => {
+  const base = {
+    type: "figure" as const,
+    params: [{ name: "r", min: 0, max: 360, step: 1, initial: 120 }],
+    elements: [{ kind: "dot" as const, id: "bob", cx: "r", cy: 130, r: 6 }],
+  }
+
+  it("parses a draggable entry and drops unknown keys", () => {
+    const w: string[] = []
+    const a = buildAuthored(
+      { ...base, draggable: [{ id: "bob", x: "r", y: "nope", bogus: 1 }] } as never,
+      w,
+    )
+    expect(a.draggable).toEqual([{ id: "bob", x: "r", y: "nope" }])
+  })
+
+  it("warns and drops an entry with no axis", () => {
+    const w: string[] = []
+    const a = buildAuthored({ ...base, draggable: [{ id: "bob" }] } as never, w)
+    expect(a.draggable).toEqual([])
+    expect(w.join(" ")).toContain("figure-drag-no-axis")
+  })
+
+  it("warns and drops an id that violates the element-id rule", () => {
+    const w: string[] = []
+    const a = buildAuthored({ ...base, draggable: [{ id: "bad id!", x: "r" }] } as never, w)
+    expect(a.draggable).toEqual([])
+    expect(w.join(" ")).toContain("figure-drag-id-invalid")
+  })
+
+  it("bounds the entry count", () => {
+    const w: string[] = []
+    const many = Array.from({ length: 40 }, (_, i) => ({ id: `d${i}`, x: "r" }))
+    const a = buildAuthored({ ...base, draggable: many } as never, w)
+    expect(a.draggable!.length).toBeLessThanOrEqual(16)
+    expect(w.join(" ")).toContain("figure-drag-too-many")
+  })
+
+  it("leaves draggable undefined when absent — the common case is untouched", () => {
+    const w: string[] = []
+    const a = buildAuthored(base as never, w)
+    expect(a.draggable).toBeUndefined()
   })
 })

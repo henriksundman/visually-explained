@@ -3,6 +3,7 @@ import { figureBlockSchema, type FigureBlock } from "../core/schema"
 import { renderInline } from "../core/inline"
 import {
   compileFigure,
+  parseDraggables,
   parseFigureElement,
   type AuthoredFigure,
   type DerivedSpec,
@@ -53,6 +54,7 @@ export function buildAuthored(block: FigureBlock, warnings: string[]): AuthoredF
     height: block.height,
     params: dedupeNames(block.params as FigureSpec[] | undefined, warnings, "param"),
     derived: dedupeNames(block.derived as DerivedSpec[] | undefined, warnings, "derived"),
+    draggable: parseDraggables(block.draggable, m => warnings.push(m)),
     elements,
   }
 }
