@@ -54,12 +54,21 @@ Before deep-diving, test the failure against these recurring patterns:
   `sections`) reported "zero figures" — a property of the harness, not the
   library. Check what the entry point actually accepts before believing a null
   result.
-- **Headless browsers drop synthetic repeats.** Chrome DevTools Protocol does
-  not repeat `keyDown` across consecutive dispatches in one session: the first
-  key registers, later ones are swallowed. Verify each key in its own session,
-  or the missing handler looks like a broken one.
+- **Verify a failure reproduces before explaining it away.** Repeated synthetic
+  keydowns failing after the first one looked exactly like a CDP harness
+  artifact; it was a real focus bug in the page. When a test result is
+  inconvenient, suspect the product before the tool.
+- **`dangerouslySetInnerHTML` hides nodes from React.** React's synthetic
+  events (including `onFocusCapture`) do not fire for injected markup. Use
+  native listeners for anything inside such a subtree.
 
 ## Part 2 — Entries
+
+### 2026-10-02 — innerHTML subtree swaps destroy keyboard focus
+- **Symptom:** the drag-to-vary handle moved one step per arrow key, then lost focus to `<body>`; every subsequent keypress went nowhere. Focus survives the first press and is gone by the second.
+- **Root cause:** the Scene compiler emits markup, not React elements, so the SVG is injected via `dangerouslySetInnerHTML`. Every parameter edit re-solves the scene, React replaces that subtree, and the focused `.exp-el` is destroyed. Two wrong turns on the way: reading `document.activeElement` in `onBlurCapture` yields `<body>` because the swap has already happened, and **React's `onFocusCapture` never fires at all** for innerHTML-injected nodes — React never wired them into its synthetic event system. Native `focusin`/`focusout` on the host div are required.
+- **Fix:** `FocusPreservingSvg` records the focused element's `data-el-id` on native `focusin` and re-focuses the element carrying the same id after each commit. Pre-existing for tip handles; drag merely made it obvious.
+- **Rule:** markup injected via `innerHTML`/`dangerouslySetInnerHTML` is invisible to React's synthetic events — attach native listeners for anything inside it. And when re-rendering a focused subtree, focus is part of the state you must restore; a control that works exactly once is not accessible.
 
 ### 2026-10-02 — An interactive control that worked but felt inverted
 - **Symptom:** the drag-to-vary demo rendered, the suite was green, and a real pointer drag moved the handle — in the wrong direction. Dragging left 64px slid the weight right.

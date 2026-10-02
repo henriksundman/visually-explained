@@ -7,6 +7,7 @@ import { n2, sceneToSvg } from "../figures/svg"
 import { renderInline } from "../core/inline"
 import { PopoverDiv, useElementPopover } from "./ElementPopover"
 import { useDragVary, axesFor } from "./useDragVary"
+import { FocusPreservingSvg } from "./FocusPreservingSvg"
 import type { DraggableAxes } from "../figures/svg"
 import type { FigureElementEvent } from "./figureEvents"
 import type { FigureBlock } from "../core/schema"
@@ -174,7 +175,7 @@ export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = 
       ref={stageRef}
       {...stageBind}
     >
-      <div dangerouslySetInnerHTML={{ __html: svg }} />
+      <FocusPreservingSvg html={svg} />
       {pop && <PopoverDiv pop={pop} />}
     </div>
   ) : (

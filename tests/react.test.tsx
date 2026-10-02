@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Explanation } from "../src/react/Explanation"
 import { InteractiveFigure, nextSweepValue, valueColumnCh } from "../src/react/InteractiveFigure"
+import { FocusPreservingSvg } from "../src/react/FocusPreservingSvg"
 import { Quiz, initialQuizState, quizPick, quizCheck } from "../src/react/Quiz"
 import { hitElement, placePopover, resolveTip } from "../src/react/figureEvents"
 import type { TextBlock } from "../src/core/schema"
@@ -298,5 +299,23 @@ describe("Quiz (react)", () => {
     expect(quizCheck(initialQuizState)).toEqual(initialQuizState) // no pick → no check
     expect(quizPick(checked, 0)).toEqual(checked) // locked
     expect(quizCheck(checked)).toEqual(checked) // idempotent
+  })
+})
+
+describe("FocusPreservingSvg", () => {
+  // Focus restoration itself needs a live DOM, and this repo has no jsdom, so
+  // it is verified in a real browser instead (see DEBUGGING.md 2026-10-02 —
+  // "innerHTML swaps destroy focus"). What IS testable here is that the
+  // wrapper changes no markup: the component is an SSR no-op beyond one div.
+  it("emits the SVG markup unchanged, with no extra wrapper attributes", () => {
+    const html = renderToStaticMarkup(<FocusPreservingSvg html="<svg class='exp-figure'></svg>" />)
+    expect(html).toBe("<div><svg class='exp-figure'></svg></div>")
+  })
+
+  it("does not disturb the figure's own SSR output", () => {
+    const html = renderToStaticMarkup(<InteractiveFigure block={figureBlock} />)
+    // The same geometry the static renderer emits — the wrapper adds nothing.
+    expect(html).toContain("A 20 20 0 1 1")
+    expect(html).not.toContain("data-focus")
   })
 })
