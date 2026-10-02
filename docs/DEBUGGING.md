@@ -47,6 +47,12 @@ Before deep-diving, test the failure against these recurring patterns:
 
 ## Part 2 — Entries
 
+### 2026-10-02 — Figure labels overlapped whatever they were centred in
+- **Symptom:** reported with screenshots from `/editorial`: a diagram edge label was eclipsed by the node boxes beside it; chart value labels collided with their neighbours and the last one clipped past the SVG edge.
+- **Root cause:** two layouts placed label text at fixed coordinates without ever measuring it. `layoutFlow` centred `labelX` on a fixed 64px gutter — a 231px label overhung ~90px each side, and nodes (emitted after edges, with an opaque fill) painted over it. `layoutChart.fmtValue` concatenated the unit onto every value (`0.62relative intensity`) and placed labels with no check against the band or the scene bounds. Only node labels were ever measured, via `wrapLabel` ("pre-wrapped lines (layout-owned)").
+- **Fix:** wrap edge labels to the gutter they are routed through, widening that gutter to fit the label up to a 140px cap — wrapping *to the gutter* is what makes the overlap structurally impossible, so no collision pass is needed. Print the chart unit once on its own row above the plot, and omit any value label wider than its mark's slot.
+- **Rule:** every piece of text a layout emits must be measured against the space it will occupy, and the layout — not the CSS — owns fitting it. If a label can be positioned but never sized, it is a bug waiting for longer content. Watch for the same shape in TOC entries and axis ticks. Two follow-ups: a fixed-width gutter *fixed the overlap but read as damaged text* ("back-scatt" / "ered"), so a wrap target should be wide enough to break on word boundaries; and the tests asserting `">240ms</text>"` were pinning the defect, not a contract — re-derive them from the spec rather than bending the fix to match.
+
 ### 2026-10-01 — SAST flagged the whole output pipeline; four rule groups, one real action
 - **Symptom:** `rafter run` on the sources-block cycle reported 35 findings: "XSS" in the demo server, `dangerouslySetInnerHTML` ×13, "unsafe regex" ×2.
 - **Root cause:** the scanner inferred flows, not paths: demo responses are static constants (no `req.*` in any body); React sinks are fed exclusively by the library's escape-then-render pipeline (the library *is* the sanitizer — that's the architecture, per the link-inline security walk); the flagged regexes are linear-shaped, but `highlightCode` did run an unbounded attacker-controlled string.
