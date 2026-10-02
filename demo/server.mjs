@@ -93,7 +93,7 @@ ${section("capabilities", "light", capabilitiesIr)}
 ${section("capabilities-themed", "light", capabilitiesIr, "demo-tokens")}
 <h2>Figures</h2>
 <p>LLM-emitted diagram and chart blocks, a cause-effect chain drawn as an arrow figure — the same IR twice: clean strokes, then the rough.js sketch pass.</p>
-<p><a href="/interactive">Interactive figures →</a> · <a href="/document">Document page →</a> · <a href="/compile">Compile demo →</a></p>
+<p><a href="/interactive">Interactive figures →</a> · <a href="/document">Document page →</a> · <a href="/compile">Compile demo →</a> · <a href="/editorial">Editorial showcase →</a></p>
 ${section("figures", "light", figuresIr)}
 ${section("figures-sketch", "dark", figuresIr, "", true)}
 <h2>How-to</h2>
@@ -122,6 +122,17 @@ const server = createServer(async (req, res) => {
     // compileDocumentStream so the progression is visible in the browser.
     try {
       const html = await readFile(new URL("./compile.html", import.meta.url))
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
+      res.end(html)
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }
+    return
+  }
+  if (url.pathname === "/editorial") {
+    try {
+      const html = await readFile(new URL("./editorial.html", import.meta.url))
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
       res.end(html)
     } catch {
@@ -211,6 +222,28 @@ ${tocScrollSpy}
     const js = await readFile(new URL("./compileClient.js", import.meta.url))
     res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" })
     res.end(js)
+    return
+  }
+  if (url.pathname === "/editorialIr.js") {
+    try {
+      const js = await readFile(new URL("./editorialIr.js", import.meta.url))
+      res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" })
+      res.end(js)
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }
+    return
+  }
+  if (url.pathname === "/editorial.css") {
+    try {
+      const css = await readFile(new URL("./editorial.css", import.meta.url))
+      res.writeHead(200, { "content-type": "text/css; charset=utf-8" })
+      res.end(css)
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }
     return
   }
   if (url.pathname === "/index.js") {
