@@ -1,5 +1,5 @@
 import type { z } from "zod"
-import type { CompileEvent, CompileOptions } from "./client"
+import { validateSources, type CompileEvent, type CompileOptions, type SourceExcerpt } from "./client"
 import { outlineSchema, type Outline } from "./extract"
 import { parseWithIssues, repairUserPrompt } from "./repair"
 import {
@@ -15,6 +15,39 @@ export type StreamCompileEvent =
   | { kind: "compile-done"; document: unknown; warnings: string[] }
 
 type StageOutcome<T> = { ok: true; value: T } | { ok: false; issues: string[] }
+
+/** Anchor citation ids referenced anywhere in a block tree's string fields
+ *  (spec §5: walk string fields — bodies, captions, every rendered surface's
+ *  input — for `(#source-<id>)` anchor references). Model-authored `sources`
+ *  blocks are skipped: they list sources, they do not cite them. Linear scan,
+ *  no backtracking-prone patterns. */
+function collectCitationIds(value: unknown, into = new Set<string>()): Set<string> {
+  if (typeof value === "string") {
+    for (const m of value.matchAll(/#source-([^)\s]+)/g)) into.add(m[1])
+  } else if (Array.isArray(value)) {
+    for (const v of value) collectCitationIds(v, into)
+  } else if (value !== null && typeof value === "object") {
+    if ((value as { type?: unknown }).type === "sources") return into
+    for (const v of Object.values(value)) collectCitationIds(v, into)
+  }
+  return into
+}
+
+/** The auto-appended provenance list (spec §4). `detail` is the excerpt text
+ *  truncated to the sources-block schema's 400-char cap. */
+function sourcesBlockFrom(excerpts: SourceExcerpt[]) {
+  return {
+    type: "sources",
+    id: "compile-sources",
+    title: "Sources",
+    items: excerpts.map(s => ({
+      id: s.id,
+      title: s.title,
+      ...(s.url ? { url: s.url } : {}),
+      detail: s.text.slice(0, 400),
+    })),
+  }
+}
 
 interface StageArgs<T> {
   client: CompileOptions["client"]
@@ -60,13 +93,21 @@ export async function* compileDocumentStream(
   const maxSections = opts.maxSections ?? 12
   const maxRepairs = opts.maxRepairs ?? 2
 
+  // Grounding (spec §3/§4): validate once before any prompting; empty after
+  // validation means the compile behaves exactly like an ungrounded one.
+  const { excerpts, warnings: sourceWarnings } = validateSources(opts.sources)
+  warnings.push(...sourceWarnings)
+  const grounded = excerpts.length > 0 ? excerpts : undefined
+  const knownSourceIds = new Set(excerpts.map(s => s.id))
+  const citedIds = new Set<string>()
+
   yield { kind: "outline-start", topic }
   const outlineOutcome = yield* runStage<Outline>({
     client: opts.client,
     maxRepairs,
     stage: "outline",
     system: outlineSystemPrompt(maxSections),
-    user: outlineUserPrompt(topic, opts.guidance),
+    user: outlineUserPrompt(topic, opts.guidance, grounded),
     rules: outlineSystemPrompt(maxSections),
     schema: outlineSchema,
   })
@@ -105,6 +146,7 @@ export async function* compileDocumentStream(
         goal: entry.goal,
         visual: entry.visual,
         guidance: opts.guidance,
+        sources: grounded,
       }),
       rules:
         'Shape: { "title": string, "blocks": Block[] }. A section has "title" and "blocks" only — never "sections", never "version".',
@@ -118,7 +160,32 @@ export async function* compileDocumentStream(
     }
     // Canonical title: the outline's title wins over the section call's own.
     sections.push({ title: entry.title, blocks: outcome.value.blocks })
+
+    // Grounding audit (spec §5): post-repair accepted blocks only. A cited id
+    // outside the validated set is a dead link — warn, never drop. Model ids
+    // are truncated to 64 chars so unbounded output cannot bloat warnings.
+    for (const id of collectCitationIds(outcome.value.blocks)) {
+      citedIds.add(id)
+      if (grounded && !knownSourceIds.has(id)) {
+        warnings.push(`[grounding] section ${i} cites unknown source "${id.slice(0, 64)}"`)
+      }
+    }
+
     yield { kind: "section-done", index: i, title: entry.title, blocks: outcome.value.blocks }
+  }
+
+  // Provenance (spec §4): append to the LAST SURVIVING section — no new
+  // section, maxSections semantics intact. Then report never-cited excerpts
+  // (spec §5) at compile-done time.
+  if (grounded) {
+    if (sections.length > 0) {
+      sections[sections.length - 1].blocks.push(sourcesBlockFrom(grounded))
+    } else {
+      warnings.push("[grounding] sources block not appended — no surviving section")
+    }
+    for (const s of excerpts) {
+      if (!citedIds.has(s.id)) warnings.push(`[grounding] source "${s.id}" never cited`)
+    }
   }
 
   yield {
