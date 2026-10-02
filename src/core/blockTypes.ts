@@ -10,7 +10,7 @@ export const BLOCK_TYPE_DOCS = `
 - comparison: { items: [{ name }], dimensions: [{ name, values: string[] }] } — dimensions x items table.
 - cause-effect: { chain: [{ because, therefore }] } — causal reasoning.
 - data-callout: { metric, label, delta?, trend?: "up"|"down"|"flat", series?: number[] (2-24 samples for the trend sparkline), context? } — one number that matters.
-- timeline: { events: [{ when, what, detail? }] } — ordered events.
+- timeline: { events: [{ when, what, detail? }], presentation?: "auto"|"text"|"figure" } — ordered events. By default a timeline is drawn as a figure when its labels are short enough to stay legible, and falls back to a text list when they are not; set presentation to force either form.
 - callout: { variant: "note"|"tip"|"warning", body } — aside or caution.
 - diagram: { nodes: [{ id, label, shape?: "box"|"round"|"pill"|"note" }], edges: [{ from, to, label?, kind?: "causes"|"leads"|"part-of"|"conflict" }], direction?: "lr"|"tb" } — semantic nodes/edges only; the renderer computes all layout. Edge from/to must reference node ids. Nodes accept an optional tip (1-200 chars) shown on hover; chart points and timeline events accept the same optional tip.
 - chart: { kind: "bar"|"line", points: [{ label, value }], unit?, caption? } — value is a number or numeric string; line points are an ordered series.

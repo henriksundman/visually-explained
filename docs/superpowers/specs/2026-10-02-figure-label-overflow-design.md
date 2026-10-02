@@ -176,3 +176,56 @@ Deterministic geometry assertions on the Scene (no rendering, no jsdom):
 Fix on its own branch `fix/figure-label-overflow`, merged **before** the
 showcase branch, so the showcase is reviewed against a fixed library. The
 showcase branch stays open until then.
+---
+
+# Addendum — Timeline (follow-up audit, 2026-10-02)
+
+The same defect class, found by auditing the timeline after the diagram and
+chart fixes shipped. Two earlier attempts were **rejected on review** and are
+recorded here so the reasoning is not repeated.
+
+## A1. What the figure can and cannot do
+
+`sceneToSvg` emits a `viewBox` with no `width` attribute, and `.exp-figure` is
+`width: 100%; height: auto`. **A wide figure does not overflow — it scales
+down.** So the width budget is a *legibility* budget, not a layout one: an 11px
+label in a scene of width `W` renders at `11 × column / W`.
+
+Horizontal scrolling was considered and rejected. It requires first *removing*
+the responsive shrink (emit an explicit pixel width), and then: the timeline
+stops reading as a timeline when events sit off-screen; the scroll container
+needs `tabindex` + an accessible name to be keyboard-reachable; and
+`placePopover` positions tooltips from `getBoundingClientRect`, so a scrolled-out
+event strands its popover outside the visible area.
+
+## A2. Approach: measure, and degrade to the text list
+
+`auto` presentation now requires the events to **measure** as a drawable
+figure, not merely to be under the event-count cap. `timelineFigureFits`
+rejects when the scene would exceed `MAX_FIGURE_WIDTH` (825px — where an 11px
+label falls to ~8px in a ~600px column). The primitive then renders the
+existing text list, which also carries `detail`, prose the figure drops.
+
+The count cap (12) is retained as an independent second condition.
+
+## A3. Decisions
+
+- **The layout never drops a label.** An earlier version capped the step and
+  omitted over-long labels; the geometry tests then passed *vacuously*. All
+  degradation now happens at the presentation layer, where it is visible.
+- **Explicit `presentation` is always honoured**, fit or not. It is a
+  deliberate author override.
+- **The degrade is loud.** `ctx.addWarning("timeline-figure-too-wide: …")`.
+  `renderTimeline` previously discarded `layoutTimeline`'s `warnings`
+  entirely — the only primitive that did.
+- **Step and width floors must agree.** The step is the max of the
+  label-derived clearance and the 460px minimum-width fill; computing the width
+  from one and the positions from the other left 107px of empty spine.
+
+## A4. Verification
+
+- Presence asserted before geometry (a dropped label satisfies every spacing
+  assertion).
+- The demo's 3-event timeline is **byte-for-byte identical to `main`**, checked
+  by diffing rendered output from a `main` worktree — not by eye.
+- 401/401 suite green; `tsc --noEmit` clean.

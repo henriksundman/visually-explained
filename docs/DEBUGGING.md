@@ -36,6 +36,11 @@ Before deep-diving, test the failure against these recurring patterns:
   `"__proto__"` resolve to inherited values.
 - **Smoke greps must target rendered output.** Block `id`s never appear in
   HTML; `data-el-id`s, labels, values, and emitted attributes do.
+- **Figures scale, they do not overflow.** `sceneToSvg` emits a `viewBox` with
+  no `width`, and `.exp-figure` is `width: 100%; height: auto` — so a wide scene
+  is *shrunk* to its column, not allowed to stick out. An 11px label in a
+  2,472px scene renders at ~3px in a 700px column. Before adding a horizontal
+  scrollbar or a wider figure, check what the width budget costs at render time.
 - **Entry-point families.** Threading an option through render paths? Grep
   every call site of the shared helpers (`renderSalvagedBlock`, `renderBlock`)
   — plan file lists have missed call sites before.
@@ -47,11 +52,11 @@ Before deep-diving, test the failure against these recurring patterns:
 
 ## Part 2 — Entries
 
-### 2026-10-02 — Timeline labels overlapped and clipped at the scene edges
-- **Symptom:** found by auditing the remaining layouts after the diagram/chart fixes. Timeline event labels were placed at fixed offsets and never measured; a long `what` overlapped its same-side neighbour, and the first/last event's label was clipped by the viewBox.
-- **Root cause:** `layoutTimeline` spaced events evenly with `step = (width - PAD*2) / n` and centred each `what`/`when` label on its tick. Nothing compared the label to the space it occupied. The demo's3 short events fit by accident.
-- **Fix:** the step is now label-aware — at least the widest label — which keeps same-side labels (two steps apart) clear of each other and the end labels inside the scene. `what`/`when` are unbounded schema strings, so the step is capped (`MAX_EVENT_STEP`) and an over-long label is omitted rather than allowed to overlap.
-- **Rule:** when auditing a defect class, verify the arithmetic before predicting a failure — same-side events are two steps apart, so my first "5 events collide" claim was wrong, and the real triggers were a long label at a higher event count, plus edge clipping at any count. Measure first; the reproduction decides the fix.
+### 2026-10-02 — Timeline labels overlapped; the figure was the wrong answer
+- **Symptom:** timeline event labels were placed at even offsets and never measured, so a long `what` overlapped its same-side neighbour (124px of shortfall per pair at 8 events) and the end labels were clipped by the viewBox. The demo's 3 short events fit by accident.
+- **Root cause:** `layoutTimeline` spaced events with `step = (width - PAD*2) / n` and centred each label on its tick, never comparing the label to the space it occupied. Two failed fixes followed, both because I treated "make it fit" as the only axis: capping the step at 320px and *dropping* over-long labels produced a 2,472px figure, and wrapping produced 4-line shreds that tripped the line cap and dropped the label anyway — all while the suite stayed green, because the spacing assertions pass vacuously when labels are absent.
+- **Fix:** the auto presentation rule now *measures* (`timelineFigureFits`) and degrades to the existing text list when the scene would exceed ~825px — the width at which `width: 100%` scaling shrinks the 11px labels below ~8px. `layoutTimeline` itself never drops a label; an explicit `presentation` is always honoured. Also fixed: `renderTimeline` discarded `layoutTimeline`'s `warnings`, so a host could not see a degrade.
+- **Rule:** when a figure can't hold its content legibly, degrading to the *other* rendering of the same block beats distorting the figure — and the degrade must be visible (`ctx.addWarning`), never a silent omission. Measure before predicting: my "3 × 40-char labels don't fit" claim was wrong (712px, ~9px, genuinely fine), and my "no dead space" fix was wrong until a byte-diff against `main` caught 107px of empty spine. Compare rendered output against `main` in a worktree; eyeballing arithmetic is not verification.
 
 ### 2026-10-02 — Figure labels overlapped whatever they were centred in
 - **Symptom:** reported with screenshots from `/editorial`: a diagram edge label was eclipsed by the node boxes beside it; chart value labels collided with their neighbours and the last one clipped past the SVG edge.
