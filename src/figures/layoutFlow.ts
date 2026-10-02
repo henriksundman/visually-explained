@@ -29,7 +29,10 @@ const NODE_W_MIN = 90
 const NODE_W_MAX = 260
 const LINE_H = 44 // height of a single-line node
 const LINE_PITCH = 16 // extra vertical room per additional text line
-const GAP_MAIN = 64 // gap between columns (lr) or rows (tb)
+const GAP_MAIN = 64 // minimum gap between columns (lr) or rows (tb)
+const MAX_LABEL_GUTTER = 140 // cap on a label-driven gutter, so one long
+                               // label cannot blow up the figure's width
+const LABEL_PAD = 16 // breathing room either side of a single-line label
 const GAP_CROSS = 28 // gap between rows (lr) or columns (tb)
 const PAD = 16
 const CHAR_W = 7.5 // width estimate per character at 13px
@@ -174,7 +177,23 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   const placed = new Map<string, Placed>()
   let mainOffset = PAD
   let crossExtent = 0
-  ranks.forEach(rankIds => {
+  // Label-aware gutters (spec §2.7): the gap between rank r and r+1 widens to
+  // fit the longest label crossing it, so an ordinary label sits on ONE line
+  // instead of stacking into a narrow column. Capped, and still never narrower
+  // than GAP_MAIN — short-label diagrams are exactly as compact as before.
+  const gutters: number[] = ranks.map((_, r) => {
+    let need = GAP_MAIN
+    for (const e of edges) {
+      const from = layer.get(e.from)!
+      const to = layer.get(e.to)!
+      if (Math.abs(from - to) !== 1 || Math.min(from, to) !== r) continue
+      if (!e.label) continue
+      need = Math.max(need, e.label.length * EDGE_CHAR_W + LABEL_PAD)
+    }
+    return Math.min(MAX_LABEL_GUTTER, need)
+  })
+  let lastGutter = GAP_MAIN
+  ranks.forEach((rankIds, r) => {
     let cross = PAD
     rankIds.forEach(id => {
       const n = byId.get(id)!
@@ -193,10 +212,11 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       cross += h + GAP_CROSS
     })
     crossExtent = Math.max(crossExtent, cross - GAP_CROSS)
-    mainOffset += Math.max(0, ...rankIds.map(id => placed.get(id)!.w)) + GAP_MAIN
+    lastGutter = gutters[r] ?? GAP_MAIN
+    mainOffset += Math.max(0, ...rankIds.map(id => placed.get(id)!.w)) + lastGutter
   })
-  const width = direction === "lr" ? mainOffset - GAP_MAIN + PAD : crossExtent + PAD
-  let height = direction === "lr" ? crossExtent + PAD : mainOffset - GAP_MAIN + PAD
+  const width = direction === "lr" ? mainOffset - lastGutter + PAD : crossExtent + PAD
+  let height = direction === "lr" ? crossExtent + PAD : mainOffset - lastGutter + PAD
 
   // 6. Edges FIRST (so opaque node fills cover any crossing line), with
   //    skip-rank edges routed orthogonally through the column gutter.
@@ -246,11 +266,15 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         labelY = gutterY - 6
       }
     }
-    // Available label width is the gutter this edge is routed through: for an
-    // adjacent edge, the gap between the two boxes; for a skip-rank edge, the
-    // same horizontal span the orthogonal route uses. Wrapping to it is what
-    // guarantees the label cannot reach a node box (spec §2.2).
-    const gutterW = Math.max(8, b.x - (a.x + a.w))
+    // Available label width for this edge. For `lr` the label sits in the
+    // horizontal gutter between two columns (for a skip-rank edge, the whole
+    // span its orthogonal route crosses). For `tb` the label is horizontal
+    // text centred on the source column, so its bound is that column's width —
+    // a cross-axis span would shred it into three-character chunks.
+    const gutterW =
+      direction === "lr"
+        ? Math.max(8, b.x - (a.x + a.w))
+        : Math.min(MAX_LABEL_GUTTER, Math.max(a.w, b.w))
     const lines = e.label ? wrapEdgeLabel(e.label, gutterW) : []
 
     // labelY from the path maths is where the FIRST line sits; shift it up by

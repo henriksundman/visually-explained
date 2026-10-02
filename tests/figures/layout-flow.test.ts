@@ -193,18 +193,58 @@ describe("edge label overflow", () => {
     }
   })
 
-  it("hard-splits a single word wider than the gutter", () => {
+  it("hard-splits a single word too wide even for a label-aware gutter", () => {
+    // The gutter widens to fit a label, but is capped at MAX_LABEL_GUTTER, so
+    // a word longer than the cap must still be split rather than overflow.
+    const word = "extraordinarilylongwordindeed"
     const { scene } = layoutFlow({
       nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
-      edges: [{ from: "a", to: "b", label: "extraordinarily" }],
+      edges: [{ from: "a", to: "b", label: word }],
       direction: "lr",
     })
     const arrow = mustArrow(scene, "a->b")
     const lines = arrow.lines ?? [arrow.label!]
     expect(lines.length).toBeGreaterThan(1)
-    expect(lines.join("")).toBe("extraordinarily")
+    expect(lines.join("")).toBe(word)
     const gutter = mustNode(scene, "b").x - (mustNode(scene, "a").x + mustNode(scene, "a").w)
     for (const line of lines) expect(edgeTextW(line)).toBeLessThanOrEqual(gutter)
+  })
+
+  it("widens the gutter for a long label, capped, and keeps short labels compact", () => {
+    const shortGutter = () => {
+      const { scene } = layoutFlow({
+        nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+        edges: [{ from: "a", to: "b", label: "hit" }],
+        direction: "lr",
+      })
+      const ns = scene.elements.filter(e => e.kind === "node-box") as { x: number; w: number }[]
+      return ns[1].x - (ns[0].x + ns[0].w)
+    }
+    // Unchanged default: a short label leaves the gutter at its 64px minimum.
+    expect(shortGutter()).toBe(64)
+
+    const { scene } = layoutFlow(overflowIr)
+    const ns = scene.elements.filter(e => e.kind === "node-box") as { x: number; w: number }[]
+    const gutter = ns[1].x - (ns[0].x + ns[0].w)
+    expect(gutter).toBeGreaterThan(64)
+    expect(gutter).toBeLessThanOrEqual(140) // the cap
+  })
+
+  it("wraps a tb label on word boundaries, not shredded fragments", () => {
+    // A cross-axis span would chop this into three-character chunks; tb labels
+    // are horizontal text, so their bound is the column width.
+    const { scene } = layoutFlow({
+      direction: "tb",
+      nodes: [{ id: "a", label: "Deploy" }, { id: "b", label: "Latency" }],
+      edges: [{ from: "a", to: "b", label: "the deploy causes the latency spike" }],
+    })
+    const arrow = mustArrow(scene, "a->b")
+    const lines = arrow.lines ?? [arrow.label!]
+    expect(lines.length).toBeGreaterThan(1)
+    for (const line of lines) {
+      expect(line.length).toBeGreaterThan(3)
+      expect("the deploy causes the latency spike").toContain(line)
+    }
   })
 
   it("leaves a short label single-line, with no lines field (byte-identical emit)", () => {
