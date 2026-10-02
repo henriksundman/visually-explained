@@ -155,6 +155,7 @@ export type Block =
   | DiagramBlock
   | ChartBlock
   | FigureBlock
+  | QuizBlock
 
 export const stackBlockSchema = z.object({
   id: idSchema,
@@ -183,6 +184,24 @@ export const sourcesBlockSchema = z.object({
 })
 export type SourcesBlock = z.infer<typeof sourcesBlockSchema>
 
+export const quizOptionSchema = z.object({
+  text: z.string().min(1).max(300),
+  why: z.string().min(1).max(400).optional(),
+})
+export type QuizOption = z.infer<typeof quizOptionSchema>
+
+export const quizBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("quiz"),
+  question: z.string().min(1).max(500),
+  // 2-6 options (retrieval-practice spec §3); the answer is a 0-based index,
+  // range-checked at render time (cross-field, so not expressible here).
+  options: z.array(quizOptionSchema).min(2).max(6),
+  answer: z.number().int().min(0),
+  explanation: z.string().min(1).max(500).optional(),
+})
+export type QuizBlock = z.infer<typeof quizBlockSchema>
+
 export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
   z.discriminatedUnion("type", [
     stepListBlockSchema,
@@ -201,6 +220,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     chartBlockSchema,
     figureBlockSchema,
     sourcesBlockSchema,
+    quizBlockSchema,
   ]) as unknown as z.ZodType<Block>,
 )
 
