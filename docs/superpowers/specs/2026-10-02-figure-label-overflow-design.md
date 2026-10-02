@@ -87,6 +87,11 @@ orthogonal; recorded here rather than bundled into this fix.
 6. **Single-line output stays byte-identical.** A diagram edge label that fits
    on one line emits exactly the same markup as today, so no existing snapshot
    or test churns.
+7. **Wrap now; revisit the gutter after looking at it.** The fixed 64px gutter
+   yields roughly 10 characters per line, so a long label becomes several short
+   lines. That is the agreed first cut; if the rendered result reads as too
+   cramped, a label-aware gutter width is the refinement to consider (capped, so
+   a pathological label cannot blow up the figure width).
 
 ## 3. Design
 
