@@ -141,7 +141,9 @@ One line in `BLOCK_TYPE_DOCS` (draft; final wording at implementation):
 - **Static render**: happy path (options listed, reveal contains correct-first
   mark, distractor whys, optional explanation); `why` omission; degrade cases —
   out-of-range `answer`, < 2 options (raw IR), empty question — each → fallback
-  block + warning, never a throw; block id escapes.
+  block + warning, never a throw; question/option/why text escapes. (The block
+  `id` is never emitted into markup — it appears only in warning strings, the
+  same host-facing posture as every render warning.)
 - **React**: select → check → correct/wrong classes → locked; check disabled
   before selection; parity — without `interactive`, quiz blocks render the
   static markup identically to the HTML renderer.
