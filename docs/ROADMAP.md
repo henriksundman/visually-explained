@@ -128,6 +128,15 @@ decisions that survive across sessions.
   and renders the text list — which also surfaces `detail` — once labels would
   stop being legible; `layoutTimeline` itself never drops a label, and an
   explicit `presentation` is always honoured. See the spec addendum.
+- **Drag-to-vary simulations** (2026-10-02) — direct manipulation for authored
+  figures: a `draggable: [{ id, x?, y? }]` handle writes to the same `param` a
+  slider writes, so the two are consistent by construction rather than by a
+  second code path. The layout does not change: a handle's coordinate is
+  expression-driven and the existing `values → compileFigure → sceneToSvg`
+  round trip re-solves the figure. Keyboard-operable (arrows, Shift+arrows,
+  Home/End) as part of the feature. The static renderer is untouched — verified
+  byte-for-byte against `main`. Spec:
+  `docs/superpowers/specs/2026-10-02-drag-to-vary-design.md`.
 - **Editorial showcase** (2026-10-02) — a demo-only `/editorial` route
   re-skinning a 9-block article in warm paper / oxblood / serif, built
   entirely from the library's public styling surface: **zero changes under
@@ -169,12 +178,9 @@ sub-projects, each its own spec → plan → build:
 The arc is complete; new work starts here. Candidate threads (recorded
 2026-09-30, re-surveyed 2026-10-02 — each needs its own spec → plan → build
 cycle):
-- **Drag-to-vary simulations** — the interactive runtime has sliders +
-  play; direct manipulation (drag a point, scrub a timeline) was deferred
-  from the interactive-runtime cycle and is what makes a card a simulation
-  rather than an animation player. **Next up.** The runtime, `params`/`derived`
-  and the expression evaluator all exist and are currently reachable only
-  through sliders.
+- **Drag-to-vary simulations** — SHIPPED (see above). Remaining: groups carry no
+  identity so they cannot be grabbed, and there is no multi-touch, snapping or
+  undo. Any of those is its own cycle.
 - **Math typesetting subset** — hand-rolled sup/sub inline syntax and
   fraction stacking for derivation steps; most of KaTeX's benefit without
   breaking the dependency rule.

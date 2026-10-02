@@ -49,8 +49,23 @@ Before deep-diving, test the failure against these recurring patterns:
   before touching code.
 - **Verify helper assumptions.** Read the helper; don't trust its name or the
   plan's claim about it (`compileFigure` does not parse figures).
+- **Re-derive harness inputs from the code.** A smoke script that guessed an
+  export name (`demoIr` vs `dataIr`) or a document shape (`blocks` vs
+  `sections`) reported "zero figures" — a property of the harness, not the
+  library. Check what the entry point actually accepts before believing a null
+  result.
+- **Headless browsers drop synthetic repeats.** Chrome DevTools Protocol does
+  not repeat `keyDown` across consecutive dispatches in one session: the first
+  key registers, later ones are swallowed. Verify each key in its own session,
+  or the missing handler looks like a broken one.
 
 ## Part 2 — Entries
+
+### 2026-10-02 — An interactive control that worked but felt inverted
+- **Symptom:** the drag-to-vary demo rendered, the suite was green, and a real pointer drag moved the handle — in the wrong direction. Dragging left 64px slid the weight right.
+- **Root cause:** the figure mapped position as `rest - stretch`, a self-consistent negation. Every unit test passed because the geometry was internally correct; only the *direction of causality* was wrong. An inverted mapping is indistinguishable from a correct one when the only assertions are "the value changed" and "the shape matches".
+- **Fix:** position became the param itself (`bx = stretch`), so a drag maps to cursor movement 1:1. Verified by driving a real drag through Chrome DevTools Protocol and reading the handle rect and slider value back out of the DOM.
+- **Rule:** assert the SIGN of an interaction, not just that it changed. For a drag, the test is "drag +N ⇒ element moves +N", which an inverted mapping fails immediately. Self-consistent geometry is not evidence of a working control; when the assertion could pass with the sign flipped, it is too weak.
 
 ### 2026-10-02 — Timeline labels overlapped; the figure was the wrong answer
 - **Symptom:** timeline event labels were placed at even offsets and never measured, so a long `what` overlapped its same-side neighbour (124px of shortfall per pair at 8 events) and the end labels were clipped by the viewBox. The demo's 3 short events fit by accident.
