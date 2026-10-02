@@ -47,6 +47,12 @@ Before deep-diving, test the failure against these recurring patterns:
 
 ## Part 2 — Entries
 
+### 2026-10-02 — Timeline labels overlapped and clipped at the scene edges
+- **Symptom:** found by auditing the remaining layouts after the diagram/chart fixes. Timeline event labels were placed at fixed offsets and never measured; a long `what` overlapped its same-side neighbour, and the first/last event's label was clipped by the viewBox.
+- **Root cause:** `layoutTimeline` spaced events evenly with `step = (width - PAD*2) / n` and centred each `what`/`when` label on its tick. Nothing compared the label to the space it occupied. The demo's3 short events fit by accident.
+- **Fix:** the step is now label-aware — at least the widest label — which keeps same-side labels (two steps apart) clear of each other and the end labels inside the scene. `what`/`when` are unbounded schema strings, so the step is capped (`MAX_EVENT_STEP`) and an over-long label is omitted rather than allowed to overlap.
+- **Rule:** when auditing a defect class, verify the arithmetic before predicting a failure — same-side events are two steps apart, so my first "5 events collide" claim was wrong, and the real triggers were a long label at a higher event count, plus edge clipping at any count. Measure first; the reproduction decides the fix.
+
 ### 2026-10-02 — Figure labels overlapped whatever they were centred in
 - **Symptom:** reported with screenshots from `/editorial`: a diagram edge label was eclipsed by the node boxes beside it; chart value labels collided with their neighbours and the last one clipped past the SVG edge.
 - **Root cause:** two layouts placed label text at fixed coordinates without ever measuring it. `layoutFlow` centred `labelX` on a fixed 64px gutter — a 231px label overhung ~90px each side, and nodes (emitted after edges, with an opaque fill) painted over it. `layoutChart.fmtValue` concatenated the unit onto every value (`0.62relative intensity`) and placed labels with no check against the band or the scene bounds. Only node labels were ever measured, via `wrapLabel` ("pre-wrapped lines (layout-owned)").
