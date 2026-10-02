@@ -2,6 +2,29 @@
 // tests/demo-examples.test.ts (except capabilitiesIr, whose unknown/invalid
 // blocks are intentional). Plain ESM so the server (node) can import them.
 
+// Retrieval-practice demo (quiz spec §8): one authored quiz with
+// misconception-targeting whys; rendered statically on /document and graded
+// interactively on /interactive.
+const quizBlock = {
+  type: "quiz",
+  id: "quiz-frequency",
+  question: "A signal repeats 50 times per second. Which view shows that **directly**?",
+  options: [
+    { text: "A time-series plot", why: "The waveform wiggles 50 times a second, but counting those wiggles is work." },
+    { text: "A **Fourier** view", why: "Correct — energy per frequency, and 50 Hz stands out as a single peak." },
+    { text: "A histogram of sample values", why: "Bins amplitudes; the 50-per-second rhythm disappears." },
+    { text: "A moving average", why: "Smooths the time series; it can't reveal frequency." },
+  ],
+  answer: 1,
+  explanation: "The Fourier view is the frequency lens this document keeps reaching for.",
+}
+
+export const quizIr = {
+  version: 1,
+  title: "Retrieval practice",
+  blocks: [quizBlock],
+}
+
 export const educationIr = {
   version: 1,
   title: "Why does dividing by a fraction multiply?",
@@ -428,7 +451,7 @@ export const howToIr = {
 export const demoDocIr = {
   version: 1,
   title: "How signals become pictures",
-  summary: "Five angles on one pipeline — the concept, the data, the drawing, the rollout, and true numbers from the host.",
+  summary: "Six angles on one pipeline — the concept, the data, the drawing, the rollout, true numbers from the host, and a retrieval check.",
   sections: [
     { id: "fig-concept", title: "The concept", blocks: educationIr.blocks },
     { id: "fig-data", title: "What the data says", blocks: dataIr.blocks },
@@ -444,5 +467,6 @@ export const demoDocIr = {
         { type: "timeline", id: "milestones-true", events: [{ when: "someday", what: "model-guessed" }], dataset: "milestones" },
       ],
     },
+    { id: "fig-quiz", title: "Retrieval practice", blocks: [quizBlock] },
   ],
 }

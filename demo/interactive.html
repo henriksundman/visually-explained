@@ -27,12 +27,18 @@
 <h1>explanations — interactive figures</h1>
 <p>The same <code>figuresIr</code> as the main demo, rendered by the React runtime: drag the sliders, press play to sweep <code>t</code>.</p>
 <div id="root"></div>
+<h2>Retrieval practice</h2>
+<p>A <code>quiz</code> block through the same runtime: pick an option, check it, and the per-option whys explain themselves.</p>
+<div id="quiz-root"></div>
 <script type="module">
   import { createElement } from "react"
   import { createRoot } from "react-dom/client"
   import { Explanation } from "explanations/react"
-  import { figuresIr } from "/examples.js"
+  import { figuresIr, quizIr } from "/examples.js"
   createRoot(document.getElementById("root")).render(createElement(Explanation, { ir: figuresIr, interactive: true }))
+  createRoot(document.getElementById("quiz-root")).render(
+    createElement(Explanation, { ir: quizIr, interactive: true }),
+  )
 </script>
 </body>
 </html>

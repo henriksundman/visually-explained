@@ -90,6 +90,13 @@ decisions that survive across sessions.
   (`[label](#source-<id>)`); shared `safeHref` gate; `BLOCK_TYPE_DOCS`
   contract + theme styling. Part 2 (compiler grounding) specs next. Spec:
   `docs/superpowers/specs/2026-10-01-sources-block-design.md`.
+- **Retrieval practice — quiz block** (2026-10-02) — the first assessment
+  primitive: `quiz` (question, 2–6 options, 0-based `answer`, per-option
+  `why` rationale, optional `explanation`); static HTML renders options with
+  a script-free `<details>` check reveal, the React runtime grades clicks
+  (`<Explanation interactive>`) and locks after check; `BLOCK_TYPE_DOCS`
+  teaches authoring. Spec:
+  `docs/superpowers/specs/2026-10-02-retrieval-practice-quiz-design.md`.
 - **Compiler grounding** (2026-10-02) — grounded authoring part 2:
   `compileDocument(topic, { client, sources })` interpolates host
   `SourceExcerpt`s into the outline (ids/titles/urls) and section prompts
@@ -132,9 +139,9 @@ sub-projects, each its own spec → plan → build:
 
 The arc is complete; new work starts here. Candidate threads (recorded
 2026-09-30, unplanned — each needs its own spec → plan → build cycle):
-- **Retrieval practice** — an assessment primitive in the block library
-  (quiz / reveal-the-answer), the missing complement to the exposition-side
-  blocks; retrieval beats re-reading for learning that sticks.
+- **Quiz placement in the compiler** — teach outline/section prompts to
+  place retrieval checks (part 2 of retrieval practice; the quiz block
+  shipped 2026-10-02).
 - **Drag-to-vary simulations** — the interactive runtime has sliders +
   play; direct manipulation (drag a point, scrub a timeline) was deferred
   from the interactive-runtime cycle and is what makes a card a simulation

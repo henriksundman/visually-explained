@@ -94,12 +94,14 @@ import { Explanation, Document } from "explanations/react"
 
 ## Block types
 
-16 primitives; each block is `{ type, ...payload }`:
+17 primitives; each block is `{ type, ...payload }`:
 
 - **Content:** `text`, `code` (verbatim snippet, never markdown/HTML)
 - **Structure:** `stack` (group of blocks, one nesting level), `step-list`
 - **Pedagogy:** `concept`, `worked-example`, `derivation`, `comparison`,
-  `cause-effect`, `callout`, `data-callout`, `sources`
+  `cause-effect`, `callout`, `data-callout`, `sources`, `quiz` (multiple
+  choice with per-option `why` feedback; static `<details>` check reveal, or
+  click-graded under `<Explanation interactive>`)
 - **Visuals:** `timeline`, `diagram`, `chart`, `figure`
 
 Host data, not model guesses: `chart`, `data-callout`, and `timeline` accept
