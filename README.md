@@ -172,6 +172,7 @@ const { document, events, warnings } = await compileDocument("How Fourier series
   guidance: "Audience: curious programmers. Keep the math light.",
   maxSections: 8, // default 12
   maxRepairs: 2,  // default 2
+  checks: true,   // retrieval checks (off by default)
 })
 ```
 
@@ -199,7 +200,7 @@ Events — one entry per notable step, in this order
 | `kind` | Payload |
 | --- | --- |
 | `outline-start` | `{ topic }` |
-| `outline-done` | `{ title, summary?, sections, visualHints, sectionTitles }` |
+| `outline-done` | `{ title, summary?, sections, visualHints, sectionTitles, checks? }` |
 | `section-start` | `{ index, title }` |
 | `section-done` | `{ index, title, blocks: Block[] }` |
 | `section-failed` | `{ index, title }` |
@@ -273,6 +274,17 @@ never drops or rewrites content:
 | `[grounding] sources block not appended — no surviving section` | Every section was dropped |
 
 Absent `sources`, compiles are byte-identical to ungrounded ones.
+
+### Retrieval checks
+
+With `checks: true`, the outline may mark sections where a retrieval check
+consolidates the learning, and those section prompts are told to close with
+exactly one `quiz`. The plan surfaces as `checks: <count>` on `outline-done`;
+a declared section whose reply places no quiz warns
+`[checks] section N declared a check but placed no quiz`. Off by default —
+absent the flag, compiles are byte-identical to unflagged ones. Quiz
+citations participate in the grounding audit like any other block, and a quiz
+nested in a `stack` still satisfies its declaration.
 
 ## Authoring prompts yourself
 

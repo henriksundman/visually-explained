@@ -56,12 +56,15 @@
   for await (const e of compileDocumentStream("How signals become pictures", {
     client: stubClient(true, demoSources),
     sources: demoSources,
+    checks: true,
   })) {
     events.push(e)
     if (e.kind === "outline-done") {
       outline = e
       renderDoc()
-      statusEl.textContent = `Outlined "${e.title}" — ${e.sections} sections to write`
+      statusEl.textContent =
+        `Outlined "${e.title}" — ${e.sections} sections to write` +
+        (e.checks ? `, ${e.checks} planned retrieval check(s)` : "")
     } else if (e.kind === "section-start") {
       statusEl.textContent = `Writing section ${e.index + 1}/${outline.sections} — "${e.title}"…`
     } else if (e.kind === "repair-attempt") {

@@ -105,6 +105,13 @@ decisions that survive across sessions.
   hallucinated anchors and never-cited excerpts. Absent `sources`, compiles
   are byte-identical to ungrounded ones. Spec:
   `docs/superpowers/specs/2026-10-01-compiler-grounding-design.md`.
+- **Quiz placement in the compiler** (2026-10-02) — retrieval practice part
+  2: `compileDocument(topic, { client, checks: true })` invites the outline
+  to declare retrieval-check sections (`check: true`, planned count on
+  `outline-done`), instructs those section writers to close with exactly one
+  quiz, and warns when a declared check places none; quiz content joins the
+  grounding audit for free. Spec:
+  `docs/superpowers/specs/2026-10-02-quiz-placement-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -139,9 +146,6 @@ sub-projects, each its own spec → plan → build:
 
 The arc is complete; new work starts here. Candidate threads (recorded
 2026-09-30, unplanned — each needs its own spec → plan → build cycle):
-- **Quiz placement in the compiler** — teach outline/section prompts to
-  place retrieval checks (part 2 of retrieval practice; the quiz block
-  shipped 2026-10-02).
 - **Drag-to-vary simulations** — the interactive runtime has sliders +
   play; direct manipulation (drag a point, scrub a timeline) was deferred
   from the interactive-runtime cycle and is what makes a card a simulation

@@ -5,6 +5,10 @@
 // Grounding demo (compiler spec §7): two host excerpts — one gets cited, one
 // is deliberately left uncited, and one section carries a hallucinated
 // anchor — so the /compile audit log shows both [grounding] warning kinds.
+
+// Retrieval-practice demo (quiz-placement spec §7): two sections are declared
+// as checks; one lands its quiz, one doesn't — so the log shows the planned
+// count on outline-done AND the [checks] drift warning together.
 export const demoSources = [
   {
     id: "signals-101",
@@ -54,9 +58,9 @@ export function stubClient(paced = false, sources = []) {
         title: "How signals become pictures",
         summary: "Compiled live in your browser from a stub LLM.",
         sections: [
-          { title: "The concept", goal: "Define signals and why pictures help.", visual: "diagram" },
+          { title: "The concept", goal: "Define signals and why pictures help.", visual: "diagram", check: true },
           { title: "Reading the data", goal: "Show a small dataset as a chart.", visual: "chart" },
-          { title: "Drawing it", goal: "Compose what we learned into one bespoke figure.", visual: "figure" },
+          { title: "Drawing it", goal: "Compose what we learned into one bespoke figure.", visual: "figure", check: true },
         ],
       })
     }
@@ -81,6 +85,20 @@ export function stubClient(paced = false, sources = []) {
               { from: "src", to: "ch", kind: "leads" },
               { from: "ch", to: "sink", kind: "leads" },
             ],
+          },
+          {
+            // Declared check, landed — the retrieval-practice payoff. No
+            // citation here: quiz content joins the grounding audit, and this
+            // keeps the demo's warning set to exactly the intended lines.
+            type: "quiz",
+            question: "Which part of the pipeline adds **noise**?",
+            options: [
+              { text: "The source", why: "It originates the signal — no noise yet." },
+              { text: "The channel", why: "Correct — noise creeps in during transmission." },
+              { text: "The receiver", why: "It decodes; by then the noise already happened." },
+            ],
+            answer: 1,
+            explanation: "The diagram above shows exactly that.",
           },
         ],
       })
