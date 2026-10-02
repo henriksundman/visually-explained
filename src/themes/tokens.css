@@ -672,6 +672,26 @@
   opacity: 0.8;
 }
 
+/* Drag handles (drag-to-vary spec §8). The handle is a <g>, so the cursor and
+   touch-action go on the wrapper while the visible shape is the child. */
+.exp-el[data-draggable] {
+  cursor: grab;
+  /* Without this the browser's own scroll gesture cancels the drag halfway. */
+  touch-action: none;
+}
+
+.exp-el[data-draggable]:active,
+.exp-fig-stage-dragging .exp-el[data-draggable] {
+  cursor: grabbing;
+}
+
+/* A handle is focusable even with no tip, so the keyboard path (arrows,
+   Home/End) needs a visible ring of its own. */
+.exp-el[data-draggable]:focus-visible {
+  outline: 2px solid var(--exp-accent);
+  outline-offset: 2px;
+}
+
 /* Popover tokens — dark surface defaults work on both themes. */
 .exp {
   --exp-popover-bg: #1a1d23;
