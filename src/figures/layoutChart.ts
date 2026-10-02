@@ -22,12 +22,24 @@ const W = 460
 const H = 220
 const PAD_L = 34
 const PAD_R = 12
-const PAD_T = 16
+const PAD_T = 40 // room for the unit row plus the tallest mark's value label
 const PAD_B = 28
+const UNIT_LABEL_Y = 12
+const BAND_TOLERANCE = 4
+const VALUE_CHAR_W = 6.6 // per-char estimate at the 11px emphasis label size
 
-function fmtValue(v: number, unit?: string): string {
-  const num = Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100)
-  return unit ? `${num}${unit}` : num
+/** Bare value text. The unit is emitted ONCE as its own label above the plot
+ *  (spec §2.3) — appending it to every value overflowed the band, ran labels
+ *  together, and clipped the last one at the scene edge. */
+function fmtValue(v: number): string {
+  return Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100)
+}
+
+/** Whether a value label fits the space its mark owns. Degrade rather than
+ *  overlap: too wide ⇒ omit the label; the bar height, the unit row and the
+ *  hover tip still carry the value. */
+function valueLabelFits(text: string, slot: number): boolean {
+  return text.length * VALUE_CHAR_W <= slot - BAND_TOLERANCE
 }
 
 export function layoutChart(spec: ChartSpec): ChartLayoutResult {
@@ -49,6 +61,12 @@ export function layoutChart(spec: ChartSpec): ChartLayoutResult {
   const xAt = (i: number, n: number) => (n === 1 ? PAD_L + plotW / 2 : PAD_L + (i * plotW) / (n - 1))
   const yAt = (v: number) => baseline - (v / max) * plotH
 
+  // The unit, once, on a row of its own above the plot. Its own row is what
+  // keeps it clear of the tallest mark's value label whatever the data does.
+  if (spec.unit) {
+    elements.push({ kind: "label", x: PAD_L, y: UNIT_LABEL_Y, text: spec.unit, anchor: "start" })
+  }
+
   if (spec.kind === "bar") {
     const band = plotW / points.length
     const bw = band * 0.6
@@ -56,17 +74,24 @@ export function layoutChart(spec: ChartSpec): ChartLayoutResult {
       const h = yAt(0) - yAt(p.value)
       const x = PAD_L + i * band + (band - bw) / 2
       const y = baseline - h
-      elements.push({ kind: "bar", x, y, w: bw, h, valueLabel: fmtValue(p.value, spec.unit), id: `bar:${p.label}`, tip: p.tip })
-      elements.push({ kind: "label", x: x + bw / 2, y: y - 6, text: fmtValue(p.value, spec.unit), anchor: "middle", emphasis: true })
+      const value = fmtValue(p.value)
+      elements.push({ kind: "bar", x, y, w: bw, h, valueLabel: value, id: `bar:${p.label}`, tip: p.tip })
+      if (valueLabelFits(value, band)) {
+        elements.push({ kind: "label", x: x + bw / 2, y: y - 6, text: value, anchor: "middle", emphasis: true })
+      }
       elements.push({ kind: "label", x: x + bw / 2, y: baseline + 16, text: p.label, anchor: "middle" })
     })
   } else {
     const n = points.length
+    const seg = n === 1 ? plotW : plotW / (n - 1)
     points.forEach((p, i) => {
       const x = xAt(i, n)
       const y = yAt(p.value)
+      const value = fmtValue(p.value)
       elements.push({ kind: "dot", x, y, id: `dot:${p.label}`, tip: p.tip })
-      elements.push({ kind: "label", x, y: y - 8, text: fmtValue(p.value, spec.unit), anchor: "middle", emphasis: true })
+      if (valueLabelFits(value, seg)) {
+        elements.push({ kind: "label", x, y: y - 8, text: value, anchor: "middle", emphasis: true })
+      }
       elements.push({ kind: "label", x, y: baseline + 16, text: p.label, anchor: "middle" })
     })
     const coords = points.map((p, i) => `${xAt(i, n)} ${yAt(p.value)}`)

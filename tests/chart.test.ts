@@ -15,6 +15,8 @@ describe("chart", () => {
   })
 
   it("renders bar chart with unit and caption", () => {
+    // Values are bare; the unit is one plot-level label above the plot
+    // (figure-label-overflow spec §2.3).
     const { html, warnings } = renderExplanation({
       version: 1,
       blocks: [
@@ -30,7 +32,9 @@ describe("chart", () => {
     expect(html).toContain(`<div class="exp-block exp-chart">`)
     expect(html).toContain(`<svg class="exp-figure"`)
     expect(html).toContain(`aria-label="p95 by day"`)
-    expect(html).toContain(">240ms</text>")
+    expect(html).toContain(">240</text>")
+    expect(html).toContain(">ms</text>")
+    expect(html).not.toContain("240ms")
     expect(html).toContain(`<p class="exp-fig-caption">p95 by day</p>`)
     expect(warnings).toEqual([])
   })
@@ -136,7 +140,8 @@ describe("chart datasets", () => {
       },
       { datasets: { deploys: deploysDataset } },
     )
-    expect(html).toContain(">4deploys</text>")
+    expect(html).toContain(">4</text>")
+    expect(html).toContain(">deploys</text>")
     expect(html).toContain(`data-tip="Deploy day"`)
     expect(html).not.toContain(">120")
     expect(warnings).toEqual([])
@@ -152,7 +157,8 @@ describe("chart datasets", () => {
     )
     expect(html).toContain(">7")
     expect(html).toContain("kept</p>")
-    expect(html).toContain(">7ms</text>")
+    expect(html).toContain(">7</text>")
+    expect(html).toContain(">ms</text>")
   })
 
   it("warns and renders literals on a key miss", () => {
