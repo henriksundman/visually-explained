@@ -1,4 +1,25 @@
 import { BLOCK_TYPE_DOCS } from "../core/blockTypes"
+import type { SourceExcerpt } from "./client"
+
+/** Outline-visible grounding list (spec §4): ids + titles (+ urls) only — the
+ *  outline plans structure, it does not read excerpts. */
+function outlineSourcesBlock(sources: SourceExcerpt[]): string {
+  return [
+    "Sources available (cite by id; sections must stay groundable in these):",
+    ...sources.map(s => `- ${s.id}: ${s.title}${s.url ? ` — ${s.url}` : ""}`),
+  ].join("\n")
+}
+
+/** Writer-visible grounding list (spec §4): full excerpt text + the citation
+ *  contract. Excerpt order is host order — no sorting. */
+function sectionSourcesBlock(sources: SourceExcerpt[]): string {
+  return [
+    "Sources for this document (ground claims in these):",
+    ...sources.flatMap(s => [`[${s.id}] ${s.title}: ${s.text}`, ...(s.url ? [`[url: ${s.url}]`] : [])]),
+    "",
+    "Citation rules: cite the source a claim comes from as [label](#source-<id>) (or [label](url) when the source has one). Ground claims in these sources; if the sources don't cover something, leave it out rather than inventing facts or citations.",
+  ].join("\n")
+}
 
 export function outlineSystemPrompt(maxSections: number): string {
   return `
@@ -16,10 +37,11 @@ Rules:
 `.trim()
 }
 
-export function outlineUserPrompt(topic: string, guidance?: string): string {
+export function outlineUserPrompt(topic: string, guidance?: string, sources?: SourceExcerpt[]): string {
   return [
     `Topic: ${topic}`,
     guidance ? `Guidance: ${guidance}` : "",
+    sources && sources.length > 0 ? outlineSourcesBlock(sources) : "",
     "",
     "Design the outline. Reply with the JSON object ONLY.",
   ]
@@ -50,12 +72,14 @@ export function sectionUserPrompt(args: {
   goal: string
   visual?: string
   guidance?: string
+  sources?: SourceExcerpt[]
 }): string {
   return [
     `Write section ${args.index + 1} of the document: "${args.title}"`,
     `Goal: ${args.goal}`,
     args.visual ? `Visual: include one ${args.visual} block in this section.` : "",
     args.guidance ? `Guidance: ${args.guidance}` : "",
+    args.sources && args.sources.length > 0 ? sectionSourcesBlock(args.sources) : "",
     "",
     'Reply with the section JSON object ONLY: { "title": string, "blocks": Block[] }.',
   ]
