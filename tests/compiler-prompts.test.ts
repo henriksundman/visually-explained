@@ -101,3 +101,46 @@ describe("grounded prompts", () => {
     )
   })
 })
+
+describe("checks prompts", () => {
+  it("outline prompt carries the checks fragment only when the flag is on", () => {
+    expect(outlineUserPrompt("entropy", undefined, undefined, true)).toContain(
+      'Checks: mark sections with "check": true where a short quiz would consolidate the learning — not every section; never the first; skip reference-style ones.',
+    )
+    // Flag off or absent: byte-identical to today, fragment absent.
+    expect(outlineUserPrompt("entropy", undefined, undefined)).not.toContain("Checks:")
+    expect(outlineUserPrompt("entropy", undefined, undefined, false)).not.toContain("Checks:")
+    expect(outlineUserPrompt("entropy")).toBe("Topic: entropy\nDesign the outline. Reply with the JSON object ONLY.")
+  })
+
+  it("checks and grounding fragments compose in the documented order", () => {
+    const p = outlineUserPrompt("entropy", "for kids", sources, true)
+    const checksAt = p.indexOf("Checks: mark sections")
+    const guidanceAt = p.indexOf("Guidance: for kids")
+    const sourcesAt = p.indexOf("Sources available")
+    expect(guidanceAt).toBeLessThan(checksAt)
+    expect(checksAt).toBeLessThan(sourcesAt)
+  })
+
+  it("section prompt carries the quiz instruction only for check-declared entries", () => {
+    const declared = sectionUserPrompt({ index: 1, title: "T", goal: "G", check: true })
+    expect(declared).toContain(
+      "End this section with exactly ONE quiz block (the retrieval check the outline planned): question answerable from this section alone, 2-4 options, plausible distractors whose why names the misconception, answer as the 0-based index.",
+    )
+    // Undeclared / flag-shaped absence: unchanged.
+    expect(sectionUserPrompt({ index: 1, title: "T", goal: "G" })).not.toContain("quiz block")
+    expect(sectionUserPrompt({ index: 1, title: "T", goal: "G", check: false })).not.toContain("quiz block")
+    // Order: the check instruction sits after the visual line, before guidance.
+    const ordered = sectionUserPrompt({ index: 1, title: "T", goal: "G", visual: "chart", guidance: "terse", check: true })
+    expect(ordered.indexOf("ONE quiz block")).toBeGreaterThan(ordered.indexOf("Visual:"))
+    expect(ordered.indexOf("ONE quiz block")).toBeLessThan(ordered.indexOf("Guidance: terse"))
+  })
+
+  it("check instruction composes with grounding in the documented order", () => {
+    const p = sectionUserPrompt({ index: 0, title: "T", goal: "G", sources, check: true })
+    expect(p).toContain("ONE quiz block")
+    expect(p).toContain("Sources for this document")
+    expect(p.indexOf("ONE quiz block")).toBeGreaterThan(-1)
+    expect(p.indexOf("ONE quiz block")).toBeLessThan(p.indexOf("Sources for this document"))
+  })
+})

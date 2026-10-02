@@ -5,6 +5,11 @@ export const outlineSectionSchema = z.object({
   title: z.string().min(1),
   goal: z.string().min(1),
   visual: outlineVisualSchema.optional(),
+  // Retrieval-check declaration (quiz-placement spec §3): the outline may
+  // mark sections where a quiz consolidates the learning. Flag-gated: the
+  // prompt only invites it when opts.checks is on, but the schema accepts it
+  // unconditionally (zod leniency; undeclared quizzes are also allowed).
+  check: z.boolean().optional(),
 })
 export const outlineSchema = z.object({
   version: z.literal(1),

@@ -37,10 +37,18 @@ Rules:
 `.trim()
 }
 
-export function outlineUserPrompt(topic: string, guidance?: string, sources?: SourceExcerpt[]): string {
+export function outlineUserPrompt(
+  topic: string,
+  guidance?: string,
+  sources?: SourceExcerpt[],
+  checks?: boolean,
+): string {
   return [
     `Topic: ${topic}`,
     guidance ? `Guidance: ${guidance}` : "",
+    checks
+      ? 'Checks: mark sections with "check": true where a short quiz would consolidate the learning — not every section; never the first; skip reference-style ones.'
+      : "",
     sources && sources.length > 0 ? outlineSourcesBlock(sources) : "",
     "",
     "Design the outline. Reply with the JSON object ONLY.",
@@ -73,11 +81,15 @@ export function sectionUserPrompt(args: {
   visual?: string
   guidance?: string
   sources?: SourceExcerpt[]
+  check?: boolean
 }): string {
   return [
     `Write section ${args.index + 1} of the document: "${args.title}"`,
     `Goal: ${args.goal}`,
     args.visual ? `Visual: include one ${args.visual} block in this section.` : "",
+    args.check
+      ? "End this section with exactly ONE quiz block (the retrieval check the outline planned): question answerable from this section alone, 2-4 options, plausible distractors whose why names the misconception, answer as the 0-based index."
+      : "",
     args.guidance ? `Guidance: ${args.guidance}` : "",
     args.sources && args.sources.length > 0 ? sectionSourcesBlock(args.sources) : "",
     "",
