@@ -40,6 +40,14 @@ A debugging session that surfaces a reusable lesson appends a dated entry to
 `docs/DEBUGGING.md` (symptom → root cause → fix → rule) before the branch
 finishes; consult its Part 1 triage list before deep-diving on a bug.
 
+### Merge gate: user reviews before main
+The user wants to review a finished branch before it lands. Complete all
+other finish steps (verification, review, ledger), then **stop and present
+the work** — demo URL, what to look at, diff stat — and merge to `main` only
+on explicit go-ahead. Keep the feature branch (do not delete it) until the
+merge is approved, so the work stays inspectable and discardable
+(`git checkout main && git branch -D feature/x` undoes everything).
+
 ### Running the demo server
 The server (`demo/server.mjs`) serves the BUILT package (`dist/`) plus the demo
 fixtures, on port 4173 (`PORT` env to override). Routes: `/` (all examples),
