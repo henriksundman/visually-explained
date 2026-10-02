@@ -144,6 +144,12 @@ decisions that survive across sessions.
   to hunt for figure-label bugs, and it found all three above. Spec:
   `docs/superpowers/specs/2026-10-02-editorial-showcase-design.md`.
 
+## Open threads
+
+Deliberately-deferred judgement calls and known-rough edges in shipped work —
+what to read *before* changing the code involved, and what to revisit if.
+See `docs/OPEN_THREADS.md`.
+
 ## Decisions That Bind Future Work
 
 - **Scene JSON, never raw SVG.** LLM output is always data validated by the
