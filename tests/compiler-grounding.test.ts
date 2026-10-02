@@ -362,6 +362,26 @@ describe("checks compile", () => {
     expect(warnings).toEqual(['[grounding] section 0 cites unknown source "nope"'])
   })
 
+  it("counts a quiz-only citation as used, so the excerpt is not reported uncited", async () => {
+    // s1 is cited ONLY from the quiz's option rationale; s2 only from the
+    // plain section. Neither excerpt may be reported as never cited.
+    const quizOnly = quizTail("No anchors in this body.")
+    ;(quizOnly.blocks[1] as { options: { text: string; why?: string }[] }).options[0].why =
+      "Energy per frequency [Signals 101](#source-s1)."
+    const { client } = checksClient(quizOnly)
+    const { warnings } = await compileDocument("signals", { client, checks: true, sources })
+    expect(warnings).toEqual([])
+  })
+
+  it("keeps a quiz-emitting reply intact with the flag off (the flag gates prompts, not content)", async () => {
+    const { client } = checksClient(quizTail("Body."))
+    const { document, warnings, events } = await compileDocument("signals", { client })
+    expect(warnings).toEqual([]) // undeclared, so no drift audit even unflagged
+    const doc = document as { sections: { blocks: { type: string }[] }[] }
+    expect(doc.sections[0].blocks.some(b => b.type === "quiz")).toBe(true)
+    expect("checks" in (events.find(e => e.kind === "outline-done") as object)).toBe(false)
+  })
+
   it("yields the section-dropped warning, not a checks warning, for a failed declared check", async () => {
     const { client } = checksClient({ title: "x", blocks: "not an array" })
     const { warnings } = await compileDocument("signals", { client, checks: true })
