@@ -170,3 +170,55 @@ describe("authored figure elements", () => {
     expect(svg).toContain(`data-tip="dup"`)
   })
 })
+
+describe("draggable handles", () => {
+  const scene: Scene = {
+    width: 200,
+    height: 100,
+    elements: [
+      { kind: "dot", x: 40, y: 50, id: "bob" },
+      { kind: "dot", x: 120, y: 50, id: "fixed" },
+    ],
+  }
+
+  it("PRESENCE: emits data-draggable on a declared handle", () => {
+    // Asserted before any positioning test: every geometry assertion below is
+    // vacuous if the attribute never appears, which is the failure mode that
+    // kept this suite green through three rejected timeline fixes.
+    const svg = sceneToSvg(scene, {
+      ariaLabel: "f",
+      draggable: new Map([["bob", "x" as const]]),
+    })
+    expect(svg).toContain('data-draggable="x"')
+  })
+
+  it("emits nothing for an undeclared element", () => {
+    const svg = sceneToSvg(scene, {
+      ariaLabel: "f",
+      draggable: new Map([["bob", "x" as const]]),
+    })
+    const fixed = svg.slice(svg.indexOf('data-el-id="fixed"'))
+    expect(fixed.slice(0, 120)).not.toContain("data-draggable")
+  })
+
+  it("marks a handle focusable and named, even with no tip", () => {
+    const svg = sceneToSvg(scene, { ariaLabel: "f", draggable: new Map([["bob", "xy" as const]]) })
+    const at = svg.indexOf('data-el-id="bob"')
+    const open = svg.slice(svg.lastIndexOf("<g", at), svg.indexOf(">", at))
+    expect(open).toContain('tabindex="0"')
+    expect(open).toContain("aria-label=")
+    expect(open).toContain("both directions")
+  })
+
+  it("leaves the static render byte-identical when no handles are declared", () => {
+    const plain = sceneToSvg(scene, { ariaLabel: "f" })
+    const empty = sceneToSvg(scene, { ariaLabel: "f", draggable: new Map() })
+    expect(empty).toBe(plain)
+    expect(plain).not.toContain("data-draggable")
+  })
+
+  it("emits the handle in the sketch pass too", () => {
+    const svg = sceneToSvg(scene, { ariaLabel: "f", sketch: true, draggable: new Map([["bob", "y" as const]]) })
+    expect(svg).toContain('data-draggable="y"')
+  })
+})

@@ -99,3 +99,42 @@ describe("dragValueFor", () => {
     ).toBe(360)
   })
 })
+
+// The hook's pure helpers. The pointer path needs a DOM, so what is asserted
+// here is the DECISION layer: which handle is draggable, on which axes, and
+// how far a keypress moves it.
+import { axesFor, dragAxes, isDraggable, nudge } from "../src/react/useDragVary"
+
+describe("drag resolution", () => {
+  it("resolves a declared axis to its param and leaves the other fixed", () => {
+    expect(dragAxes([{ id: "bob", x: "r" }], "bob")).toEqual({ x: "r" })
+  })
+
+  it("reports an undeclared id as not draggable", () => {
+    expect(isDraggable([{ id: "bob", x: "r" }], "nope")).toBe(false)
+    expect(dragAxes([{ id: "bob", x: "r" }], "nope")).toBeNull()
+  })
+
+  it("treats an absent draggable list as nothing draggable", () => {
+    expect(isDraggable(undefined, "bob")).toBe(false)
+    expect(axesFor(undefined, "bob")).toBeNull()
+  })
+
+  it("labels the axes for the DOM attribute", () => {
+    expect(axesFor([{ id: "a", x: "r" }], "a")).toBe("x")
+    expect(axesFor([{ id: "a", y: "r" }], "a")).toBe("y")
+    expect(axesFor([{ id: "a", x: "r", y: "s" }], "a")).toBe("xy")
+  })
+})
+
+describe("nudge", () => {
+  it("moves by the axis increment, not the param step", () => {
+    // step 5 must not quantise a keyboard nudge.
+    expect(nudge(1, false)).toBe(1)
+    expect(nudge(1, true)).toBe(10)
+  })
+
+  it("is signed by direction", () => {
+    expect(nudge(-1, false)).toBe(-1)
+  })
+})

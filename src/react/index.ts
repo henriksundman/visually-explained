@@ -5,3 +5,6 @@ export * from "./Quiz"
 export { FigureEvents, PopoverDiv, useElementPopover } from "./ElementPopover"
 export type { FigureElementEvent } from "./figureEvents"
 
+export { useDragVary, dragAxes, isDraggable, axesFor, nudge } from "./useDragVary"
+export { clientToScene, clampParam, dragValueFor } from "./dragGeometry"
+export type { ClientPoint, ParamRange, ParamSpec, Rect, SceneMatrix, SceneSource } from "./dragGeometry"

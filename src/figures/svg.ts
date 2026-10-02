@@ -24,7 +24,17 @@ export interface SceneSvgOptions {
   sketch?: boolean
   /** Deterministic seed for the sketch pass (block id, else content hash). */
   seed?: string
+  /**
+   * Element id → draggable axes, for the interactive runtime
+   * (drag-to-vary spec §4). Opt-in: the static renderer never sets this, so
+   * its output stays byte-identical. When present, a matching `.exp-el`
+   * wrapper gains `data-draggable` plus a tabindex so it is keyboard-reachable.
+   */
+  draggable?: ReadonlyMap<string, DraggableAxes>
 }
+
+/** Which axes a declared drag handle moves. */
+export type DraggableAxes = "x" | "y" | "xy"
 
 /** Format a number deterministically: integers plain, else up to 2 decimals. */
 export function n2(n: number): string {
@@ -59,14 +69,30 @@ function twinStroke(el: SceneElement): string {
 /** Wrap in the .exp-el group when the element carries identity. Duplicate ids
  *  resolve first-wins via `claimId` (silent salvage — the emit layer has no
  *  warning channel): a duplicate emits anonymous but keeps its tip. */
-function wrapIdentity(el: SceneElement, inner: string, claimId: (id: string) => boolean): string {
+function wrapIdentity(
+  el: SceneElement,
+  inner: string,
+  claimId: (id: string) => boolean,
+  draggable?: ReadonlyMap<string, DraggableAxes>,
+): string {
   const idOk = hasIdentity(el) && claimId(el.id!)
+  const axes = idOk ? draggable?.get(el.id!) : undefined
   if (!idOk && !hasTip(el)) return inner
   const attrs =
     (idOk ? ` data-el-id="${escapeHtml(el.id!)}"` : "") +
-    (hasTip(el) ? ` data-tip="${escapeHtml(el.tip!)}"` : "")
-  const tabindex = hasTip(el) ? ` tabindex="0"` : ""
-  return `<g class="exp-el"${attrs}${tabindex}>${inner}</g>`
+    (hasTip(el) ? ` data-tip="${escapeHtml(el.tip!)}"` : "") +
+    // A declared handle is focusable even without a tip, so the keyboard path
+    // (spec §8) has something to focus.
+    (axes ? ` data-draggable="${axes}"` : "")
+  const tabindex = hasTip(el) || axes ? ` tabindex="0"` : ""
+  const label = axes ? ` aria-label="${escapeHtml(dragLabel(el, axes))}"` : ""
+  return `<g class="exp-el"${attrs}${tabindex}${label}>${inner}</g>`
+}
+
+/** Human name for a handle's accessible label. */
+function dragLabel(el: SceneElement, axes: DraggableAxes): string {
+  const axis = axes === "xy" ? "in both directions" : axes === "x" ? "horizontally" : "vertically"
+  return `Drag to vary (${axis})`
 }
 
 function nodeLabel(el: NodeBoxEl): string {
@@ -213,13 +239,23 @@ function figureLabel(el: FigureLabelEl, i: number): string {
   )
 }
 
-function cleanElement(el: SceneElement, i: number, claimed: Set<string>): string {
+function cleanElement(
+  el: SceneElement,
+  i: number,
+  claimed: Set<string>,
+  draggable?: ReadonlyMap<string, DraggableAxes>,
+): string {
   const identity = hasIdentity(el) || hasTip(el)
-  return wrapIdentity(el, cleanInner(el, i) + (identity ? twinStroke(el) : ""), id => {
-    if (claimed.has(id)) return false
-    claimed.add(id)
-    return true
-  })
+  return wrapIdentity(
+    el,
+    cleanInner(el, i) + (identity ? twinStroke(el) : ""),
+    id => {
+      if (claimed.has(id)) return false
+      claimed.add(id)
+      return true
+    },
+    draggable,
+  )
 }
 
 function cleanInner(el: SceneElement, i: number): string {
@@ -271,14 +307,19 @@ export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
                   ? label(el, i)
                   : ""
           const identity = hasIdentity(el) || hasTip(el)
-          return wrapIdentity(el, roughPart + labelPart + (identity ? twinStroke(el) : ""), id => {
-            if (claimed.has(id)) return false
-            claimed.add(id)
-            return true
-          })
+          return wrapIdentity(
+            el,
+            roughPart + labelPart + (identity ? twinStroke(el) : ""),
+            id => {
+              if (claimed.has(id)) return false
+              claimed.add(id)
+              return true
+            },
+            opts.draggable,
+          )
         })
         .join("")
-    : scene.elements.map((el, i) => cleanElement(el, i, claimed)).join("")
+    : scene.elements.map((el, i) => cleanElement(el, i, claimed, opts.draggable)).join("")
   return (
     `<svg class="exp-figure" viewBox="0 0 ${n2(scene.width)} ${n2(scene.height)}" role="img" ` +
     `aria-label="${escapeHtml(opts.ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +

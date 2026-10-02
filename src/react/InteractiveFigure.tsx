@@ -6,6 +6,8 @@ import { hashSeed } from "../figures/seed"
 import { n2, sceneToSvg } from "../figures/svg"
 import { renderInline } from "../core/inline"
 import { PopoverDiv, useElementPopover } from "./ElementPopover"
+import { useDragVary, axesFor } from "./useDragVary"
+import type { DraggableAxes } from "../figures/svg"
 import type { FigureElementEvent } from "./figureEvents"
 import type { FigureBlock } from "../core/schema"
 
@@ -81,22 +83,41 @@ export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = 
   }, [raw.sweep, params])
   const sweepSpec = params.find(p => p.name === sweepName)
 
+  // Declared handles → axes map. Derived here (rather than taken from the
+  // hook) because the markup memo below needs it, and the hook needs this
+  // component's scene dimensions — deriving it keeps that one-directional.
+  const draggableMap = useMemo(() => {
+    const m = new Map<string, DraggableAxes>()
+    for (const d of authored.draggable ?? []) {
+      const axes = axesFor(authored.draggable, d.id)
+      if (axes) m.set(d.id, axes)
+    }
+    return m
+  }, [authored.draggable])
+
   // Initial render depends only on `block` → deterministic SSR = hydration.
-  const svg = useMemo(() => {
-    if (authored.elements.length === 0) return null
+  // Scene dimensions ride along with the markup: the drag hook needs them for
+  // the bounding-rect fallback when a screen CTM is unavailable.
+  const { svg, viewW, viewH } = useMemo(() => {
+    if (authored.elements.length === 0) return { svg: null, viewW: 0, viewH: 0 }
     const figure = {
       ...authored,
       params: params.map(p => ({ ...p, initial: values[p.name] ?? p.initial })),
     }
     const { scene } = compileFigure(figure)
-    if (scene.elements.length === 0) return null
-    return sceneToSvg(scene, {
-      ariaLabel: authored.title ?? authored.caption ?? "Interactive figure",
-      sketch,
-      seed:
-        raw.id ??
-        hashSeed(`${authored.title ?? ""}|${authored.caption ?? ""}|${authored.elements.length}`),
-    })
+    if (scene.elements.length === 0) return { svg: null, viewW: 0, viewH: 0 }
+    return {
+      svg: sceneToSvg(scene, {
+        ariaLabel: authored.title ?? authored.caption ?? "Interactive figure",
+        sketch,
+        seed:
+          raw.id ??
+          hashSeed(`${authored.title ?? ""}|${authored.caption ?? ""}|${authored.elements.length}`),
+        draggable: draggableMap,
+      }),
+      viewW: scene.width,
+      viewH: scene.height,
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authored, raw.id, sketch, values])
 
@@ -126,6 +147,21 @@ export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = 
 
   const { stageRef, pop, bind } = useElementPopover(onElementEvent)
 
+  // Direct manipulation writes to the SAME `values` state a slider writes, so
+  // a slider bound to a dragged param tracks the handle by construction.
+  const drag = useDragVary({
+    draggable: authored.draggable,
+    params,
+    values,
+    setParam,
+    stageRef,
+    viewW,
+    viewH,
+  })
+  // The popover owns over/out/click/focus; drag owns down/move/up/cancel/key.
+  // Disjoint key sets, so the two can share one element.
+  const stageBind = { ...bind, ...drag.bind }
+
   const header = authored.title ? (
     <h4 className="exp-fig-title" dangerouslySetInnerHTML={{ __html: renderInline(authored.title) }} />
   ) : null
@@ -133,7 +169,11 @@ export const InteractiveFigure: FC<InteractiveFigureProps> = ({ block, sketch = 
     <p className="exp-fig-caption" dangerouslySetInnerHTML={{ __html: renderInline(authored.caption) }} />
   ) : null
   const body = svg ? (
-    <div className="exp-fig-stage" ref={stageRef} {...bind}>
+    <div
+      className={`exp-fig-stage${drag.activeId ? " exp-fig-stage-dragging" : ""}`}
+      ref={stageRef}
+      {...stageBind}
+    >
       <div dangerouslySetInnerHTML={{ __html: svg }} />
       {pop && <PopoverDiv pop={pop} />}
     </div>
