@@ -1,1 +1,230 @@
-/* Editorial showcase skin — filled in by Task 3. */
+/* Editorial showcase skin — demo-only, no library changes.
+   Two layers: the library's documented design tokens (palette, type, shape),
+   then a component layer over the public .exp-* class hooks for the editorial
+   details the tokens do not reach — heading sizes, the section kicker, the
+   contents list. That the second layer is small and clean is the point: the
+   public styling surface is expressive enough to carry a designed page. */
+
+/* ---- layer 1: tokens ---------------------------------------------------- */
+/* The selector is .exp.editorial, never a bare wrapper class: the library
+   declares its defaults ON .exp itself, so tokens set on a parent element are
+   overridden the moment .exp re-declares them. The compound selector also
+   beats .exp on specificity, so stylesheet order cannot flip the result. */
+.exp.editorial {
+  /* palette — warm paper, warm ink, one oxblood accent */
+  --exp-text: #1f1b16;
+  --exp-text-muted: #6b6257;
+  --exp-accent: #8a2f3a;
+  --exp-accent-soft: #f4e6e6;
+  --exp-surface: #fffdfa;
+  --exp-surface-muted: #f1ece3;
+  --exp-border: #ded6c9;
+  --exp-tip: #2f6b4f;
+  --exp-tip-soft: #e6efe8;
+  --exp-warning: #9a6b1f;
+  --exp-warning-soft: #f7eedb;
+  --exp-up: #2f6b4f;
+  --exp-down: #a3323a;
+  --exp-flat: #6b6257;
+
+  /* figures inherit the accent, so a diagram reads as a woodcut */
+  --exp-ink: #1f1b16;
+  --exp-edge: #8a8175;
+  --exp-node-fill: #fffdfa;
+  --exp-node-stroke: #8a2f3a;
+  --exp-node-text: #1f1b16;
+
+  /* code tokens, pulled into the print palette so highlighting never shouts */
+  --exp-tok-key: #8a2f3a;
+  --exp-tok-lit: #9a6b1f;
+  --exp-tok-num: #1f1b16;
+  --exp-tok-str: #2f6b4f;
+  --exp-tok-com: #9a9187;
+
+  /* no shadows anywhere: elevation comes from hairlines. The popover loses
+     its shadow too, so it needs an explicit border to stay visible — the
+     library default is transparent, which works only because it still has
+     the drop shadow. */
+  --exp-popover-bg: #1f1b16;
+  --exp-popover-fg: #fffdfa;
+  --exp-popover-border: #ded6c9;
+  --exp-popover-shadow: none;
+
+  /* shape & type — serif prose, mono furniture, print leading */
+  --exp-font: "Source Serif 4", Charter, Georgia, "Times New Roman", serif;
+  --exp-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --exp-font-size: 17px;
+  --exp-line-height: 1.62;
+  --exp-radius: 3px;
+  --exp-radius-sm: 2px;
+  --exp-gap: 16px;
+  --exp-pad: 20px;
+}
+
+/* ---- layer 2: editorial details the tokens cannot reach ----------------- */
+
+.exp.editorial .exp-doc-header {
+  margin-bottom: calc(var(--exp-gap) * 1.25);
+}
+
+.exp.editorial .exp-doc-title {
+  font-size: 2.6em;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  margin-bottom: 10px;
+}
+
+/* The dek is an italic serif lede, not a subtitle. */
+.exp.editorial .exp-doc-summary {
+  font-size: 1.18em;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--exp-text-muted);
+  max-width: 34rem;
+}
+
+/* Section headings become mono kickers over a hairline, so the prose leads
+   and the structure stays quiet — the biggest departure from the default. */
+.exp.editorial .exp-doc-section-title {
+  font-family: var(--exp-mono);
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--exp-accent);
+  margin: 0 0 var(--exp-gap);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--exp-border);
+}
+
+.exp.editorial .exp-doc-section {
+  margin-top: calc(var(--exp-gap) * 2.5);
+}
+
+/* Contents list, inline (renderDocument is called with tocSticky: false).
+   The library's .exp-doc-toc-inline already unpins it; this is the treatment. */
+.exp.editorial .exp-doc-toc {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--exp-border);
+  border-bottom: 1px solid var(--exp-border);
+  border-radius: 0;
+  padding: 14px 0;
+  margin: 0 0 calc(var(--exp-gap) * 2);
+  font-size: 0.85em;
+}
+
+.exp.editorial .exp-doc-toc-list {
+  display: block;
+  font-family: var(--exp-mono);
+  font-size: 0.95em;
+  letter-spacing: 0.04em;
+  counter-reset: toc;
+}
+
+.exp.editorial .exp-doc-toc-list li {
+  padding: 3px 0;
+  counter-increment: toc;
+}
+
+.exp.editorial .exp-doc-toc-list li::before {
+  content: counter(toc, decimal-leading-zero);
+  color: var(--exp-text-muted);
+  margin-right: 10px;
+}
+
+.exp.editorial .exp-doc-toc-list a {
+  color: var(--exp-text);
+  text-decoration: none;
+}
+
+.exp.editorial .exp-doc-toc-list a:hover {
+  color: var(--exp-accent);
+}
+
+/* Blocks: square-ish, border-only, no shadow. */
+.exp.editorial .exp-block {
+  box-shadow: none;
+}
+
+.exp.editorial .exp-concept-term {
+  font-style: italic;
+  color: var(--exp-accent);
+}
+
+/* ---- page chrome (host-owned, deliberately minimal) --------------------- */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.ed-page {
+  background: #f4efe4;
+  color: #1f1b16;
+  font-family: "Source Serif 4", Charter, Georgia, serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 1rem 6rem;
+}
+
+.ed-head,
+.ed-page main {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.ed-head {
+  padding: 4rem 0 1.5rem;
+}
+
+.ed-kicker {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8a2f3a;
+  margin: 0 0 1rem;
+}
+
+.ed-note {
+  max-width: 34rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #6b6257;
+  border-left: 2px solid #ded6c9;
+  padding-left: 1rem;
+  margin: 0 0 1.5rem;
+}
+
+.ed-note code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.85em;
+}
+
+.ed-back {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.ed-back a {
+  color: #6b6257;
+  text-decoration: none;
+  border-bottom: 1px solid #ded6c9;
+}
+
+.ed-page main {
+  padding-top: 2rem;
+}
+
+/* The rendered document is the page ground: lift it off the paper slightly
+   so the article reads as a sheet rather than bleeding into the background. */
+.ed-page main .exp {
+  background: var(--exp-surface);
+  border: 1px solid var(--exp-border);
+  padding: calc(var(--exp-pad) * 1.8);
+}
