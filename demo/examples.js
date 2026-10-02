@@ -137,6 +137,37 @@ export const dataIr = {
       ],
     },
     {
+      // Same block type, opposite outcome. These milestone names are long
+      // enough that drawing them would shrink the labels past legibility (the
+      // SVG has a viewBox and no width, so a wide figure scales DOWN rather
+      // than overflowing), so `presentation: auto` renders the text list
+      // instead — which also surfaces each `detail`. The block above is the
+      // figure form; together they show the boundary.
+      type: "timeline",
+      events: [
+        {
+          when: "Q3 2023",
+          what: "Discovery interviews surface the activation drop-off",
+          detail: "Eleven of fourteen testers stalled before the second step.",
+        },
+        {
+          when: "Q4 2023",
+          what: "The instrumentation lands and the funnel is finally visible",
+          detail: "No team had measured step two before this point.",
+        },
+        {
+          when: "Q1 2024",
+          what: "A working prototype of the three-step flow is tested",
+          detail: "First run where testers reached the aha moment unprompted.",
+        },
+        {
+          when: "Q2 2024",
+          what: "Cross-functional team forms to own the activation funnel",
+          detail: "Growth, design and engineering, with a shared metric.",
+        },
+      ],
+    },
+    {
       type: "callout",
       variant: "warning",
       body: "The spike overlaps a `pricing-page` experiment — part of the lift may not be onboarding-related. Latency context: [the latency study](#source-latency-numbers).",

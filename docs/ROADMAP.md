@@ -112,6 +112,28 @@ decisions that survive across sessions.
   quiz, and warns when a declared check places none; quiz content joins the
   grounding audit for free. Spec:
   `docs/superpowers/specs/2026-10-02-quiz-placement-design.md`.
+- **Figure label overflow** (2026-10-02) — one defect class, three layouts.
+  Text was being placed at fixed coordinates without ever being measured, so
+  labels overlapped their neighbours and were clipped at the scene edge while
+  the suite stayed green. Diagram edge labels wrap to their gutter (a wrap
+  target wide enough to break on word boundaries — a narrow one reads as
+  damaged text); chart prints its unit once above the plot with bare values and
+  omits any value label wider than its mark's slot; the sketch pass emits arrow
+  labels. Spec:
+  `docs/superpowers/specs/2026-10-02-figure-label-overflow-design.md`.
+- **Timeline degrades to its text form** (2026-10-02) — the timeline follow-up.
+  A figure cannot solve this by scrolling: the SVG carries a `viewBox` with no
+  `width` and `.exp-figure` is `width: 100%`, so a wide scene is *scaled down*,
+  not overflowed. So `auto` presentation now **measures** (`timelineFigureFits`)
+  and renders the text list — which also surfaces `detail` — once labels would
+  stop being legible; `layoutTimeline` itself never drops a label, and an
+  explicit `presentation` is always honoured. See the spec addendum.
+- **Editorial showcase** (2026-10-02) — a demo-only `/editorial` route
+  re-skinning a 9-block article in warm paper / oxblood / serif, built
+  entirely from the library's public styling surface: **zero changes under
+  `src/`**, all 36 tokens overridden from a host stylesheet. Its purpose was
+  to hunt for figure-label bugs, and it found all three above. Spec:
+  `docs/superpowers/specs/2026-10-02-editorial-showcase-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -145,11 +167,14 @@ sub-projects, each its own spec → plan → build:
 ## Backlog
 
 The arc is complete; new work starts here. Candidate threads (recorded
-2026-09-30, unplanned — each needs its own spec → plan → build cycle):
+2026-09-30, re-surveyed 2026-10-02 — each needs its own spec → plan → build
+cycle):
 - **Drag-to-vary simulations** — the interactive runtime has sliders +
   play; direct manipulation (drag a point, scrub a timeline) was deferred
   from the interactive-runtime cycle and is what makes a card a simulation
-  rather than an animation player.
+  rather than an animation player. **Next up.** The runtime, `params`/`derived`
+  and the expression evaluator all exist and are currently reachable only
+  through sliders.
 - **Math typesetting subset** — hand-rolled sup/sub inline syntax and
   fraction stacking for derivation steps; most of KaTeX's benefit without
   breaking the dependency rule.
@@ -158,7 +183,9 @@ The arc is complete; new work starts here. Candidate threads (recorded
   human-in-the-loop outline approval.
 - **Curio Editorial Learning theme tokens** — the Stitch destination look,
   off `docs/design/stitch/*/DESIGN.md`; deliberately kept out of the
-  compiler cycle.
+  compiler cycle. The `/editorial` showcase (shipped above) is a working
+  proof of the approach — a full re-skin from host CSS alone — but it is
+  demo-scoped, not a shipped theme.
 - **AI-generated raster imagery** (discussed 2026-09-30, shape undecided) —
   the host runs an image model and hands the library a catalog of images
   with instructions; the library stitches them into guides/explanations
