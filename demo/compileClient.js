@@ -1,6 +1,24 @@
 // Stub LlmClient for the /compile demo: proves the orchestration end-to-end
 // with zero API keys. The "Reading the data" section deliberately fails
 // validation once, then repairs — the loop is visible in the returned events.
+
+// Grounding demo (compiler spec §7): two host excerpts — one gets cited, one
+// is deliberately left uncited, and one section carries a hallucinated
+// anchor — so the /compile audit log shows both [grounding] warning kinds.
+export const demoSources = [
+  {
+    id: "signals-101",
+    title: "Signals 101",
+    text: "A signal is any quantity that carries information — voltage, sound pressure, pixels.",
+    url: "https://example.com/signals-101",
+  },
+  {
+    id: "deploy-counts",
+    title: "Weekly deploy counts",
+    text: "Deploys per weekday: Mon 4, Tue 9, Wed 18, Thu 11, Fri 7.",
+  },
+]
+
 function goodReadingSection() {
   return JSON.stringify({
     title: "Reading the data",
@@ -25,7 +43,7 @@ function goodReadingSection() {
 
 /** paced=true delays every reply ~300-600ms so the streamed progression is
  *  visible in the browser; default unpaced for fast SSR/audit consumers. */
-export function stubClient(paced = false) {
+export function stubClient(paced = false, sources = []) {
   let readingCalls = 0
   const wait = (ms) => new Promise(r => setTimeout(r, ms))
   return async ({ user }) => {
@@ -46,7 +64,12 @@ export function stubClient(paced = false) {
       return JSON.stringify({
         title: "The concept",
         blocks: [
-          { type: "text", body: "A **signal** is any quantity that carries information — voltage, sound pressure, pixels." },
+          {
+            type: "text",
+            body:
+              "A **signal** is any quantity that carries information — voltage, sound pressure, pixels." +
+              (sources[0] ? ` Grounded in [Signals 101](#source-${sources[0].id}).` : ""),
+          },
           {
             type: "diagram",
             nodes: [
@@ -79,7 +102,12 @@ export function stubClient(paced = false) {
       return JSON.stringify({
         title: "Drawing it",
         blocks: [
-          { type: "text", body: "One bespoke figure, generated from parameters — the arc's height follows the slider." },
+          {
+            type: "text",
+            body:
+              "One bespoke figure, generated from parameters — the arc's height follows the slider." +
+              (sources.length ? " Background: [the original paper](#source-fourier-paper)." : ""),
+          },
           {
             type: "figure",
             title: "A sine from circles",

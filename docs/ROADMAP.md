@@ -90,6 +90,14 @@ decisions that survive across sessions.
   (`[label](#source-<id>)`); shared `safeHref` gate; `BLOCK_TYPE_DOCS`
   contract + theme styling. Part 2 (compiler grounding) specs next. Spec:
   `docs/superpowers/specs/2026-10-01-sources-block-design.md`.
+- **Compiler grounding** (2026-10-02) — grounded authoring part 2:
+  `compileDocument(topic, { client, sources })` interpolates host
+  `SourceExcerpt`s into the outline (ids/titles/urls) and section prompts
+  (full text + citation rules), auto-appends the `sources` block to the last
+  surviving section, and audits output with `[grounding]` warnings for
+  hallucinated anchors and never-cited excerpts. Absent `sources`, compiles
+  are byte-identical to ungrounded ones. Spec:
+  `docs/superpowers/specs/2026-10-01-compiler-grounding-design.md`.
 
 ## Decisions That Bind Future Work
 
@@ -123,11 +131,7 @@ sub-projects, each its own spec → plan → build:
 ## Backlog
 
 The arc is complete; new work starts here. Candidate threads (recorded
-2026-09-30, unplanned — each needs its own spec → plan → build cycle):- **Grounded authoring** — hosts supply source material (documents, notes)
-  that constrains outline/section prompts; output carries provenance via
-  inline citations and the sources block (shipped 2026-10-01). Part 2:
-  compiler wiring — SourceExcerpt prompts, citation teaching, audit
-  warnings. The gap between a demo and real content.
+2026-09-30, unplanned — each needs its own spec → plan → build cycle):
 - **Retrieval practice** — an assessment primitive in the block library
   (quiz / reveal-the-answer), the missing complement to the exposition-side
   blocks; retrieval beats re-reading for learning that sticks.

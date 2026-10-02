@@ -32,7 +32,7 @@
 <pre id="audit">(waiting for events)</pre>
 <script type="module">
   import { renderDocument, compileDocumentStream } from "explanations"
-  import { stubClient } from "/compileClient.js"
+  import { stubClient, demoSources } from "/compileClient.js"
 
   const root = document.getElementById("doc-root")
   const statusEl = document.getElementById("status")
@@ -53,7 +53,10 @@
     root.innerHTML = html
   }
 
-  for await (const e of compileDocumentStream("How signals become pictures", { client: stubClient(true) })) {
+  for await (const e of compileDocumentStream("How signals become pictures", {
+    client: stubClient(true, demoSources),
+    sources: demoSources,
+  })) {
     events.push(e)
     if (e.kind === "outline-done") {
       outline = e

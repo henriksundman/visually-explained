@@ -236,6 +236,42 @@ calls are started, but the in-flight call still completes in the background
 and its result is discarded. For true cancellation, wrap your own
 `LlmClient` with an abort signal.
 
+### Grounded compiles
+
+Pass host-supplied source excerpts and the compiler grounds the document in
+them: excerpt text is interpolated into the section prompts, the model is
+taught the citation contract, and a `sources` block is appended to the last
+surviving section automatically:
+
+```ts
+const { document, warnings } = await compileDocument("How Fourier series work", {
+  client,
+  sources: [
+    { id: "fourier-notes", title: "Lecture notes", text: "A Fourier series…", url: "https://…" },
+    { id: "worked-examples", title: "Worked examples", text: "Example 1: a square wave…" },
+  ],
+})
+```
+
+Chunking is host-side (`text` is 1–2000 chars, interpolated verbatim — treat
+excerpts with the same trust you give `guidance`; model output is
+schema-validated and escaped either way). The outline prompt sees
+ids/titles/urls only; section prompts see the excerpt text plus the citation
+contract (`[label](#source-<id>)`, or `[label](url)` when the source has one).
+
+Grounding is constrained, not enforced — the compiler audits and warns, it
+never drops or rewrites content:
+
+| Warning | Meaning |
+| --- | --- |
+| `[grounding] source N dropped — <issue>` | Excerpt failed validation (id/title/text/url bounds, non-http(s) url) or the 24-source cap |
+| `[grounding] duplicate source id "x" dropped` | Duplicate ids — first wins |
+| `[grounding] section N cites unknown source "x"` | Citation anchor matching no excerpt (dead link) |
+| `[grounding] source "x" never cited` | Validated excerpt the model never used |
+| `[grounding] sources block not appended — no surviving section` | Every section was dropped |
+
+Absent `sources`, compiles are byte-identical to ungrounded ones.
+
 ## Authoring prompts yourself
 
 If you prompt the LLM directly instead of using the compiler, ship the tested
