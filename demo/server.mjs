@@ -4,11 +4,21 @@ import { createServer } from "node:http"
 import { readFile } from "node:fs/promises"
 import { renderExplanation, renderDocument } from "../dist/index.js"
 import { educationIr, dataIr, capabilitiesIr, figuresIr, howToIr, demoDocIr } from "./examples.js"
+import { MATH_CORPUS } from "./mathCorpus.js"
+import { renderWithKaTeX, renderWithTemml } from "./mathEngines.js"
 
 const port = Number(process.env.PORT ?? 4173)
 
-function section(id, theme, ir, extraClass = "", sketch = false) {
-  // root:false — the section itself is the token-bearing .exp scope, so the
+/** Escape text interpolated into the comparison page. The engine output itself
+ *  is trusted markup and is emitted raw; everything else goes through here. */
+function escapeForPage(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
+function section(id, theme, ir, extraClass = "", sketch = false) {  // root:false — the section itself is the token-bearing .exp scope, so the
   // theme class on it actually governs the palette (a nested default .exp
   // root would re-declare light tokens and defeat the toggle).
   const { html } = renderExplanation(ir, { theme: "none", root: false, sketch })
@@ -207,6 +217,74 @@ ${tocScrollSpy}
     try {
       const body = await readFile(new URL(`.${url.pathname}`, import.meta.url))
       res.writeHead(200, { "content-type": "image/svg+xml" })
+      res.end(body)
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }
+    return
+  }
+  if (url.pathname === "/math") {
+    // The comparison the spec exists for: MathML fidelity is only answerable
+    // in a browser, so both engines render the same corpus side by side and the
+    // reader picks. KaTeX needs its stylesheet AND its font files served, or
+    // its column silently renders unstyled and looks like a math bug.
+    const cell = (r) =>
+      typeof r === "string"
+        ? `<td class="exp">${r}</td>`
+        : `<td class="exp"><code class="exp-math-literal">degraded: ${escapeForPage(r.error)}</code></td>`
+    const rows = MATH_CORPUS.map(({ tex, note }) => {
+      const head = `<th>${escapeForPage(note)}<br><code>${escapeForPage(tex)}</code></th>`
+      return `<tr>${head}${cell(renderWithTemml(tex))}${cell(renderWithKaTeX(tex))}</tr>`
+    }).join("")
+    const mathPage = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>explanations — math engines</title>
+<link rel="stylesheet" href="/themes/tokens.css">
+<link rel="stylesheet" href="/themes/light.css">
+<link rel="stylesheet" href="/katex/katex.min.css">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 62rem; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-top: 1px solid #e5e7eb; }
+  th { width: 24%; font-weight: 500; }
+  code { font-size: 0.85em; color: #5c6470; }
+</style>
+</head>
+<body>
+<p><a href="/">← all examples</a> · <a href="/document">Document page →</a></p>
+<h1>Math engines, side by side</h1>
+<p>Left: <strong>Temml</strong> (TeX→MathML, the shipped default — no font files, themes through the
+<code>--exp-math-font</code> token). Right: <strong>KaTeX</strong> (<code>trust: false</code> — needs its CSS
+and 60 font files, both served here). Same corpus, same expressions. The malformed row degrades in both,
+though not identically: KaTeX echoes the rejected command in red.</p>
+<table>
+<thead><tr><th>Expression</th><th>Temml (MathML)</th><th>KaTeX (HTML+CSS)</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+</body>
+</html>`
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
+    res.end(mathPage)
+    return
+  }
+  if (url.pathname.startsWith("/katex/")) {
+    try {
+      const rel = url.pathname.slice("/katex/".length)
+      const body = await readFile(new URL(`../node_modules/katex/dist/${rel}`, import.meta.url))
+      // katex.min.css references woff2, woff and ttf; the content type has to
+      // follow the extension or the browser rejects the font.
+      const ext = rel.slice(rel.lastIndexOf(".") + 1)
+      const type = { css: "text/css", woff2: "font/woff2", woff: "font/woff", ttf: "font/ttf" }[ext]
+      if (!type) {
+        res.writeHead(404, { "content-type": "text/plain" })
+        res.end("not found")
+        return
+      }
+      res.writeHead(200, { "content-type": type })
       res.end(body)
     } catch {
       res.writeHead(404, { "content-type": "text/plain" })

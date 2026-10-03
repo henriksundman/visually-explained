@@ -60,12 +60,14 @@ export const educationIr = {
         },
         {
           type: "derivation",
+          // TeX, not "3 ÷ (1/2)": expression and conclusion are TeX fields now,
+          // and the stacked fraction is the entire point of rendering them.
           steps: [
-            { expression: "3 ÷ (1/2)", note: "Split the division." },
-            { expression: "3 × 2", note: "Dividing by 1/2 is multiplying by 2." },
-            { expression: "= 6", note: "Six half-cups fit in three cups." },
+            { expression: String.raw`\frac{3}{\frac{1}{2}}`, note: "Split the division." },
+            { expression: String.raw`3 \times 2`, note: "Dividing by 1/2 is multiplying by 2." },
+            { expression: String.raw`= 6`, note: "Six half-cups fit in three cups." },
           ],
-          conclusion: "3 ÷ (1/2) = 3 × 2 = 6",
+          conclusion: String.raw`\frac{3}{\frac{1}{2}} = 3 \times 2 = 6`,
         },
         {
           type: "callout",
