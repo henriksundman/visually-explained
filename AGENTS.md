@@ -51,6 +51,19 @@ recording it leaves the next session to re-derive it — or to "fix" it.
 Append a thread when a session ends with a judgement call that is not visible
 in the code, the spec, or the ledger.
 
+### Docs: the README travels with the feature, never after it
+The README is a host's only entry point, so update it **inside the feature
+branch, in the same commit as the code** — not as a follow-up, and not at
+branch finish. Adding a block type means two README edits, in one commit:
+
+1. the block type joins its group in the `## Block types` list;
+2. the stated `N primitives` count is bumped to match `src/core/registerAll.ts`.
+
+`tests/readme.test.ts` enforces both against the live registry, so a forgotten
+edit fails the suite instead of shipping. If it fails, the README is what's
+wrong — not the test. `docs/ROADMAP.md` (`Shipped`) gets its line in the same
+commit as the feature.
+
 ### Merge gate: user reviews before main
 The user wants to review a finished branch before it lands. Complete all
 other finish steps (verification, review, ledger), then **stop and present
