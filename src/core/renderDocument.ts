@@ -12,6 +12,8 @@ export interface RenderDocumentOptions {
   sketch?: boolean
   /** Host-supplied datasets for blocks carrying a `dataset` key. */
   datasets?: Record<string, unknown>
+  /** Host-supplied image catalog for `image` blocks. */
+  images?: Record<string, unknown>
   /** Render the table of contents. Default true. */
   toc?: boolean
   /** Emit exp-doc-toc-inline to un-pin the TOC (themes default to sticky). Default false. */
@@ -40,13 +42,13 @@ function blockWarning(d: Diagnostic): string {
   return `[${d.code}] ${d.message}`
 }
 
-function renderSectionBlocks(rawBlocks: unknown[], warnings: string[], sketch: boolean, datasets?: Record<string, unknown>): string {
+function renderSectionBlocks(rawBlocks: unknown[], warnings: string[], sketch: boolean, datasets?: Record<string, unknown>, images?: Record<string, unknown>): string {
   const diagnostics: Diagnostic[] = []
   const blocks = rawBlocks.map((raw, i) => salvageBlock(raw, i, diagnostics))
   for (const d of diagnostics) warnings.push(blockWarning(d))
   // render.ts's renderer owns invalid ("") / unknown (escaped fallback) /
   // valid (registry) dispatch and stack children — one implementation, no drift.
-  return blocks.map(b => renderSalvagedBlock(b, 1, warnings, sketch, datasets)).join("")
+  return blocks.map(b => renderSalvagedBlock(b, 1, warnings, sketch, datasets, images)).join("")
 }
 
 function renderToc(sections: { title: string; anchor: string }[], tocSticky: boolean): string {
@@ -112,7 +114,7 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
       : ""
   const body = good
     .map((s, i) => {
-      const blocksHtml = renderSectionBlocks(s.blocks, warnings, opts.sketch ?? false, opts.datasets)
+      const blocksHtml = renderSectionBlocks(s.blocks, warnings, opts.sketch ?? false, opts.datasets, opts.images)
       return (
         `<section class="exp-doc-section" id="${anchors[i]}">` +
         `<h2 class="exp-doc-section-title">${renderInline(s.title)}</h2>` +

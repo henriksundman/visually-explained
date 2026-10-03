@@ -18,6 +18,8 @@ export interface DocumentProps {
   sketch?: boolean
   /** Host-supplied datasets for blocks carrying a `dataset` key. */
   datasets?: Record<string, unknown>
+  /** Host-supplied image catalog for `image` blocks. */
+  images?: Record<string, unknown>
 }
 
 /**
@@ -27,7 +29,7 @@ export interface DocumentProps {
  * renderBlock (model text only ever passes through renderInline), matching
  * the Explanation component's pattern.
  */
-export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc = true, tocSticky = true, sketch = false, datasets }) => {
+export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc = true, tocSticky = true, sketch = false, datasets, images }) => {
   if (strict) {
     const v = validateDocument(ir)
     if (!v.ok) throw new Error(`invalid document: ${v.diagnostics.map(d => d.message).join("; ")}`)
@@ -80,7 +82,7 @@ export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc =
               typeof (raw as Record<string, unknown>)?.type === "string"
                 ? ((raw as Record<string, unknown>).type as string)
                 : ""
-            return <div key={bi} dangerouslySetInnerHTML={{ __html: renderBlock(type, raw, 1, { sketch, datasets }) }} />
+            return <div key={bi} dangerouslySetInnerHTML={{ __html: renderBlock(type, raw, 1, { sketch, datasets, images }) }} />
           })}
         </section>
       ))}

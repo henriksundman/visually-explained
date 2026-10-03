@@ -26,6 +26,8 @@ export interface ExplanationProps {
   sketch?: boolean
   /** Host-supplied datasets for blocks carrying a `dataset` key. */
   datasets?: Record<string, unknown>
+  /** Host-supplied image catalog for `image` blocks. */
+  images?: Record<string, unknown>
   /** Route figure blocks to the interactive runtime (sliders + play).
    *  Default false — keeps this component RSC-safe. */
   interactive?: boolean
@@ -50,6 +52,7 @@ export function Explanation({
   strict,
   sketch,
   datasets,
+  images,
   interactive,
   onElementEvent,
 }: ExplanationProps) {
@@ -81,10 +84,10 @@ export function Explanation({
           return <Quiz key={b.index} block={b.data} />
         }
         if (onElementEvent && b.kind === "valid" && (b.type === "figure" || b.type === "diagram" || b.type === "chart")) {
-          const html = renderBlock(b.type, b.data, 1, { sketch, datasets })
+          const html = renderBlock(b.type, b.data, 1, { sketch, datasets, images })
           return <FigureEvents key={b.index} html={html} onEvent={onElementEvent} />
         }
-        return <div key={b.index} dangerouslySetInnerHTML={{ __html: renderBlock(b.type, b.data, 1, { sketch, datasets }) }} />
+        return <div key={b.index} dangerouslySetInnerHTML={{ __html: renderBlock(b.type, b.data, 1, { sketch, datasets, images }) }} />
       })}
     </div>
   )
