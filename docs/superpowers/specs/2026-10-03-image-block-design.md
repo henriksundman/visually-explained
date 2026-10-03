@@ -236,9 +236,27 @@ and the section prompt may still choose one). `sectionUserPrompt` receives the
 declared key as `args.image` and instructs that section to include exactly one
 `image` block, mirroring how `args.check` pins a quiz.
 
-Absent the flag or an empty catalog, **prompts are byte-identical to today's** —
-the same absence-of-effect pin `checks` already relies on. `BLOCK_TYPE_DOCS`
-gains:
+**Prompt-change budget (two distinct costs, do not conflate them).**
+
+1. **User-prompt fragments are flag-gated and byte-identical when absent.**
+   `outlineUserPrompt` / `sectionUserPrompt` carry the menu only when a
+   non-empty catalog is supplied, exactly as `checks` gates its fragment. The
+   existing exact-equality assertions in `tests/compiler-prompts.test.ts`
+   (`outlineUserPrompt("entropy")` toBe a literal string) must still pass
+   untouched — that is the pin.
+2. **The section *system* prompt gains one line unconditionally.** This one is
+   unavoidable and is *not* feature-scoped. `BLOCK_TYPE_DOCS` is interpolated
+   into `sectionSystemPrompt()` on every compile, and `tests/llm.test.ts` pins
+   that every registered type appears in the snippet — so registering `image`
+   adds its line for **every** host, catalog or not. No gating is possible
+   without breaking that registration pin.
+
+The consequence for hosts: prompts written against earlier versions change by
+one block-type line even when images are unused. Benign (it only widens the
+documented contract), but it is a real diff and should be called out in the
+README rather than left for a host to discover.
+
+`BLOCK_TYPE_DOCS` gains:
 
 ```
 - image: { image, caption? } — one image from the host catalog, by key. ...
@@ -261,8 +279,12 @@ the catalog key into visible markup, and does warn.
 `renderDocument` / `renderExplanation` byte-for-byte given the same catalog.
 
 **Compiler** — outline menu shows keys + subjects but never `src`; section menu
-adds the rule; a catalog-less compile is byte-identical to an unflagged one;
-over-cap and malformed entries drop with `[images]` warnings.
+adds the rule; over-cap and malformed entries drop with `[images]` warnings;
+and the **absence-of-effect pins**: the pre-existing exact-equality assertions
+in `tests/compiler-prompts.test.ts` still pass unchanged with no catalog
+supplied. (Per §6, do *not* assert that a catalog-less compile is byte-identical
+to a pre-`image` one — the `BLOCK_TYPE_DOCS` line makes that untrue by
+construction. Pin the user-prompt fragments only.)
 
 **Demo** — an image section on `/document` with the catalog supplied host-side;
 curl-verified.
