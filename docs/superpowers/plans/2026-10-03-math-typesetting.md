@@ -584,8 +584,10 @@ Expected: FAIL on `states that expression and conclusion are TeX…` — the cur
 In `src/core/blockTypes.ts`, replace the `- derivation:` line with:
 
 ```
-- derivation: { steps: [{ expression, note? }], conclusion? } — equation/argument steps. `expression` and `conclusion` are TeX and span the whole field — no $ delimiters, no wrapping; `note` is prose.
+- derivation: { steps: [{ expression, note? }], conclusion? } — equation/argument steps. expression and conclusion are TeX and span the whole field — no $ delimiters, no wrapping; note is prose. Keep each expression on one line.
 ```
+
+> **Executed correction (2026-10-03): NO BACKTICKS around field names.** `BLOCK_TYPE_DOCS` is a template literal, so a backtick in the text terminates the string — `tsc` reports a cascade of `TS1005: ',' expected` and esbuild refuses to transform, taking every prompt test down with it. The surrounding lines use plain field names for this reason.
 
 - [ ] **Step 4: Run the test to verify it passes**
 

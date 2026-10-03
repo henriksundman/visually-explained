@@ -5,7 +5,7 @@
 export const BLOCK_TYPE_DOCS = `
 - step-list: { steps: [{ title, detail? }] } — numbered steps.
 - worked-example: { problem, steps: [{ title, detail? }], result } — a full worked problem.
-- derivation: { steps: [{ expression, note? }], conclusion? } — equation/argument steps.
+- derivation: { steps: [{ expression, note? }], conclusion? } — equation/argument steps. expression and conclusion are TeX and span the whole field — no $ delimiters, no wrapping; note is prose. Keep each expression on one line.
 - concept: { term, definition, intuition?, analogy? } — define and ground an idea.
 - comparison: { items: [{ name }], dimensions: [{ name, values: string[] }] } — dimensions x items table.
 - cause-effect: { chain: [{ because, therefore }] } — causal reasoning.
