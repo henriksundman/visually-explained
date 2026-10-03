@@ -120,9 +120,9 @@ describe("demoDocIr (document fixture)", () => {
     expect(documentSchema.safeParse(demoDocIr).success).toBe(true)
   })
 
-  it("renders a page with a TOC and all six sections", () => {
+  it("renders a page with a TOC and all seven sections", () => {
     const { html } = renderDocument(demoDocIr, { theme: "none" })
-    expect((html.match(/class="exp-doc-section"/g) ?? []).length).toBe(6)
+    expect((html.match(/class="exp-doc-section"/g) ?? []).length).toBe(7)
     expect(html).toContain("exp-doc-toc")
     expect(html).toContain(`href="#sec-fig-epicycles"`)
     // The interactive epicycles figure composes into a section unchanged.

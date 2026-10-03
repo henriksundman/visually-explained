@@ -143,6 +143,19 @@ decisions that survive across sessions.
   `src/`**, all 36 tokens overridden from a host stylesheet. Its purpose was
   to hunt for figure-label bugs, and it found all three above. Spec:
   `docs/superpowers/specs/2026-10-02-editorial-showcase-design.md`.
+- **Raster imagery: the `image` block** (2026-10-03) — shape (a) of the raster
+  imagery thread: an `image` block referencing a host-supplied catalog by key,
+  resolved at render. Images enter as **references only** — never bytes, never a
+  fetch — so documents stay diffable and rendering stays offline-safe. `alt`,
+  `width`, and `height` are required by `imageRefSchema`, which is what makes an
+  inaccessible image and a layout-shift-free document unrepresentable rather
+  than merely discouraged. The host owns `alt` because the compiler's
+  `LlmClient` is text-only: a model-authored alt would describe a picture the
+  model never saw. A miss degrades to the caption with a warning, never a broken
+  `<img>` and never the host-internal catalog key. The catalog is the same
+  `Record` for compile and render, so the key the model writes is the key the
+  renderer looks up. The compiler sees only keys and subjects. Spec:
+  `docs/superpowers/specs/2026-10-03-image-block-design.md`.
 
 ## Open threads
 
@@ -198,22 +211,23 @@ cycle):
   compiler cycle. The `/editorial` showcase (shipped above) is a working
   proof of the approach — a full re-skin from host CSS alone — but it is
   demo-scoped, not a shipped theme.
-- **AI-generated raster imagery** (discussed 2026-09-30, shape undecided) —
-  the host runs an image model and hands the library a catalog of images
-  with instructions; the library stitches them into guides/explanations
-  (step-by-step sequences, explanation-by-analogy). Real images, even
-  mediocre ones, add atmospheric variety the vector layer can't. Design
-  constraints surfaced in discussion: images enter as *references*
-  (src/alt/width/height/caption — never bytes, never fetched at render,
-  lenient salvage on broken refs); `alt` and dimensions required at schema
-  level (a11y + no layout shift); "no text in image" in the prompt contract
-  (labels are HTML overlays/captions); per-document `imageStyle` hint passed
-  through (cross-image consistency stays host-side via style templates);
-  editorial role rules in `BLOCK_TYPE_DOCS` (images anchor analogies and
-  set scenes, they don't illustrate derivations). Candidate shapes, in
-  ascending ambition: **(a)** `image` block + host-supplied catalog, LLM
-  assigns to sections; **(b)** compiler-driven: outline gains image briefs,
-  host-injected image client materializes them mid-compile; **(c)**
-  `analogy` composite block: image + `[{ imagePart, conceptPart }]` mapping
-  rendered as a caption-side table — the novel differentiator. Decision
-  pending: which shape specs first (leaning a → c, b later).
+- **AI-generated raster imagery** — shape **(a) SHIPPED** 2026-10-03 (see
+  above): the `image` block over a host catalog. Design constraints carried
+  forward from the 2026-09-30 discussion and now honored in the shipped
+  contract: images enter as *references* (never bytes, never fetched at
+  render, lenient salvage on broken refs); `alt` and dimensions required at
+  schema level (a11y + no layout shift); "no text in image" in the prompt
+  contract (labels are captions); editorial role rules in `BLOCK_TYPE_DOCS`
+  (images anchor analogies and set scenes, they don't illustrate derivations).
+  Still open, each its own cycle:
+  - **(c) `analogy` composite block** — image + `[{ imagePart, conceptPart }]`
+    rendered as a caption-side table. The novel differentiator, and it
+    composes on the shipped single-image contract.
+  - **(b) compiler-driven briefs** — the outline gains image briefs and a
+    host-injected image client materializes them mid-compile. What would
+    make the library request images rather than only place them.
+  - **Step-by-step sequences** — currently N consecutive `image` blocks.
+    Revisit only if a host proves N-blocks inadequate.
+  - **`imageStyle` hint** — deliberately deferred: the roadmap's own analysis
+    says cross-image consistency stays host-side via style templates, which
+    leaves the library's hint with little to influence.

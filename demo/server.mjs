@@ -166,6 +166,15 @@ const server = createServer(async (req, res) => {
           ],
         },
       },
+      images: {
+        "signal-station": {
+          src: "https://picsum.photos/seed/signal-station/800/600",
+          alt: "A railway platform under a signal gantry",
+          width: 800,
+          height: 600,
+          subject: "a train platform under a signal gantry",
+        },
+      },
     })
     const docPage = `<!doctype html>
 <html lang="en">

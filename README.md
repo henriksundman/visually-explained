@@ -55,6 +55,7 @@ const { html, warnings } = renderDocument(ir, { theme: "light", sketch: true })
 | `strict` | `false` | Throw on an invalid top level instead of degrading |
 | `root` | `true` | `false` emits no `.exp` wrapper — style tokens on your own element |
 | `datasets` | — | Keyed host data for blocks carrying a `dataset` key — a miss or invalid payload warns and falls back to the block's literal fields |
+| `images` | — | Keyed host image catalog for `image` blocks — a miss or invalid entry warns and renders the caption alone |
 
 `renderDocument` options (all optional):
 
@@ -66,6 +67,7 @@ const { html, warnings } = renderDocument(ir, { theme: "light", sketch: true })
 | `toc` | `true` | Emit the derived table of contents |
 | `tocSticky` | `true` | `false` renders the TOC in normal flow (theme default pins it) |
 | `datasets` | — | Keyed host data for blocks carrying a `dataset` key — a miss or invalid payload warns and falls back to the block's literal fields |
+| `images` | — | Keyed host image catalog for `image` blocks — a miss or invalid entry warns and renders the caption alone |
 
 Both return `{ html, warnings }`. Every degraded piece appends a
 `"[code] message"` string to `warnings` — surface or log them. Prefer a
@@ -94,7 +96,7 @@ import { Explanation, Document } from "explanations/react"
 
 ## Block types
 
-17 primitives; each block is `{ type, ...payload }`:
+18 primitives; each block is `{ type, ...payload }`:
 
 - **Content:** `text`, `code` (verbatim snippet, never markdown/HTML)
 - **Structure:** `stack` (group of blocks, one nesting level), `step-list`
@@ -102,7 +104,8 @@ import { Explanation, Document } from "explanations/react"
   `cause-effect`, `callout`, `data-callout`, `sources`, `quiz` (multiple
   choice with per-option `why` feedback; static `<details>` check reveal, or
   click-graded under `<Explanation interactive>`)
-- **Visuals:** `timeline`, `diagram`, `chart`, `figure`
+- **Visuals:** `timeline`, `diagram`, `chart`, `figure`, `image` (one image from
+  the host catalog, by key)
 
 Host data, not model guesses: `chart`, `data-callout`, and `timeline` accept
 `dataset: "<key>"`. At render time the key is looked up in the `datasets`
@@ -115,6 +118,51 @@ exported for pre-validation: `chartDatasetSchema`, `dataCalloutDatasetSchema`,
 ```ts
 renderDocument(ir, { datasets: { "weekly-deploys": { kind: "bar", unit: "deploys", points: [...] } } })
 ```
+
+### Images
+
+The `image` block renders one picture from a host-supplied catalog, referenced
+by key. Images enter as **references only** — never bytes, never a fetch, never
+base64 — so a document stays diffable and rendering stays offline-safe:
+
+```ts
+const ir = { version: 1, blocks: [{ type: "image", image: "signal-station", caption: "Rush hour." }] }
+const images = {
+  "signal-station": {
+    src: "https://cdn.example.com/signal-station.png",
+    alt: "A railway platform under a signal gantry",
+    width: 800,
+    height: 600,
+    subject: "a train platform under a signal gantry",
+  },
+}
+renderDocument({ version: 1, title: "D", sections: [{ title: "S", blocks: ir.blocks }] }, { images })
+```
+
+`alt`, `width`, and `height` are **required** — that is what makes an
+accessible image and a layout-shift-free document unrepresentable rather than
+merely discouraged. `subject` is a word-for-the-prompt-menu description and is
+never rendered.
+
+**The host owns `alt`, not the model.** The compiler's `LlmClient` is
+text-in/text-out, so a model-authored alt would be a description of a picture
+it never saw. The model may write `caption`, which is prose about the concept.
+
+A miss or invalid entry degrades to the caption with a warning: never a broken
+`<img>`, and never the catalog key — that identifier is host-internal. With no
+caption either, nothing renders and the warning still fires. `imageRefSchema`
+is exported for pre-validation.
+
+Pass the same object as `compileDocument({ images })` to let the compiler place
+images: the outline sees the key and subject of each and may mark a section,
+and the section prompt pins one image block for it. Images anchor analogies and
+set scenes; they never illustrate a derivation.
+
+> **Upgrade note:** adding the `image` block type adds one line to the block-type
+> contract, so the compile *system* prompt changes for every host on upgrade,
+> catalog or not. No flag can prevent this — the contract is interpolated
+> unconditionally, and a test pins every registered type into it. The *user*
+> prompts stay byte-identical when no catalog is passed.
 
 Exact payloads are documented in `BLOCK_TYPE_DOCS` — the same string the LLM
 prompts interpolate, so it never drifts:
@@ -324,6 +372,7 @@ The library deliberately leaves to the embedding application:
 | --- | --- |
 | `src/core/` | Schemas, salvage, validators, HTML renderers, LLM contract exports |
 | `src/core/datasets.ts` | Dataset schemas + lenient resolver shared by the visual primitives |
+| `src/core/images.ts` | Image catalog entry schema + lenient resolver for `image` blocks |
 | `src/primitives/` | One file per block type, wired via `registerPrimitive` |
 | `src/figures/` | Scene IR → SVG: diagram/chart/timeline layout, expression evaluator, path grammar, rough.js sketch pass, authored figures |
 | `src/react/` | RSC components, interactive figure runtime, element events/popover |

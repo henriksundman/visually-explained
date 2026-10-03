@@ -482,7 +482,7 @@ export const howToIr = {
 export const demoDocIr = {
   version: 1,
   title: "How signals become pictures",
-  summary: "Six angles on one pipeline — the concept, the data, the drawing, the rollout, true numbers from the host, and a retrieval check.",
+  summary: "Seven angles on one pipeline — the concept, the data, the drawing, the rollout, true numbers from the host, host images, and a retrieval check.",
   sections: [
     { id: "fig-concept", title: "The concept", blocks: educationIr.blocks },
     { id: "fig-data", title: "What the data says", blocks: dataIr.blocks },
@@ -496,6 +496,15 @@ export const demoDocIr = {
         { type: "chart", id: "deploys-true", kind: "bar", points: [{ label: "Mon", value: 120 }], dataset: "weekly-deploys" },
         { type: "chart", id: "deploys-guessed", kind: "bar", points: [{ label: "Mon", value: 120 }] },
         { type: "timeline", id: "milestones-true", events: [{ when: "someday", what: "model-guessed" }], dataset: "milestones" },
+      ],
+    },
+    {
+      id: "fig-images",
+      title: "Host images",
+      blocks: [
+        { type: "text", body: "Both image blocks name a key in the **host** catalog, so the browser fetches nothing the library invented. The first resolves; the second names a key the catalog does not have, so it degrades to its caption — and never leaks the key it missed." },
+        { type: "image", id: "img-signal", image: "signal-station", caption: "A train platform where the signal is the subject — atmosphere the vector layer cannot draw." },
+        { type: "image", id: "img-missing", image: "not-in-catalog", caption: "This caption survives the miss; the image never renders." },
       ],
     },
     { id: "fig-quiz", title: "Retrieval practice", blocks: [quizBlock] },
