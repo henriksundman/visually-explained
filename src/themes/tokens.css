@@ -39,6 +39,12 @@
   /* Math formulas render as MathML, so they need no shipped font files — this
      is only a preference order for faces a host may already have. */
   --exp-math-font: "Cambria Math", "STIX Two Math", "Latin Modern Math", var(--exp-font);
+  /* MathML's compact inline layout shrinks a fraction to near body size, so 1em
+     reads as a stray symbol rather than a formula. 1.2em was picked by eye —
+     legible without a formula outgrowing the line it sits on. Display style
+     (see .exp math below) does the rest; plain font-size means the rest of it
+     applies in any browser. */
+  --exp-math-size: 1.2em;
   --exp-font-size: 15px;
   --exp-line-height: 1.55;
   --exp-radius: 8px;
@@ -214,9 +220,19 @@
 
 /* MathML inherits the surrounding font and color, which is why Temml is the
    default engine — a formula themes through the token above with no override. */
-.exp-derivation-expr math,
-.exp-derivation-conclusion math {
-  font-size: 1.05em;
+/* Any math inside a themed scope, not just derivation: the token lives on .exp,
+   so the rule consuming it belongs on .exp too. Scoping it to
+   .exp-derivation-expr silently matched nothing on the /math comparison page,
+   where the formulas sit directly in a table cell. */
+.exp math {
+  font-family: var(--exp-math-font);
+  font-size: var(--exp-math-size);
+  /* Display-style layout for an inline <math>: full-size fractions and normal
+     operator spacing instead of the cramped compact form. A derivation step is
+     a formula on its own line, so compact inline styling is the wrong default
+     here. Browsers without MathML Core support for math-style ignore this and
+     keep compact layout — no breakage, just no improvement. */
+  math-style: normal;
 }
 
 /* The degraded path: unparseable TeX shown as the literal source it is. */
