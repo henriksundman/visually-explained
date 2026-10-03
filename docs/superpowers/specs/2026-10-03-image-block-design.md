@@ -157,20 +157,32 @@ state). Diagnostics flow out the existing `{ html, warnings }` channel.
 ```ts
 export interface CompileOptions {
   // ...
-  images?: ImageRef[]
+  images?: Record<string, ImageRef>
 }
 
 export const MAX_IMAGES = 24   // mirrors MAX_SOURCES
 
 export function validateImages(
-  raw?: unknown[],
-): { refs: ImageRef[]; warnings: string[] }
+  raw?: Record<string, unknown>,
+): { catalog: Record<string, ImageRef>; warnings: string[] }
 ```
+
+**A `Record`, not an array** — deliberately the *same shape* as the render-side
+`images` option, so the key lives in one place (the record key) and a single
+catalog object can be handed to both `compileDocument({ images })` and
+`renderDocument({ images })` without reshaping. An `ImageRef[]` could not: an
+array has nowhere to put the key, and `imageRefSchema` deliberately has no
+`key` field (it would duplicate the record key and could drift from it).
 
 Hand-rolled checks — **not** zod — so warning strings stay stable across zod
 versions, exactly as `validateSources` does (a deliberate divergence from the
 render-time path). Drops, each with a `[images]` warning: non-objects,
-malformed fields, duplicate keys (first wins), and entries past `MAX_IMAGES`.
+malformed values, entries past `MAX_IMAGES`. Keys are **not** deduplicated —
+they cannot collide, being record keys. Iteration is host key order, unsorted.
+
+Because the key is the record key, the prompt menu (§6) is honest by
+construction: `- <key>: <subject>` where `<key>` is literally what the model
+must write into `image`, and what `resolveImage` will look up.
 
 ## 5. Rendering & Safety
 
@@ -218,6 +230,10 @@ Mirrors the existing sources split:
 - **Section** sees the same menu plus the assignment rule. Neither sees `src` or
   `alt`: the model has no use for a URL, and keeping the menu to keys +
   subjects keeps prompts small and text-only.
+
+The `<key>` in the menu is the catalog record key — the exact string the model
+writes into `image` and `resolveImage` looks up. The two cannot drift, because
+both read the same record.
 
 ```
 Images available (place by key where one earns its place):
