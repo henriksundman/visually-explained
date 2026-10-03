@@ -228,6 +228,24 @@ cycle):
   (see above). If it is ever revisited, the remaining gaps are inline math in
   `text` fields (today only `derivation` is a TeX field) and display-mode
   centering of a formula on its own paragraph.
+- **Next up, in order** — two threads the 2026-10-03 math cycle left named, in
+  the order they should be picked up:
+  1. **An enforceable no-degradation policy.** Open thread 1 records that
+     `strict: true` gates *validation* only, so it can never fire on a
+     render-time degradation — and nearly every degradation in this library is
+     a render-time one. Hosts are told (README principle 1) that they can opt
+     into strictness, and today what they get is narrower than that reads. The
+     honest shape is a `warnings` collector the host inspects, or a
+     post-render `warnings.length` check — a feature, not a reinterpretation of
+     `strict`. Small, self-contained, and it makes an existing promise true.
+  2. **Inline math in prose.** `renderInline` gains `$…$` (or another delimiter)
+     so a formula can live inside a `text` field, which is where an explanation
+     actually talks about one. This is the one place the new boundary could
+     leak: inline parsing is a second context (scriptlevel, `math-style: compact`
+     by default, a delimiter that can appear literally) and the security
+     reasoning from the math spec has to be re-derived for it rather than
+     assumed. Sequence it *after* the warnings policy, which is cheaper and
+     lands a real guarantee.
 - **Compiler v1 deferrals** (spec §9) — parallel section calls; client
   surface growth (usage reporting, abort signals, retries); caching;
   human-in-the-loop outline approval.
