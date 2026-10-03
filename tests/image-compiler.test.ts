@@ -59,6 +59,18 @@ describe("validateImages", () => {
     expect(Object.keys(validateImages(Object.create({ injected: ref })).catalog)).toEqual([])
   })
 
+  it("counts only ACCEPTED entries against the cap", () => {
+    // Thirty invalid entries must not consume the budget and lock out the one
+    // good image after them — the cap is on what enters the catalog, not on
+    // what was offered.
+    const mostlyBad: Record<string, unknown> = {}
+    for (let i = 0; i < 30; i++) mostlyBad[`bad${i}`] = { ...ref, alt: "" }
+    mostlyBad.good = ref
+    const { catalog, warnings } = validateImages(mostlyBad)
+    expect(catalog.good).toEqual(ref)
+    expect(warnings.filter(w => w.includes("at most"))).toHaveLength(0)
+  })
+
   it("returns an empty catalog for undefined input", () => {
     expect(validateImages(undefined)).toEqual({ catalog: {}, warnings: [] })
   })

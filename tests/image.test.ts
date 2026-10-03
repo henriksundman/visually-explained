@@ -76,6 +76,15 @@ describe("resolveImage", () => {
     expect(resolveImage(ctx({}), "toString", "im1").ok).toBe(false)
     expect(w.every(m => m.includes("no image named"))).toBe(true)
   })
+
+  it("still resolves such a key when the host actually supplies one", () => {
+    // The guard exists to stop an INHERITED member resolving, not to reserve
+    // names. A host that deliberately keys an image "constructor" owns that
+    // key and must be served; conflating the two would be a silent failure.
+    const w = fresh()
+    expect(resolveImage(ctx({ constructor: ref }), "constructor", "im1")).toEqual({ ok: true, ref })
+    expect(w).toEqual([])
+  })
 })
 
 describe("image render", () => {
@@ -118,6 +127,17 @@ describe("image render", () => {
     expect(html).toContain("before") // the caption survives
     expect(html).toContain(`exp-image-missing`)
     expect(w).toEqual([`[image] image im1: no image named "platform"`])
+  })
+
+  it("degrades under strict without throwing", () => {
+    expect(() =>
+      renderExplanation({ version: 1, blocks: [{ type: "image", image: "gone" }] }, { strict: true, images: {} }),
+    ).not.toThrow()
+  })
+
+  it("treats a block with no image key as invalid-block, not a crash", () => {
+    const { warnings } = renderExplanation({ version: 1, blocks: [{ type: "image" }] }, { images: { a: ref } })
+    expect(warnings.some(w => w.includes("invalid-block"))).toBe(true)
   })
 
   it("never leaks the catalog key into visible markup when degraded", () => {
