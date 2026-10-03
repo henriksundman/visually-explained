@@ -4,11 +4,51 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-03, after `feature/image-block` was built.
+Last updated: 2026-10-03, after the math typesetting cycle.
 
 ---
 
-## 1. The image catalog key transits the model, and nothing stops it being a prompt-injection vector
+## 1. `strict: true` never gates a render-time degradation warning
+
+`renderDocument(ir, { strict: true })` throws when the document IR **fails
+validation**. It runs before any block renders, so it cannot see anything that
+happens at render time — and nearly every degradation in this library is a
+render-time one: a dropped label, a missing dataset key, an unresolvable image
+catalog entry, unparseable TeX. Those call `ctx.addWarning` and render a
+fallback whether `strict` is on or off.
+
+The spec for the math cycle asserted the opposite (that a `[math]` warning
+would trip `strict`), and the plan carried the claim forward. It was wrong, and
+wrong in an instructive way: the assertion read as plausible because
+`renderDocument` and `renderMath` each check a warnings array, but the
+validation gate runs on a *different* array, populated before rendering starts.
+
+**Consequence for the next session:** do not write a test asserting that a
+render-time warning throws under `strict`. If hosts need "no silent degradation"
+as an enforceable policy, that is a new option (a warnings collector the host
+inspects, or a post-render `warnings.length` check) — not a reinterpretation of
+`strict`. It would be a small, genuinely useful addition, but it is a feature,
+not a fix.
+
+## 2. Math size is 1.2em because a human looked at it
+
+`--exp-math-size` and the `math-style: normal` rule on `.exp math` were both
+picked by eye on the demo's `/math` and `/document` pages, not derived. The
+starting point of 1em was visibly too small — MathML shrinks a fraction at
+every level, so a formula landed at roughly body-size glyphs for something that
+reads as a display object. 1.3em fixed that but outgrew its line in prose; 1.2em
+is where it settled.
+
+Two things this thread exists to protect. First, Temml output was measured to
+carry **no** `font-family` and no external references, so "math themes like
+everything else" is a verified property of the engine output, not an
+assumption — but that is measured once, and a Temml upgrade could change it.
+Second, `math-style` is MathML Core; browsers without support silently keep the
+compact layout, which is a legibility difference, not breakage. If math ever
+looks wrong in a browser this suite has never run in, check `math-style`
+support before assuming the theme is at fault.
+
+## 3. The image catalog key transits the model, and nothing stops it being a prompt-injection vector
 
 A host catalog is a `Record<string, ImageRef>`, and the compiler's menu
 (`src/compiler/prompts.ts`) emits the **record key** to the model, because the
@@ -34,7 +74,7 @@ and have the compiler map the placeholder back to the real key after the
 section parses. That keeps every host identifier out of the prompt, at the cost
 of a rewrite step and a transiently-unresolvable IR if a compile fails midway.
 
-## 2. Alt text quality is the host's responsibility
+## 4. Alt text quality is the host's responsibility
 
 `imageRefSchema` **requires** `alt`, which is what makes an inaccessible image
 unrepresentable rather than merely discouraged. It guarantees an alt *exists*,
@@ -48,7 +88,7 @@ path can detect a mismatch.
 **Revisit if** an image-captioning check ever becomes affordable. Until then
 this is a host-side quality bar, documented in the README rather than enforced.
 
-## 3. `src` deliberately has no scheme allowlist
+## 5. `src` deliberately has no scheme allowlist
 
 `imageRefSchema` validates `src` as a non-empty string and nothing more. Hosts
 legitimately serve from relative paths, CDNs, and signed URLs, so gating to
@@ -60,7 +100,7 @@ before emit, so it cannot break out of the attribute. **Revisit if** an
 untrusted catalog ever enters, or if `src` is ever reused in a position that
 *does* execute (an `<a href>`, a CSS `url()`, a redirect).
 
-## 4. A dragged value can fall between slider increments
+## 6. A dragged value can fall between slider increments
 
 `dragValueFor` (`src/react/dragGeometry.ts`) **ignores the param's `step`**.
 That is intentional — `step` exists so a *slider* lands on round numbers, and
@@ -77,7 +117,7 @@ compared for equality, or a host serialises param state. Any of those makes
 "a value the slider cannot represent" a real problem rather than a cosmetic
 one. Fixing it would mean rounding on *write-back* rather than on drag.
 
-## 5. The timeline's 825px legibility budget is unvalidated by eye
+## 7. The timeline's 825px legibility budget is unvalidated by eye
 
 `MAX_FIGURE_WIDTH` in `src/figures/layoutTimeline.ts` was derived
 arithmetically (the width at which `width: 100%` scaling shrinks the 11px
@@ -89,7 +129,7 @@ read". The demo shows the boundary; nobody has confirmed it sits in the right
 place. If timelines in real content look wrong at the boundary, this constant
 is the first thing to move.
 
-## 6. Focus restoration is browser-verified only
+## 8. Focus restoration is browser-verified only
 
 `FocusPreservingSvg` preserves keyboard focus across the `innerHTML` subtree
 swap that re-renders a figure. There is no jsdom in this repo, so this is
@@ -101,7 +141,7 @@ If the repo ever gains a DOM test environment, this is the first thing worth
 covering: the failure mode is silent and severe (a control that works exactly
 once).
 
-## 7. Groups still cannot be dragged
+## 9. Groups still cannot be dragged
 
 `group` deliberately carries no identity (`figure-id-unsupported` in
 `authored.ts`), so a nested group cannot be grabbed — arguably the most
@@ -109,7 +149,7 @@ natural thing to drag in a multi-element figure. This was scoped out
 deliberately (spec §3) and giving groups identity is its own decision, not a
 drag feature.
 
-## 8. No multi-touch, snapping, or undo
+## 10. No multi-touch, snapping, or undo
 
 Scoped out with the rest of §3. A drag is one pointer at a time, with no grid
 snapping and no undo history.

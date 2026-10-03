@@ -157,6 +157,25 @@ decisions that survive across sessions.
   renderer looks up. The compiler sees only keys and subjects. Spec:
   `docs/superpowers/specs/2026-10-03-image-block-design.md`.
 
+- **Math typesetting** (2026-10-03) — `derivation.expression` and
+  `derivation.conclusion` are TeX and compile to MathML through
+  [temml](https://github.com/temml-org/temml): no fonts ship, formulas inherit
+  the surrounding font and color, and the engine sits behind one internal
+  boundary (`renderMath`, not exported) so it is swappable. A stale assumption
+  about the dependency rule had to bend once, and it is recorded rather than
+  quietly rewritten: real TeX is what an LLM can actually write, and the
+  hand-rolled sup/sub + fraction-stacking subset that was planned for loses to
+  the engine on fidelity and on the parsing surface a hostile model can aim at
+  it. `\frac{3}{1/2}` over `\frac{3}{\frac{1}{2}}` is the house style — a
+  single level reads faster, and nested fractions shrink at every level. Temml
+  *throws* on markup-producing commands (`\href`, `\url`, `\includegraphics`,
+  `\htmlClass`, `\htmlId`), which is stronger than KaTeX's `trust: false`: those
+  constructs cannot reach output at all. Unparseable TeX degrades to its literal
+  source with a `[math]` warning. The demo's `/math` route renders one corpus
+  through Temml and KaTeX side by side, so browser fidelity is judged by eye
+  rather than from vendor docs. Spec:
+  `docs/superpowers/specs/2026-10-03-math-typesetting-design.md`.
+
 ## Open threads
 
 Deliberately-deferred judgement calls and known-rough edges in shipped work —
@@ -168,8 +187,12 @@ See `docs/OPEN_THREADS.md`.
 - **Scene JSON, never raw SVG.** LLM output is always data validated by the
   renderer; no LLM text becomes markup. Any future "draw" capability must
   route through Scene IR + grammar validation, not model-authored markup.
-- **Dependency-free.** Hand-rolled utilities (highlighter, and now the
-  expression evaluator) over heavy deps. New deps need a strong case.
+- **Dependency-minimal.** Hand-rolled utilities (highlighter, and now the
+  expression evaluator) over heavy deps. New deps need a strong case — and one
+  now exists: `temml` parses the TeX a model actually writes, where the planned
+  hand-rolled fraction/sup-sub subset would have had to re-derive a parser and
+  would still have been easier to aim hostile input at. Deps stay few, small,
+  and each one is named in the README's opening principles.
 - **Lenient salvage everywhere.** Invalid model output degrades gracefully
   (drop element / degrade block), never fails a render.
 - **Determinism.** Seeded sketch randomness; SSR-safe, SSR-stable output.
@@ -200,9 +223,11 @@ cycle):
 - **Drag-to-vary simulations** — SHIPPED (see above). Remaining: groups carry no
   identity so they cannot be grabbed, and there is no multi-touch, snapping or
   undo. Any of those is its own cycle.
-- **Math typesetting subset** — hand-rolled sup/sub inline syntax and
-  fraction stacking for derivation steps; most of KaTeX's benefit without
-  breaking the dependency rule.
+- **Math typesetting subset** — SHIPPED (2026-10-03), but not as planned: the
+  hand-rolled subset was replaced by real TeX through the `temml` dependency
+  (see above). If it is ever revisited, the remaining gaps are inline math in
+  `text` fields (today only `derivation` is a TeX field) and display-mode
+  centering of a formula on its own paragraph.
 - **Compiler v1 deferrals** (spec §9) — parallel section calls; client
   surface growth (usage reporting, abort signals, retries); caching;
   human-in-the-loop outline approval.

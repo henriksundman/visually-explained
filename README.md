@@ -16,8 +16,9 @@ Principles that hold everywhere in this codebase:
   into `strict: true`.
 - **SSR-safe and deterministic.** Seeded sketch randomness; stable output for
   identical input.
-- **Dependency-minimal.** Runtime deps are `zod` and `roughjs`. React ≥ 18 is
-  a peer dependency of `explanations/react` only.
+- **Dependency-minimal.** Runtime deps are `zod`, `roughjs`, and `temml` (TeX →
+  MathML, no fonts shipped). React ≥ 18 is a peer dependency of
+  `explanations/react` only.
 
 ## Install
 
@@ -163,6 +164,45 @@ set scenes; they never illustrate a derivation.
 > catalog or not. No flag can prevent this — the contract is interpolated
 > unconditionally, and a test pins every registered type into it. The *user*
 > prompts stay byte-identical when no catalog is passed.
+
+### Math
+
+In a `derivation`, `expression` and `conclusion` are **TeX**, not prose. They
+compile to MathML via [temml](https://github.com/temml-org/temml) and inherit
+the surrounding font and color, so a formula themes through tokens like
+everything else and no math font files ship:
+
+```ts
+const ir = {
+  version: 1,
+  blocks: [{
+    type: "derivation",
+    steps: [{ expression: String.raw`\frac{3}{1/2}`, note: "Split the division." }],
+    conclusion: String.raw`\frac{3}{1/2} = 6`,
+  }],
+}
+```
+
+No `$` delimiters and no wrapping — the field is TeX and spans its whole line.
+`note` stays prose. Prefer a single level: `\frac{3}{1/2}` reads faster than
+`\frac{3}{\frac{1}{2}}`, and a nested fraction shrinks at every level.
+
+The engine is behind one boundary (`renderMath` in `src/core/math.ts`), but it
+is deliberately **not** exported from the package: the TeX surface is what
+`derivation` promises, not a general LaTeX API. Temml *throws* on the markup-
+producing commands (`\href`, `\url`, `\includegraphics`, `\htmlClass`,
+`\htmlId`), which is stronger than KaTeX's `trust: false` — those constructs
+cannot reach the output at all. `\text{…}` is escaped text, not HTML.
+
+Unparseable TeX degrades to the literal source in `<code class="exp-math-literal">`
+with a `[math]` warning — never a failed render. To see both engines side by
+side, run the demo and open `/math`.
+
+> **Upgrade note:** `conclusion` used to be free text and is now TeX, so a
+> document whose conclusion contains a bare `&` or an unpaired `_` will
+> **degrade visibly after upgrade** — it renders as the literal source in the
+> warning color instead of as intended math. `expression` and `note` are
+> unchanged in shape. No flag can prevent this.
 
 Exact payloads are documented in `BLOCK_TYPE_DOCS` — the same string the LLM
 prompts interpolate, so it never drifts:
