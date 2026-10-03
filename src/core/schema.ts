@@ -157,6 +157,7 @@ export type Block =
   | FigureBlock
   | SourcesBlock
   | QuizBlock
+  | ImageBlock
 
 export const stackBlockSchema = z.object({
   id: idSchema,
@@ -203,6 +204,15 @@ export const quizBlockSchema = z.object({
 })
 export type QuizBlock = z.infer<typeof quizBlockSchema>
 
+export const imageBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("image"),
+  // Host catalog key, resolved at render time (image spec §4.1).
+  image: z.string().min(1),
+  caption: z.string().min(1).max(300).optional(),
+})
+export type ImageBlock = z.infer<typeof imageBlockSchema>
+
 export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
   z.discriminatedUnion("type", [
     stepListBlockSchema,
@@ -222,6 +232,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     figureBlockSchema,
     sourcesBlockSchema,
     quizBlockSchema,
+    imageBlockSchema,
   ]) as unknown as z.ZodType<Block>,
 )
 

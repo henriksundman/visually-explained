@@ -10,6 +10,9 @@ export interface RenderContext {
   sketch: boolean
   /** Host datasets for blocks carrying a `dataset` key (real-data spec §4). */
   datasets?: Record<string, unknown>
+  /** Host image catalog for `image` blocks, keyed by the block's `image`
+   *  value (image spec §4.4). Same shape and threading as `datasets`. */
+  images?: Record<string, unknown>
   addWarning(message: string): void
   /** Leniently renders child blocks (used by stack); depth defaults to ctx.depth + 1. */
   renderChildren(blocks: unknown[], depth?: number): string

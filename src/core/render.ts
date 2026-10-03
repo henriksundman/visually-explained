@@ -20,6 +20,8 @@ export interface RenderOptions {
   root?: boolean
   /** Host-supplied datasets for blocks carrying a `dataset` key. */
   datasets?: Record<string, unknown>
+  /** Host-supplied image catalog for `image` blocks. */
+  images?: Record<string, unknown>
 }
 
 export interface RenderResult {
@@ -37,7 +39,7 @@ export function renderExplanation(input: unknown, opts: RenderOptions = {}): Ren
   const themeClass = theme === "none" ? "" : ` exp-theme-${theme}`
   const inner =
     renderHeader(salvaged.title, salvaged.summary) +
-    salvaged.blocks.map(b => renderSalvagedBlock(b, 1, warnings, opts.sketch ?? false, opts.datasets)).join("")
+    salvaged.blocks.map(b => renderSalvagedBlock(b, 1, warnings, opts.sketch ?? false, opts.datasets, opts.images)).join("")
   if (opts.root === false) return { html: inner, warnings }
   return { html: `<div class="exp${themeClass}${opts.sketch ? " exp-sketch" : ""}">${inner}</div>`, warnings }
 }
@@ -50,17 +52,17 @@ export function renderHeader(title: string | null, summary: string | null): stri
 }
 
 /** Renders a single block by type; used by the React adapter. Warnings are discarded. */
-export function renderBlock(type: string, data: unknown, depth = 1, opts: { sketch?: boolean; datasets?: Record<string, unknown> } = {}): string {
+export function renderBlock(type: string, data: unknown, depth = 1, opts: { sketch?: boolean; datasets?: Record<string, unknown>; images?: Record<string, unknown> } = {}): string {
   const raw = typeof data === "object" && data !== null ? { ...(data as object), type } : { type }
   const diagnostics: Diagnostic[] = []
   const b = salvageBlock(raw, -1, diagnostics)
-  return renderSalvagedBlock(b, depth, [], opts.sketch ?? false, opts.datasets)
+  return renderSalvagedBlock(b, depth, [], opts.sketch ?? false, opts.datasets, opts.images)
 }
 
 // Exported for renderDocument (document spec §4): the document composer
 // reuses this block renderer verbatim so fallback/stack/leniency stay in one
 // implementation. Not part of the public surface beyond internal reuse.
-export function renderSalvagedBlock(b: SalvagedBlock, depth: number, warnings: string[], sketch: boolean, datasets?: Record<string, unknown>): string {
+export function renderSalvagedBlock(b: SalvagedBlock, depth: number, warnings: string[], sketch: boolean, datasets?: Record<string, unknown>, images?: Record<string, unknown>): string {
   if (b.kind === "invalid") return ""
   const entry = registry[b.type]
   if (b.kind === "unknown" || !entry) return renderFallback(b.type, b.data)
@@ -68,17 +70,18 @@ export function renderSalvagedBlock(b: SalvagedBlock, depth: number, warnings: s
     depth,
     sketch,
     datasets,
+    images,
     addWarning: m => warnings.push(m),
-    renderChildren: (children, d) => renderChildrenLenient(children, d ?? depth + 1, warnings, sketch, datasets),
+    renderChildren: (children, d) => renderChildrenLenient(children, d ?? depth + 1, warnings, sketch, datasets, images),
   }
   return entry.render(b.data as Block, ctx)
 }
 
-function renderChildrenLenient(children: unknown[], depth: number, warnings: string[], sketch: boolean, datasets?: Record<string, unknown>): string {
+function renderChildrenLenient(children: unknown[], depth: number, warnings: string[], sketch: boolean, datasets?: Record<string, unknown>, images?: Record<string, unknown>): string {
   const diagnostics: Diagnostic[] = []
   const blocks = children.map((raw, i) => salvageBlock(raw, i, diagnostics))
   for (const d of diagnostics) warnings.push(`[${d.code}] ${d.message}`)
-  return blocks.map(b => renderSalvagedBlock(b, depth, warnings, sketch, datasets)).join("")
+  return blocks.map(b => renderSalvagedBlock(b, depth, warnings, sketch, datasets, images)).join("")
 }
 
 function renderFallback(type: string, data: unknown): string {
