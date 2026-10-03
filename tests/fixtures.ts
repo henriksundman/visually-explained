@@ -44,5 +44,6 @@ export const allPrimitivesIr = {
         { kind: "label", x: "10 + 40 * k", y: 50, text: "peak", anchor: "middle" },
       ],
     },
+    { type: "image", id: "fixture-image", image: "fixture-platform", caption: "A **host** image." },
   ],
 } as const

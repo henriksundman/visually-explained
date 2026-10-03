@@ -545,6 +545,25 @@
   color: var(--exp-text-muted);
 }
 
+.exp-image {
+  margin: 0 0 var(--exp-gap);
+  padding: 0;
+}
+
+.exp-image-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--exp-radius);
+}
+
+.exp-image-missing {
+  padding: var(--exp-pad);
+  border: 1px dashed var(--exp-border);
+  border-radius: var(--exp-radius);
+  background: var(--exp-surface-muted);
+}
+
 .exp-fig-empty {
   margin: 0;
   color: var(--exp-text-muted);
