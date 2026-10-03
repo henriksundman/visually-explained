@@ -61,6 +61,15 @@ Before deep-diving, test the failure against these recurring patterns:
 - **`dangerouslySetInnerHTML` hides nodes from React.** React's synthetic
   events (including `onFocusCapture`) do not fire for injected markup. Use
   native listeners for anything inside such a subtree.
+- **A selector that matches nothing fails silently.** Verify a CSS selector
+  against real served output (`grep` the class in the HTML you actually serve),
+  not against the component you pictured. A theme token declared on `.exp` must
+  be consumed by a rule on `.exp`, not on a narrower descendant that some other
+  page happens not to use.
+- **Negative assertions pass vacuously on inputs that throw first.** "output
+  does not contain X" is satisfied by a crash. Prove a security or escaping test
+  bites by running it against a deliberately broken stub, and include at least
+  one input that *parses* so an assertion actually executes.
 
 ## Part 2 — Entries
 
