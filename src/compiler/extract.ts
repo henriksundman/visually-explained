@@ -10,6 +10,10 @@ export const outlineSectionSchema = z.object({
   // prompt only invites it when opts.checks is on, but the schema accepts it
   // unconditionally (zod leniency; undeclared quizzes are also allowed).
   check: z.boolean().optional(),
+  // Host-catalog image this section wants (image spec §6). Flag-gated in the
+  // prompt like `check`: the outline is only invited to set it when a catalog
+  // exists, but the schema accepts it unconditionally (zod leniency).
+  image: z.string().min(1).optional(),
 })
 export const outlineSchema = z.object({
   version: z.literal(1),

@@ -1,5 +1,5 @@
 import type { z } from "zod"
-import { validateSources, type CompileEvent, type CompileOptions, type SourceExcerpt } from "./client"
+import { validateSources, validateImages, type CompileEvent, type CompileOptions, type SourceExcerpt } from "./client"
 import { outlineSchema, type Outline } from "./extract"
 import { parseWithIssues, repairUserPrompt } from "./repair"
 import {
@@ -118,13 +118,21 @@ export async function* compileDocumentStream(
   // prompts, events, and warnings.
   const checksOn = opts.checks === true
 
+  // Image catalog (image spec §6): validated once, before any prompting. Empty
+  // after validation ⇒ byte-identical USER prompts to an uncatalogued compile.
+  // (The section SYSTEM prompt still carries the - image: contract line for
+  // every host; that cost is unconditional and cannot be gated.)
+  const { catalog, warnings: imageWarnings } = validateImages(opts.images)
+  warnings.push(...imageWarnings)
+  const images = Object.keys(catalog).length > 0 ? catalog : undefined
+
   yield { kind: "outline-start", topic }
   const outlineOutcome = yield* runStage<Outline>({
     client: opts.client,
     maxRepairs,
     stage: "outline",
     system: outlineSystemPrompt(maxSections),
-    user: outlineUserPrompt(topic, opts.guidance, grounded, checksOn),
+    user: outlineUserPrompt(topic, opts.guidance, grounded, checksOn, images),
     rules: outlineSystemPrompt(maxSections),
     schema: outlineSchema,
   })
@@ -166,6 +174,8 @@ export async function* compileDocumentStream(
         guidance: opts.guidance,
         sources: grounded,
         check: checksOn && entry.check === true,
+        images,
+        image: images && entry.image !== undefined ? entry.image : undefined,
       }),
       rules:
         'Shape: { "title": string, "blocks": Block[] }. A section has "title" and "blocks" only — never "sections", never "version".',
