@@ -80,6 +80,15 @@ npm install temml@^0.13.5 && npm install --save-dev katex@^0.19.0
 
 Expected: `package.json` shows `temml` under `dependencies`, `katex` under `devDependencies`, install exits 0.
 
+Then add `"temml": "https://esm.sh/temml@0.13.5"` to the import map in
+`demo/interactive.html`. `tests/demo-examples.test.ts` asserts every runtime
+dependency is mapped there, so the suite fails on a new dep without it — a
+good gate, but it fails *after* the install step, not during it.
+
+`npm audit` reports `@vitest/mocker` and `esbuild` findings. Both are
+pre-existing dev-toolchain advisories; neither temml nor katex appears. Do not
+"fix" them here — the vitest remedy is a breaking major.
+
 - [ ] **Step 2: Write the failing test**
 
 Create `tests/math.test.ts`:
@@ -261,7 +270,15 @@ export const MathParseError = temml.ParseError
 
 Run: `npx vitest run tests/math.test.ts`
 
-Expected: PASS, 20 tests (security 2, coverage 10 via `it.each`, errors 4, determinism 1, packaging 1).
+Expected: PASS, **19 tests** (security 3, coverage 10 via `it.each`, errors 4, determinism 1, packaging 1).
+
+> **Executed note (2026-10-03):** the security block was strengthened during
+> execution. As first written, every construct in the hostile corpus *throws*,
+> so the loop body never executed and the test passed vacuously — a boundary
+> returning its input unchanged emits no tags at all and sailed through it. The
+> suite now (a) asserts the dangerous constructs are *rejected* rather than
+> skipping on `catch`, and (b) adds `INJECTION_TEX`, payloads smuggled through
+> `\text{...}` that **parse**, so the tag/attribute assertions actually run.
 
 - [ ] **Step 6: Verify the security suite can actually fail**
 
@@ -275,12 +292,22 @@ export function renderMath(tex: string): string {
 
 Run: `npx vitest run tests/math.test.ts`
 
-Expected: FAIL on `emits no navigable or executable artifact from hostile TeX` and on `escapes angle brackets…`. Then restore the real implementation and confirm PASS. **Do not commit the stub.**
+Expected: FAIL. Three stubs, and all three must be caught by all three
+security tests:
+
+| Stub | Must fail |
+| --- | --- |
+| `return tex` (passthrough) | all 3 security tests |
+| `throwOnError: false` (engine renders errors inline) | rejection + error tests |
+| `` return `<math>${tex}</math>` `` (wrapped, unsanitized) | all 3 security tests |
+
+Then restore the real implementation and confirm 19/19. **Do not commit a
+stub.** If a stub passes, the suite is decorative — fix the test, not the stub.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add package.json package-lock.json src/core/math.ts tests/math.test.ts
+git add package.json package-lock.json src/core/math.ts tests/math.test.ts demo/interactive.html
 git commit -m "add the math engine boundary and pin what model TeX cannot emit
 
 TeX is the first place this library parses a language rather than only
