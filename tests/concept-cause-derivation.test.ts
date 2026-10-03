@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { renderExplanation } from "../src/core/render"
+import { renderDocument } from "../src/core/renderDocument"
 import "../src/core/registerAll"
 
 describe("concept", () => {
@@ -35,19 +36,88 @@ describe("cause-effect", () => {
 })
 
 describe("derivation", () => {
-  it("renders escaped expressions with optional notes and conclusion", () => {
+  it("renders expression and conclusion as TeX, keeping note as prose", () => {
     const { html } = renderExplanation({
       version: 1,
       blocks: [
         {
           type: "derivation",
-          steps: [{ expression: "a**2 + b**2", note: "Pythagoras" }],
-          conclusion: "c**2 = a**2 + b**2",
+          steps: [{ expression: String.raw`\frac{a}{b}`, note: "Pythagoras, **restated**" }],
+          conclusion: String.raw`c^2 = a^2 + b^2`,
         },
       ],
     })
-    expect(html).toContain(`<code class="exp-derivation-expr">a**2 + b**2</code>`)
-    expect(html).toContain(`<p class="exp-derivation-note">Pythagoras</p>`)
-    expect(html).toContain(`<p class="exp-derivation-conclusion">c**2 = a**2 + b**2</p>`)
+    expect(html).toContain("<mfrac>")
+    expect(html).toContain("<msup>")
+    // Rendered math is output, not source — <code> must not wrap it.
+    expect(html).not.toContain(`<code class="exp-derivation-expr">`)
+    expect(html).toContain('<span class="exp-derivation-expr">')
+    // note stays prose — emphasis markup must still be processed there
+    expect(html).toContain(`<p class="exp-derivation-note">Pythagoras, <strong>restated</strong></p>`)
+  })
+
+  it("degrades malformed TeX to the escaped literal plus a warning", () => {
+    const { html, warnings } = renderExplanation({
+      version: 1,
+      blocks: [{ type: "derivation", steps: [{ expression: String.raw`\frac{1` }] }],
+    })
+    expect(html).toContain(`<code class="exp-math-literal">\\frac{1</code>`)
+    expect(warnings.some((w) => w.startsWith("[math]"))).toBe(true)
+  })
+
+  it("escapes the literal it degrades to, so malformed TeX cannot emit markup", () => {
+    const { html } = renderExplanation({
+      version: 1,
+      blocks: [{ type: "derivation", steps: [{ expression: `<img src=x onerror=alert(1)>` }] }],
+    })
+    // This payload PARSES as math — Temml emits `&lt;` as an operator followed
+    // by separate <mi>i</mi><mi>m</mi><mi>g</mi> elements, so there is no
+    // contiguous "&lt;img" to assert on. The invariant is that no element was
+    // created, which is what "no <img" checks.
+    expect(html).not.toContain("<img")
+    expect(html).not.toMatch(/<[a-z]+[^>]*onerror/i)
+    expect(html).toContain("&lt;")
+  })
+
+  it("degrades rather than throwing under renderDocument + strict", () => {
+    // NOT what the spec claimed. `renderDocument`'s strict gate runs before any
+    // block renders, so no render-time warning — [math] included — can trip it.
+    // Strict gates document/section *validation*; degradation is reported in
+    // `warnings` either way. Pinned so a future change to strict is deliberate.
+    const { warnings } = renderDocument(
+      {
+        version: 1,
+        title: "D",
+        sections: [
+          {
+            title: "S",
+            blocks: [{ type: "derivation", steps: [{ expression: String.raw`\frac{1` }] }],
+          },
+        ],
+      },
+      { strict: true },
+    )
+    expect(warnings.some((w) => w.startsWith("[math]"))).toBe(true)
+  })
+
+  it("does not throw under renderExplanation + strict for the same input", () => {
+    const { warnings } = renderExplanation(
+      {
+        version: 1,
+        blocks: [{ type: "derivation", steps: [{ expression: String.raw`\frac{1` }] }],
+      },
+      { strict: true },
+    )
+    expect(warnings.some((w) => w.startsWith("[math]"))).toBe(true)
+  })
+
+  it("still throws under strict when the block itself is invalid", () => {
+    // The other half of the contract: strict DOES gate validation.
+    expect(() =>
+      renderDocument(
+        { version: 1, title: "D", sections: [{ title: "S", blocks: "not-an-array" }] },
+        { strict: true },
+      ),
+    ).toThrow(/invalid/)
   })
 })

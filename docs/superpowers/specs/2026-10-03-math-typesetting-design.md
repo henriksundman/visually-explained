@@ -180,24 +180,31 @@ emits no `src`.
 | --- | --- |
 | Valid TeX | Engine HTML, inline |
 | Parse failure | **Escaped literal source** + `ctx.addWarning("[math] …")` |
-| Host `strict: true` | See the inconsistency below |
+| Host `strict: true` | No effect — see below |
 
 Never the engine's own error rendering: KaTeX's red-on-pink error markup would
 leak engine-specific DOM into a themed document, and Temml has no equivalent,
 so the two engines would degrade differently. The literal-plus-warning path is
 identical for both.
 
-**Inherited inconsistency — documented, not fixed here.** The two entry points
-disagree about what `strict` means:
+**`strict` does not gate this, and an earlier draft of this spec said it did.**
+That claim was wrong. Verified during implementation:
 
-- `src/core/render.ts:34` — `renderExplanation` throws on **diagnostics** only.
-- `src/core/renderDocument.ts:100` — `renderDocument` throws on **warnings**.
+- `src/core/render.ts` throws on top-level validation **diagnostics**.
+- `src/core/renderDocument.ts` throws on **document- and section-level**
+  diagnostics — and its gate runs *before* any block renders, so block
+  rendering (which is what collects `ctx.addWarning`) happens after it.
 
-A math parse failure is a warning. So under `renderDocument` + `strict` it
-throws; under `renderExplanation` + `strict` it does not. This predates the
-feature. This spec does not change `strict` semantics — doing so inside a math
-spec would be unrelated refactoring — but the asymmetry is recorded in
-`docs/OPEN_THREADS.md` and revisited when `strict` itself is next touched.
+So a render-time warning — a `[math]` failure, or any primitive's — never
+trips `strict` in either entry point. Both degrade and report in `warnings`.
+The two entry points are consistent here; the earlier "asymmetry" was an
+inference from seeing two different arrays checked, not an observable
+difference.
+
+Whether `strict` *should* gate render-time degradation is a real open question
+— a host asking for strict may reasonably expect "no degradation at all" —
+but changing it is a library-wide semantic change, out of scope for math
+typesetting. It is recorded in `docs/OPEN_THREADS.md`.
 
 ## 8. Theming, CSS & the `<code>` wrapper
 

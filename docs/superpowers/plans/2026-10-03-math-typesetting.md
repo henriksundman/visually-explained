@@ -16,7 +16,7 @@
 
 - `expression` and `conclusion` are TeX. `note` stays prose (`renderInline`). No `$` delimiters — the whole field is already TeX.
 - `renderMath` is **internal**: not re-exported from `src/index.ts`. No public engine switch.
-- Invalid TeX → escaped literal source + `ctx.addWarning`. **Never** engine error markup. Under `renderDocument` + `strict: true` the warning throws (spec §7); do not change `strict` semantics.
+- Invalid TeX → escaped literal source + `ctx.addWarning`. **Never** engine error markup. `strict` does **not** gate this (corrected during implementation — see spec §7); do not change `strict` semantics.
 - Runtime deps become `zod`, `roughjs`, `temml`. `katex` is a devDependency and must never appear in `src/`.
 - Editing the `derivation` line in `BLOCK_TYPE_DOCS` changes the section system prompt for every host. README carries the upgrade note.
 - Every new `exp-*` class needs a rule in `src/themes/tokens.css` (`tests/themes.test.ts` fails otherwise).
@@ -428,30 +428,40 @@ Run: `npx vitest run tests/concept-cause-derivation.test.ts`
 
 Expected: PASS, including the two pre-existing tests whose pinned markup you replaced in Step 1.
 
-- [ ] **Step 5: Confirm strict-mode behaviour matches spec §7**
+- [ ] **Step 5: Confirm strict-mode behaviour**
+
+> **Executed (2026-10-03): this step's expectation was WRONG and the spec was corrected.** `renderDocument`'s strict gate runs *before* any block renders, so no render-time warning — `[math]` included — can trip it. Assert the real behaviour instead: both entry points degrade and report, and strict still throws on *validation* errors.
 
 Add to `tests/concept-cause-derivation.test.ts`:
 
 ```ts
-  it("throws under renderDocument + strict when TeX fails to parse", () => {
+  it("degrades rather than throwing under renderDocument + strict", () => {
+    const { warnings } = renderDocument(
+      {
+        version: 1,
+        title: "D",
+        sections: [
+          { title: "S", blocks: [{ type: "derivation", steps: [{ expression: String.raw`\frac{1` }] }] },
+        ],
+      },
+      { strict: true },
+    )
+    expect(warnings.some((w) => w.startsWith("[math]"))).toBe(true)
+  })
+
+  it("still throws under strict when the block itself is invalid", () => {
     expect(() =>
       renderDocument(
-        {
-          version: 1,
-          title: "D",
-          sections: [
-            { title: "S", blocks: [{ type: "derivation", steps: [{ expression: String.raw`\frac{1` }] }] },
-          ],
-        },
+        { version: 1, title: "D", sections: [{ title: "S", blocks: "not-an-array" }] },
         { strict: true },
       ),
-    ).toThrow(/\[math\]/)
+    ).toThrow(/invalid/)
   })
 ```
 
 Run: `npx vitest run tests/concept-cause-derivation.test.ts`
 
-Expected: PASS. If it does **not** throw, stop: `renderDocument`'s strict branch (`src/core/renderDocument.ts:100`) has changed and spec §7 needs revisiting before continuing.
+Expected: PASS.
 
 - [ ] **Step 6: Add the theme tokens and rules**
 
@@ -910,17 +920,24 @@ Move the backlog item to Shipped with today's date, and in "Decisions That Bind 
 Append to `docs/OPEN_THREADS.md` as a new numbered thread (renumber the rest):
 
 ```markdown
-## N. `strict` means different things in the two entry points
+## N. `strict` never gates render-time degradation warnings
 
-`src/core/render.ts` throws on **diagnostics**; `src/core/renderDocument.ts`
-throws on **warnings**. So any warning-emitting degradation — including a
-malformed-TeX `[math]` warning — throws under `renderDocument` + `strict` but
-not under `renderExplanation` + `strict`. This predates math typesetting, which
-merely made it observable.
+`strict` throws on **validation** diagnostics only: top-level in
+`renderExplanation`, document- and section-level in `renderDocument` (whose gate
+runs before any block renders). A warning raised *during* block rendering — a
+malformed-TeX `[math]` warning, or any primitive's `ctx.addWarning` — never
+trips it. Both entry points degrade and report in `warnings`.
 
-**Revisit if** `strict` is next touched. The question is whether a host asking
-for `strict` wants "no diagnostics" or "no degradation at all"; the two
-entry points currently answer differently.
+This was long assumed to be an inconsistency between the two entry points. It
+is not: they are consistent, and the belief came from reading two different
+arrays being checked. Math typesetting is what made it observable, because it
+introduced the first render-time warning that looks like a validation failure.
+
+**Revisit if** `strict` is next touched. A host asking for strict may expect
+"no degradation at all", and today it gets "nothing was structurally invalid" —
+which means a document can render with visible fallbacks under strict and no
+error. Whether that is intended is undecided; changing it affects every
+primitive.
 ```
 
 - [ ] **Step 4: Run the full gate**
