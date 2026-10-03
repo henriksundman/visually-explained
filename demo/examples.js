@@ -503,7 +503,7 @@ export const demoDocIr = {
       title: "Host images",
       blocks: [
         { type: "text", body: "Both image blocks name a key in the **host** catalog, so the browser fetches nothing the library invented. The first resolves; the second names a key the catalog does not have, so it degrades to its caption — and never leaks the key it missed." },
-        { type: "image", id: "img-signal", image: "signal-station", caption: "A train platform where the signal is the subject — atmosphere the vector layer cannot draw." },
+        { type: "image", id: "img-signal", image: "signal-station", caption: "The gantry signal is the subject, lit against dusk haze — light and depth the figure layer doesn't attempt." },
         { type: "image", id: "img-missing", image: "not-in-catalog", caption: "This caption survives the miss; the image never renders." },
       ],
     },

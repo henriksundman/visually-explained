@@ -167,9 +167,13 @@ const server = createServer(async (req, res) => {
         },
       },
       images: {
+        // Self-hosted SVG, not a remote placeholder: `alt` is the host's
+        // responsibility (the model never authors it) and nothing validates it
+        // against the pixels, so the demo's alt must genuinely be true of the
+        // image. See open thread #2 in docs/OPEN_THREADS.md.
         "signal-station": {
-          src: "https://picsum.photos/seed/signal-station/800/600",
-          alt: "A railway platform under a signal gantry",
+          src: "/assets/signal-station.svg",
+          alt: "A railway platform under a signal gantry at dusk",
           width: 800,
           height: 600,
           subject: "a train platform under a signal gantry",
@@ -197,6 +201,17 @@ ${tocScrollSpy}
 </html>`
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
     res.end(docPage)
+    return
+  }
+  if (url.pathname.startsWith("/assets/")) {
+    try {
+      const body = await readFile(new URL(`.${url.pathname}`, import.meta.url))
+      res.writeHead(200, { "content-type": "image/svg+xml" })
+      res.end(body)
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" })
+      res.end("not found")
+    }
     return
   }
   if (url.pathname.startsWith("/themes/")) {
