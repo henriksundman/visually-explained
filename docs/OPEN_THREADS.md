@@ -323,10 +323,28 @@ the field `diagram` nodes, `chart` points and `figure` leaves already carry,
 with the same 200-char sanitizer, so the block is no longer the odd one out in
 the events layer.
 
-**The asymmetry is deliberate and pinned.** All 15 nodes are identified, so
+**The asymmetry is deliberate and pinned.** All nodes are identified, so
 pointer events reach the host for every one; only tipped nodes are focusable
 and popover-bearing. A test asserts exactly that, because otherwise "wired
 into the events layer" reads as "keyboard accessible", which is false.
+Browser-verified 2026-10-04 against a real React host passing
+`onElementEvent`: hovering the tipped node opens the popover with the right
+text and placement and fires `{kind:"hover", elId:"n2"}`; focusing it does the
+same; hovering an untipped node opens **nothing** but still fires
+`{kind:"hover", elId:"n0"}`. Both halves of the asymmetry are measured, not
+inferred.
+
+That check was worth doing, because `FocusPreservingSvg` carries a comment
+claiming React's synthetic focus events do not fire at all for
+`dangerouslySetInnerHTML` content — which, if true, would mean
+`useElementPopover`'s `onFocusCapture` never fires and the keyboard path is
+dead. It does fire. The capture-phase handler on the React-created stage div
+receives the focusin from injected descendants. So the two components'
+comments do not actually agree, and **the one in `FocusPreservingSvg` is the
+overbroad claim** — its native listeners are still the right call for
+re-focusing after a subtree swap, but "React never sees focus here" is not a
+general truth. Worth revisiting if anyone relies on that comment as a reason
+not to use a synthetic focus handler.
 
 **Why collapse is still deferred.** `layoutTree` assigns ids by **pre-order
 position** (`n0`, `n1`, …), measured: collapsing a node renumbers every
