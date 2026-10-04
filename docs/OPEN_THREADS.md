@@ -4,8 +4,8 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-04, after the degradation-policy, /editorial-fix, and
-flow-cycle cycles.
+Last updated: 2026-10-04, after the degradation-policy, /editorial-fix,
+flow-cycle, and mind-map cycles.
 
 ---
 
@@ -275,6 +275,47 @@ and the LLM prompt. Revisit only if a host reports the model writing
 first arm.
 
 ---
+
+## 15. An over-deep mind-map reports "Unrecognized key" and a 13-level path
+
+The explicit depth ladder needs `.strict()` on its leaf, and that choice is
+visible in the diagnostic: a 13-deep tree is rejected as
+`root.children.0.children.0.… Unrecognized key: "children"` rather than
+anything mentioning depth. It is truthful — the offending key really is
+unrecognized at that rung, and the path does locate it — and the block is
+dropped with `[invalid-block]`, which is the spec'd outcome. But a host
+debugging a rejected model response has to count path segments to learn
+what happened, and "Unrecognized key" reads like a schema bug rather than a
+depth limit.
+
+Revisit if a model is ever seen emitting trees this deep. The fix would be a
+`.superRefine` on the root that reports `depth exceeds 12` once, at the top,
+before the ladder descends — at the cost of reintroducing a recursive walk
+into the parse path, which is exactly what the ladder exists to avoid. That
+trade is why it was not done pre-emptively.
+
+## 16. `MIND_MAP_SCHEMA_DEPTH` costs ~2.2 KB of every model prompt
+
+`llm.ts` runs the whole ladder through `z.toJSONSchema`, and each level is
+inlined in full: 12 levels is ~2.2 KB against an 8.3 KB
+`explanationJsonSchema` before this block, so the prompt grew ~27%. Measured,
+recorded in `schema.ts`, and accepted because 12 is roughly the deepest tree
+the layout can usefully draw anyway — past 5 the renderer degrades to a list
+regardless. If prompt budget ever matters more than crash-safety headroom,
+lowering the constant is the dial, and the layout already degrades gracefully
+at a lower value. The real fix, if it is ever needed, is to publish a
+shallower hand-written JSON schema to the model while validating against the
+deep ladder — two schemas, which is a maintenance cost nobody has asked for.
+
+## 17. Mind-map interactivity is deferred, not declined
+
+The design chose static output, so nothing collapses, expands or highlights a
+path. A collapse interaction is the obvious next step and was deliberately not
+built: it would need per-node state that the current render path does not
+carry, and a half-built control is worse than none. Revisit alongside open
+thread 11 (no undo/redo in the figure runtime) rather than separately — both
+want the same interactive-state substrate, and building it twice would be the
+more expensive mistake.
 
 ## Conventions worth knowing before the next session
 

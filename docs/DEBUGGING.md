@@ -24,6 +24,20 @@ Before deep-diving, test the failure against these recurring patterns:
 - **zod object schemas strip unknown keys.** If a render ignores a field the
   host or LLM attached, check the field is *declared in the schema* before
   debugging the renderer. "Parses fine but the field is gone" is the signature.
+- **A degradation guard can be unreachable.** A cap below what the schema
+  admits never fires, because the block is rejected before the renderer sees
+  it: a 30-child tree hits `MIND_MAP_MAX_CHILDREN` (8) first, so a
+  `nodes > 24` guard cannot be tested with one. Check that a guard's fixture
+  survives validation, and measure the fixture — `mindMapFigureWidth` of
+  three 400-character labels is 314px, because labels wrap at 176px and scene
+  width is set by DEPTH (one column per level), not by label length.
+- **`z.object` strips, so an unrolled schema needs a strict leaf.** An
+  explicit ladder without `.strict()` at the bottom rung accepts `children`
+  and silently discards the whole subtree below it: a 500-deep chain validates
+  as a clean 12-deep tree, losing 488 nodes with no diagnostic.
+- **A stylesheet test proves the CSS parses, never that it applies.** Assert
+  the class is in the emitted markup too, at every level of a recursive
+  structure — the outermost element always looks right.
 - **Salvage is all-or-nothing per block.** A block failing its own schema is
   skipped whole (`[invalid-block]`, empty render). There is no partial payload
   for a field to "survive" on.
@@ -230,6 +244,33 @@ rest" — the rethrow is only safe if everything else is a bug in your code.
 - **Root cause:** the assertions were written in the negative ("output does not contain X") and the hostile inputs were stronger than the output. A throw satisfies every negative assertion trivially. Three deliberate stub boundaries (passthrough, `throwOnError: false`, wrapped-unsanitized) were then run against the test: all three passed it. The only assertion that separates them is the *positive* one — that the boundary rejects.
 - **Fix:** assert `expect(() => renderMath(tex)).toThrow(MathParseError)` for each hostile construct, and add `INJECTION_TEX` — payload that **parses** (`\text{<script>…}`, a bare `&`, an unpaired `_`) — so there is at least one case where the boundary must actually return a string and the escaping is exercised. Note that `\text{<script>}` legitimately produces `&lt;script&gt;`, so substring assertions like "no onerror" are wrong for escaped text; assert on tag- and attribute-shaped output instead.
 - **Rule:** a negative assertion passes vacuously whenever the input fails earlier than the output. Prove a security test bites by running it against a deliberately broken stub (passthrough, then a wrapped-but-unsanitized one) — a test that cannot fail is not a test. The same shape bites assertions about "no X in output" generally: check that each case reaches the assertion.
+
+### 2026-10-04 — Correct CSS on markup that never carried the class
+- **Symptom:** the mind-map's nested-list form rendered as a flat, unmarked
+  stack. No indent, no left rule, no dot markers on second-level items — while
+  the unit tests, the themes coverage gate and the `## Block types` docs were
+  all green.
+- **Root cause:** the stylesheet was right and the *markup* was wrong.
+  `listHtml` put `class="exp-mind-map-list"` on the outermost `<ul>` only, so
+  the two rules that express nesting — `.exp-mind-map-list .exp-mind-map-list`
+  (indent + left rule) and `.exp-mind-map-list > li` (the dot marker) — matched
+  nothing below the first level. The list still nested *structurally*, so every
+  structural assertion passed. Only the paint was wrong, which is the worst
+  kind of wrong: it looks like a deliberate design choice.
+- **Why no test caught it.** All four CSS tests asserted that a *rule exists in
+  the stylesheet*. None asserted that the *markup carries the class the rule
+  selects on*. Those are different claims, and only the second one is about
+  whether the feature works. The existing 2026-10-03 entry is the mirror image
+  (rule written, class absent from the page); this one is class written,
+  markup missing it.
+- **Fix:** every level emits the class, plus a test asserting each `<ul>` in the
+  output carries it and that none is bare. A Chrome probe that injects the real
+  markup and reads back `getComputedStyle` confirmed it — `innerMarginLeft: 8px`,
+  `innerBorderLeft: 1px`, dot `6px` in the accent colour.
+- **Rule:** a stylesheet test proves the CSS parses, never that it applies. For
+  anything expressed through a class, assert the class is *in the emitted
+  markup* as well — and when the structure is recursive, assert it at every
+  level, because the outermost element is the one that always looks right.
 
 ### 2026-10-03 — A CSS rule that matched nothing, and a spec claim that was simply false
 - **Symptom:** after the math size bump, nothing on `/math` changed size, and the user saw no difference at all. Separately, a test asserting that `renderDocument(ir, { strict: true })` throws on a `[math]` degradation warning could not be made to pass.
