@@ -4,31 +4,51 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-03, after the math typesetting cycle.
+Last updated: 2026-10-04, after the degradation-policy cycle.
 
 ---
 
-## 1. `strict: true` never gates a render-time degradation warning
+## 1. `strict` gates the input; `failOnWarning` gates the output — keep them apart
 
-`renderDocument(ir, { strict: true })` throws when the document IR **fails
-validation**. It runs before any block renders, so it cannot see anything that
-happens at render time — and nearly every degradation in this library is a
-render-time one: a dropped label, a missing dataset key, an unresolvable image
-catalog entry, unparseable TeX. Those call `ctx.addWarning` and render a
-fallback whether `strict` is on or off.
+**CLOSED 2026-10-04.** This thread recorded that `strict: true` could never fire
+on a render-time degradation, leaving hosts no enforceable no-degradation
+policy. That gap is now filled by two new options on all four render entry
+points:
 
-The spec for the math cycle asserted the opposite (that a `[math]` warning
-would trip `strict`), and the plan carried the claim forward. It was wrong, and
-wrong in an instructive way: the assertion read as plausible because
-`renderDocument` and `renderMath` each check a warnings array, but the
-validation gate runs on a *different* array, populated before rendering starts.
+- `onWarning(warnings)` — observation, called once per render pass.
+- `failOnWarning: true` — throws after rendering, carrying every warning.
+
+Reading the code during that cycle also found the gap was **two-sided**: the
+string renderers already returned `warnings`, but `renderBlock` hardcoded a
+throwaway sink, so `<Explanation>` and `<Document>` discarded warnings
+entirely. A React host had no way to observe a degradation at all. That is
+fixed; both components now thread a per-pass array and report the same set the
+string renderers do (test-locked).
+
+`strict` was deliberately **not** widened, and that remains the load-bearing
+decision here:
 
 **Consequence for the next session:** do not write a test asserting that a
-render-time warning throws under `strict`. If hosts need "no silent degradation"
-as an enforceable policy, that is a new option (a warnings collector the host
-inspects, or a post-render `warnings.length` check) — not a reinterpretation of
-`strict`. It would be a small, genuinely useful addition, but it is a feature,
-not a fix.
+render-time warning throws under `strict`, and do not "simplify" by making
+`strict` imply `failOnWarning`. The validation gate runs on a *different* array,
+populated before rendering starts — that is why the original math-cycle claim
+was wrong, and it is still true. Widening `strict` would silently change
+behavior for every existing caller. When both options are set, `strict` throws
+first: a malformed input is a host bug, a degraded output is a content problem,
+and they should not be conflated in one stack trace.
+
+Two follow-ons the closed thread leaves in place:
+
+- **`failOnWarning` fires on lenient-validation diagnostics too** (a dropped
+  `[invalid-section]`, a dropped `[invalid-block]`), not only render-time
+  warnings. A silently dropped section *is* a degradation. Filter the `[code]`
+  prefix if you want render-time failures only.
+- **In React, `onWarning` may fire twice for the same set** under StrictMode's
+  dev-only double-invoke. This is accepted, not fixed: `Explanation` and
+  `Document` are server components with no render-scoped instance to dedupe
+  against, and module-level state would leak across requests. Treat
+  `failOnWarning` as authoritative and dedupe by set membership if you
+  aggregate. Spec: `docs/superpowers/specs/2026-10-04-enforceable-no-degradation-design.md`.
 
 ## 2. Math size is 1.2em because a human looked at it
 

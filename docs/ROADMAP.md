@@ -176,6 +176,23 @@ decisions that survive across sessions.
   rather than from vendor docs. Spec:
   `docs/superpowers/specs/2026-10-03-math-typesetting-design.md`.
 
+- **Enforceable no-degradation policy** (2026-10-04) — two new options on all
+  four render entry points: `onWarning(warnings)` fires once per render pass
+  with the full set (observation), and `failOnWarning: true` throws after
+  rendering, carrying every warning rather than only the first. `strict` was
+  deliberately **not** widened — it gates the *input* (validation, before any
+  block renders) while this gates the *output*, and merging them would silently
+  change behavior for every existing caller. `failOnWarning` counts
+  lenient-validation diagnostics too: a silently dropped section is a
+  degradation. Reading the code for this cycle found the gap was two-sided —
+  the string renderers already returned `warnings`, but `renderBlock`
+  hardcoded a throwaway sink, so `<Explanation>` and `<Document>` discarded
+  them entirely and a React host could not observe a degradation at all. Both
+  now thread a per-pass array and report the same set as the string renderers
+  (test-locked); they stay server components, so StrictMode's dev-only
+  double-invoke is documented rather than fixed. Spec:
+  `docs/superpowers/specs/2026-10-04-enforceable-no-degradation-design.md`.
+
 ## Open threads
 
 Deliberately-deferred judgement calls and known-rough edges in shipped work —
@@ -228,24 +245,16 @@ cycle):
   (see above). If it is ever revisited, the remaining gaps are inline math in
   `text` fields (today only `derivation` is a TeX field) and display-mode
   centering of a formula on its own paragraph.
-- **Next up, in order** — two threads the 2026-10-03 math cycle left named, in
-  the order they should be picked up:
-  1. **An enforceable no-degradation policy.** Open thread 1 records that
-     `strict: true` gates *validation* only, so it can never fire on a
-     render-time degradation — and nearly every degradation in this library is
-     a render-time one. Hosts are told (README principle 1) that they can opt
-     into strictness, and today what they get is narrower than that reads. The
-     honest shape is a `warnings` collector the host inspects, or a
-     post-render `warnings.length` check — a feature, not a reinterpretation of
-     `strict`. Small, self-contained, and it makes an existing promise true.
-  2. **Inline math in prose.** `renderInline` gains `$…$` (or another delimiter)
+- **Next up** — the thread the 2026-10-03 math cycle left named, now the only
+  one left in this queue:
+  1. **Inline math in prose.** `renderInline` gains `$…$` (or another delimiter)
      so a formula can live inside a `text` field, which is where an explanation
      actually talks about one. This is the one place the new boundary could
      leak: inline parsing is a second context (scriptlevel, `math-style: compact`
      by default, a delimiter that can appear literally) and the security
      reasoning from the math spec has to be re-derived for it rather than
-     assumed. Sequence it *after* the warnings policy, which is cheaper and
-     lands a real guarantee.
+     assumed. Its degradations ride the `warnings` channel shipped above, so a
+     host's `failOnWarning` policy covers inline math with no extra wiring.
 - **Compiler v1 deferrals** (spec §9) — parallel section calls; client
   surface growth (usage reporting, abort signals, retries); caching;
   human-in-the-loop outline approval.

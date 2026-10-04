@@ -13,7 +13,8 @@ Principles that hold everywhere in this codebase:
 
 - **Lenient salvage.** Invalid model output degrades (element dropped, block
   degraded, warning emitted); a render never fails on bad data unless you opt
-  into `strict: true`.
+  into `strict: true` (a malformed input) or `failOnWarning: true` (a render
+  that degraded).
 - **SSR-safe and deterministic.** Seeded sketch randomness; stable output for
   identical input.
 - **Dependency-minimal.** Runtime deps are `zod`, `roughjs`, and `temml` (TeX →
@@ -57,6 +58,8 @@ const { html, warnings } = renderDocument(ir, { theme: "light", sketch: true })
 | `root` | `true` | `false` emits no `.exp` wrapper — style tokens on your own element |
 | `datasets` | — | Keyed host data for blocks carrying a `dataset` key — a miss or invalid payload warns and falls back to the block's literal fields |
 | `images` | — | Keyed host image catalog for `image` blocks — a miss or invalid entry warns and renders the caption alone |
+| `onWarning` | — | Called once with every warning from the pass (`[]` if none) — observation, never throws |
+| `failOnWarning` | `false` | Throw if the pass degraded anything, carrying every warning |
 
 `renderDocument` options (all optional):
 
@@ -69,11 +72,44 @@ const { html, warnings } = renderDocument(ir, { theme: "light", sketch: true })
 | `tocSticky` | `true` | `false` renders the TOC in normal flow (theme default pins it) |
 | `datasets` | — | Keyed host data for blocks carrying a `dataset` key — a miss or invalid payload warns and falls back to the block's literal fields |
 | `images` | — | Keyed host image catalog for `image` blocks — a miss or invalid entry warns and renders the caption alone |
+| `onWarning` | — | Called once with every warning from the pass (`[]` if none) — observation, never throws |
+| `failOnWarning` | `false` | Throw if the pass degraded anything, carrying every warning |
 
 Both return `{ html, warnings }`. Every degraded piece appends a
-`"[code] message"` string to `warnings` — surface or log them. Prefer a
-pre-flight check without rendering: `validateExplanation(input)` /
-`validateDocument(input)` return `{ ok, diagnostics }`.
+`"[code] message"` string to `warnings` — surface or log them, or use the two
+options below. Prefer a pre-flight check without rendering:
+`validateExplanation(input)` / `validateDocument(input)` return
+`{ ok, diagnostics }`.
+
+### Enforcing no degradation
+
+`strict` gates the **input**: it throws when the IR fails validation, before any
+block renders. It cannot fire on a degradation, because nearly every
+degradation here happens at render time — a missing dataset key, an
+unresolvable image, TeX that does not parse.
+
+`failOnWarning` gates the **output**. It throws after rendering, carrying every
+warning rather than only the first:
+
+```ts
+const { html } = renderDocument(ir, { failOnWarning: true }) // throws if anything degraded
+```
+
+It counts lenient-validation diagnostics too — a silently dropped section is a
+degradation. `onWarning` is the observational counterpart, called once per
+render pass with the full set, for hosts that would rather log than throw:
+
+```ts
+renderDocument(ir, { onWarning: w => report(w) })
+```
+
+The thrown message is bounded (120 chars per warning, 10 shown); the array you
+receive is always complete.
+
+**In React**, warnings reach `onWarning` too — previously they were discarded
+entirely, so a degradation was invisible. Note that StrictMode double-invokes
+renders in development, so the same set may arrive twice; dedupe by set
+membership or rely on `failOnWarning`.
 
 ### React
 
@@ -94,6 +130,8 @@ import { Explanation, Document } from "explanations/react"
   renderer for any registered block type.
 - `<Document ir={doc}>` accepts the same `strict` / `toc` / `tocSticky` /
   `sketch` options as `renderDocument`.
+- Both components accept `onWarning` / `failOnWarning` as described above, and
+  report the same warning set as the string renderers for the same IR.
 
 ## Block types
 
