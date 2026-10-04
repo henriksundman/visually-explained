@@ -598,6 +598,40 @@ describe("flow cycles and back-edge routing", () => {
     expect(scene.width).toBeGreaterThan(rightmost)
   })
 
+  it("keeps the return lane clear of the nodes after the clamp shifts them", () => {
+    // Regression from the fresh-eyes pass: the lane was measured from the
+    // PRE-clamp node extent. Once a clamp shift exceeded RETURN_DROP the lane
+    // climbed above the boxes and the return path cut straight through the
+    // nodes it exists to pass outside of. Ramp the label until the shift is
+    // large enough to have triggered it.
+    for (const len of [40, 90, 200, 400]) {
+      const spec: FlowSpecLike = {
+        direction: "lr",
+        nodes: [
+          { id: "a", label: "Alpha" },
+          { id: "b", label: "Beta" },
+          { id: "c", label: "Gamma" },
+          { id: "d", label: "Delta" },
+        ],
+        edges: [
+          { from: "a", to: "b" },
+          { from: "b", to: "c", label: "x".repeat(len) },
+          { from: "c", to: "d" },
+          { from: "d", to: "a" }, // the cycle
+        ],
+      }
+      const { scene } = layoutFlow(spec)
+      const nodes = scene.elements.filter((e): e is NodeBoxEl => e.kind === "node-box")
+      const lowestNode = Math.max(...nodes.map(n => n.y + n.h))
+      const dip = Math.max(...samplePath(mustArrow(scene, "d->a").d).map(p => p.y))
+      expect(`label ${len}: dip ${dip.toFixed(1)} > node bottom ${lowestNode}`).toBe(
+        `label ${len}: dip ${dip.toFixed(1)} > node bottom ${lowestNode}`,
+      )
+      expect(dip).toBeGreaterThan(lowestNode)
+      expect(scene.height).toBeGreaterThan(dip)
+    }
+  })
+
   it("is deterministic across repeated calls", () => {
     const spec = (demoExamples.howToIr as { blocks: { type: string }[] }).blocks.find(
       b => b.type === "diagram",

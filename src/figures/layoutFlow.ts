@@ -300,9 +300,8 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   let height = direction === "lr" ? crossExtent + PAD : mainOffset - lastGutter + PAD
   // A return path leaves through the far side of the CROSS axis, so its lane
   // is offset from that axis' node extent: below every node for `lr`, to the
-  // right of every node for `tb`. Using the other axis here would route the
-  // path back THROUGH the boxes it is meant to pass outside of.
-  const laneBase = direction === "lr" ? crossExtent : mainOffset - lastGutter
+  // right of every node for `tb`. Provisional here (pre-clamp boxes); 6b
+  // recomputes it from the final ones, since the clamp may shift them.
 
   // 6a. EDGE LABELS FIRST, before any path string exists.
   //
@@ -329,6 +328,11 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     labelX: number
     labelY: number
   }
+  const laneBasePre = (() => {
+    let m = 0
+    for (const p of placed.values()) m = Math.max(m, direction === "lr" ? p.y + p.h : p.x + p.w)
+    return m
+  })()
   const plans: EdgePlan[] = []
   // Lane index per back edge, so a diagram with two cycles draws them at
   // different depths instead of overprinting.
@@ -347,7 +351,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       // A feedback loop returns around the outside, so its label is bound by
       // the span it crosses, not by a column gutter. Positioned relative to
       // the lane depth; 6b refines it against the curve's true extremum.
-      const laneY = laneBase + PAD + RETURN_DROP + lane * RETURN_LANE
+      const laneY = laneBasePre + PAD + RETURN_DROP + lane * RETURN_LANE
       if (direction === "lr") {
         labelX = (a.x + a.w / 2 + b.x + b.w / 2) / 2
         labelY = laneY - 6
@@ -432,6 +436,16 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   //     route orthogonally through the column gutter; back edges return around
   //     the outside. Edges go into `elements` first so opaque node fills cover
   //     any crossing line.
+  //
+  //     The return lane is measured from the SHIFTED node boxes rather than
+  //     from `crossExtent`, which step 7 may have moved. Deriving it from the
+  //     pre-shift extent lets the lane climb above the boxes once a clamp
+  //     shift exceeds RETURN_DROP, and the "return path" then cuts straight
+  //     through the nodes it is meant to pass outside of.
+  let laneBase = 0
+  for (const p of placed.values()) {
+    laneBase = Math.max(laneBase, direction === "lr" ? p.y + p.h : p.x + p.w)
+  }
   const elements: Scene["elements"] = []
   for (const p of plans) {
     const { e, a, b, isBack, lane, adjacent, lines } = p
