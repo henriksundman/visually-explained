@@ -144,13 +144,23 @@ const mindMapBlockSchema = z.object({
 |---|---|---|
 | `MIND_MAP_SCHEMA_DEPTH` | `12` | crash guard only — the smallest round number that is far above any readable tree |
 | `MIND_MAP_MAX_DEPTH` | `5` | legibility policy — tuned, not derived |
-| `MIND_MAP_MAX_NODES` | `24` | crude first guard, subordinate to the measured width check |
+| `MIND_MAP_MAX_NODES` | `24` | **height** ceiling — see the correction below |
 | `MIND_MAP_MAX_CHILDREN` | `8` | per-level breadth |
 
-The three policy numbers are the spec's proposals, not derived results. Task 1
-should render the demo fixture and confirm them against the real scene before
-they are treated as settled — a cap that is wrong in either direction is a
-degradation the library would be making on the author's behalf.
+**CORRECTED after Task 1 measurement (2026-10-04).** This spec originally
+called the node count "crude and subordinate to the measured width check".
+That was wrong, and measuring it is why:
+
+- **Breadth is free.** Columns hug their own widest label, so 32 children
+  render **224px wide and 1998px tall**. A 7-deep chain of ordinary labels is
+  **943px wide**. Width tracks depth, not breadth.
+- So `TREE_MAX_SCENE_W` (825) is a **depth** ceiling and `MIND_MAP_MAX_NODES`
+  is a **height** ceiling. Neither is subordinate to the other, and each
+  catches what the other cannot: 825 rejects a 6-deep chain of long labels
+  (1308px) that the node count never sees; the count rejects a 24-child star
+  (~1500px tall) that width never sees.
+- The demo fixture measures **551×572** at depth 4 with 15 nodes, so `auto`
+  renders a figure at ~1.09× in a 600px column. No constant needed changing.
 
 ### 4.1 Why the IR is nested, not `nodes` + `edges`
 
@@ -324,9 +334,9 @@ path rather than a fallback.
 | condition | outcome |
 |---|---|
 | depth > `MIND_MAP_SCHEMA_DEPTH` (12) | `[invalid-block]`, dropped — crash guard |
-| nodes > `MIND_MAP_MAX_NODES` (24), under `auto` | text + `[mind-map]` warning |
+| nodes > `MIND_MAP_MAX_NODES` (24), under `auto` | text + `[mind-map]` warning — a **height** guard |
 | depth > `MIND_MAP_MAX_DEPTH` (5), under `auto` | text + `[mind-map]` warning |
-| scene width > 825, under `auto` | text + `[mind-map]` warning |
+| scene width > 825, under `auto` | text + `[mind-map]` warning — a **depth** guard |
 | explicit `presentation: "figure"` | always rendered, no warning — deliberate override |
 
 ## 7. Testing & verification
