@@ -81,12 +81,20 @@ function ariaFor(node: MindMapNode): string {
   return `${node.label} contains ${parts.join(", ")}`
 }
 
+/**
+ * Nested list. EVERY level carries `exp-mind-map-list`, not just the outermost
+ * one: the nesting is styled by `.exp-mind-map-list .exp-mind-map-list`
+ * (indent + left rule) and by `.exp-mind-map-list > li` (the dot marker).
+ * An inner <ul> without the class matches neither selector, so a flat-looking
+ * stack with unmarked second-level items is what you get — a degradation that
+ * still reads as a degradation.
+ */
 function listHtml(node: MindMapNode): string {
   const kids = node.children ?? []
   const item = `<li>${renderInline(node.label, undefined)}`
   return kids.length === 0
     ? `${item}</li>`
-    : `${item}<ul>${kids.map(listHtml).join("")}</ul></li>`
+    : `${item}<ul class="exp-mind-map-list">${kids.map(listHtml).join("")}</ul></li>`
 }
 
 export function renderMindMap(block: MindMapBlock, ctx: RenderContext): string {

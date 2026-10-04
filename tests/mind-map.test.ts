@@ -51,8 +51,25 @@ describe("mind-map — figure form", () => {
     // keeps this honest: an off-by-one in the search origin would otherwise
     // make a flat list look nested.
     expect(html).toMatch(
-      /<ul[^>]*><li>Cache<ul><li>Browser cache<\/li><li>Shared cache<ul><li>In-memory<\/li><li>On-disk<\/li><\/ul><\/li><\/ul><\/li><\/ul>/,
+      /<ul[^>]*><li>Cache<ul[^>]*><li>Browser cache<\/li><li>Shared cache<ul[^>]*><li>In-memory<\/li><li>On-disk<\/li><\/ul><\/li><\/ul><\/li><\/ul>/,
     )
+  })
+
+  it("puts the list class on EVERY nested level, not just the outer one", () => {
+    // The styling hangs off `.exp-mind-map-list .exp-mind-map-list` (indent +
+    // left rule) and `.exp-mind-map-list > li` (the dot marker). An inner <ul>
+    // without the class matches neither, so the list still nests
+    // STRUCTURALLY while reading as a flat, unmarked stack — a degradation
+    // that looks like a degradation. Only a real engine catches this; the
+    // CSS-rule tests pass either way.
+    const { html } = render(TREE, { presentation: "text" })
+    const lists = html.match(/<ul[^>]*>/g) ?? []
+    // Three for this tree: the block's own list, the one under "Cache", and
+    // the one under "Shared cache". Asserting the count means a regression
+    // cannot pass by dropping the level instead of the class.
+    expect(lists.length).toBe(3)
+    for (const tag of lists) expect(tag).toContain('class="exp-mind-map-list"')
+    expect(html).not.toMatch(/<ul>/)
   })
 
   it("carries an aria-label that linearises the tree", () => {
