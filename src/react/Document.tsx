@@ -77,12 +77,15 @@ export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc =
   // client component. The `strict` check above already threw, so a validation
   // failure is reported before any degradation policy applies.
   const blockOpts = { sketch, datasets, images, warnings }
+  // Degradation sink for the authored prose React renders itself (titles,
+  // summary, TOC), so it joins the same array renderBlock writes to.
+  const warnCtx = { addWarning: (m: string) => warnings.push(m) }
 
   // Built BEFORE the policy check: renderBlock populates `warnings` as a side
   // effect of this map, so checking first would always see an empty array.
   const body = sections.map((s, i) => (
     <section key={anchors[i]} className="exp-doc-section" id={anchors[i]}>
-      <h2 className="exp-doc-section-title" dangerouslySetInnerHTML={{ __html: renderInline(s.title) }} />
+      <h2 className="exp-doc-section-title" dangerouslySetInnerHTML={{ __html: renderInline(s.title, warnCtx) }} />
       {(s.blocks as unknown[]).map((raw, bi) => {
         const type =
           typeof (raw as Record<string, unknown>)?.type === "string"
@@ -93,6 +96,27 @@ export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc =
     </section>
   ))
 
+  // Also built BEFORE the policy check, for the same reason as `body`: a
+  // title, summary or TOC entry carrying unparseable inline math reports its
+  // degradation here, and rendering it afterwards would report the array
+  // without it. renderDocument builds all four before its own check.
+  const titleHtml = title ? renderInline(title, warnCtx) : null
+  const summaryHtml = summary ? renderInline(summary, warnCtx) : null
+  const tocHtml =
+    toc && sections.length > 0 ? (
+      // Sticky comes from the theme (default); tocSticky: false adds the opt-out
+      // class so the nav renders in normal flow instead of pinning.
+      <nav className={tocSticky ? "exp-doc-toc" : "exp-doc-toc exp-doc-toc-inline"} aria-label="On this page">
+        <ol className="exp-doc-toc-list">
+          {sections.map((s, i) => (
+            <li key={anchors[i]}>
+              <a href={`#${anchors[i]}`} dangerouslySetInnerHTML={{ __html: renderInline(s.title, warnCtx) }} />
+            </li>
+          ))}
+        </ol>
+      </nav>
+    ) : null
+
   if (onWarning) onWarning([...warnings])
   if (failOnWarning && warnings.length > 0) {
     throw new Error(formatDegradationError(warnings))
@@ -101,25 +125,13 @@ export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc =
   const rootClass = `exp exp-doc${theme === "none" ? "" : ` exp-theme-${theme}`}${sketch ? " exp-sketch" : ""}`
   return (
     <article className={rootClass}>
-      {title && (
+      {titleHtml && (
         <header className="exp-doc-header">
-          <h1 className="exp-doc-title" dangerouslySetInnerHTML={{ __html: renderInline(title) }} />
-          {summary && <p className="exp-doc-summary" dangerouslySetInnerHTML={{ __html: renderInline(summary) }} />}
+          <h1 className="exp-doc-title" dangerouslySetInnerHTML={{ __html: titleHtml }} />
+          {summaryHtml && <p className="exp-doc-summary" dangerouslySetInnerHTML={{ __html: summaryHtml }} />}
         </header>
       )}
-      {toc && sections.length > 0 && (
-        // Sticky comes from the theme (default); tocSticky: false adds the
-        // opt-out class so the nav renders in normal flow instead of pinning.
-        <nav className={tocSticky ? "exp-doc-toc" : "exp-doc-toc exp-doc-toc-inline"} aria-label="On this page">
-          <ol className="exp-doc-toc-list">
-            {sections.map((s, i) => (
-              <li key={anchors[i]}>
-                <a href={`#${anchors[i]}`} dangerouslySetInnerHTML={{ __html: renderInline(s.title) }} />
-              </li>
-            ))}
-          </ol>
-        </nav>
-      )}
+      {tocHtml}
       {body}
     </article>
   )

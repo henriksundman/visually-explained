@@ -66,8 +66,8 @@ export function renderFigure(block: FigureBlock, ctx: RenderContext): string {
   warnings.push(...compileWarnings)
   for (const w of warnings) ctx.addWarning(w)
 
-  const header = block.title ? `<h4 class="exp-fig-title">${renderInline(block.title)}</h4>` : ""
-  const caption = block.caption ? `<p class="exp-fig-caption">${renderInline(block.caption)}</p>` : ""
+  const header = block.title ? `<h4 class="exp-fig-title">${renderInline(block.title, ctx)}</h4>` : ""
+  const caption = block.caption ? `<p class="exp-fig-caption">${renderInline(block.caption, ctx)}</p>` : ""
   const aria = block.title ?? block.caption ?? "Authored figure"
   const body =
     scene.elements.length > 0

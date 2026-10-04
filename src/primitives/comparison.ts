@@ -4,7 +4,7 @@ import { renderInline } from "../core/inline"
 
 export function renderComparison(block: ComparisonBlock, ctx: RenderContext): string {
   const n = block.items.length
-  const headCells = block.items.map(i => `<th class="exp-th">${renderInline(i.name)}</th>`).join("")
+  const headCells = block.items.map(i => `<th class="exp-th">${renderInline(i.name, ctx)}</th>`).join("")
   const rows = block.dimensions
     .map(dim => {
       let values = dim.values
@@ -19,8 +19,8 @@ export function renderComparison(block: ComparisonBlock, ctx: RenderContext): st
         )
         values = values.slice(0, n)
       }
-      const cells = values.map(v => `<td class="exp-td">${renderInline(v)}</td>`).join("")
-      return `<tr><th class="exp-th exp-row-th">${renderInline(dim.name)}</th>${cells}</tr>`
+      const cells = values.map(v => `<td class="exp-td">${renderInline(v, ctx)}</td>`).join("")
+      return `<tr><th class="exp-th exp-row-th">${renderInline(dim.name, ctx)}</th>${cells}</tr>`
     })
     .join("")
   return (

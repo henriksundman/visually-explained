@@ -35,14 +35,14 @@ function resolvePresentation(block: TimelineBlock): "text" | "figure" {
   return timelineFigureFits(events) ? "figure" : "text" // auto
 }
 
-function renderTextForm(block: TimelineBlock): string {
+function renderTextForm(block: TimelineBlock, ctx: RenderContext): string {
   const events = block.events
     .map(
       e =>
         `<li class="exp-event">` +
-        `<span class="exp-event-when">${renderInline(e.when)}</span>` +
-        `<p class="exp-event-what">${renderInline(e.what)}</p>` +
-        (e.detail ? `<p class="exp-event-detail">${renderInline(e.detail)}</p>` : "") +
+        `<span class="exp-event-when">${renderInline(e.when, ctx)}</span>` +
+        `<p class="exp-event-what">${renderInline(e.what, ctx)}</p>` +
+        (e.detail ? `<p class="exp-event-detail">${renderInline(e.detail, ctx)}</p>` : "") +
         `</li>`,
     )
     .join("")
@@ -66,7 +66,7 @@ export function renderTimeline(block: TimelineBlock, ctx: RenderContext): string
         "timeline-figure-too-wide: milestone labels are too long to draw legibly; rendered the text list instead (set presentation: \"figure\" to override)",
       )
     }
-    return renderTextForm(b)
+    return renderTextForm(b, ctx)
   }
   const { scene, warnings } = layoutTimeline(events)
   for (const w of warnings) ctx.addWarning(w)

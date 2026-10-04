@@ -3,14 +3,19 @@ import { quizBlockSchema, type QuizBlock } from "../core/schema"
 import { renderInline } from "../core/inline"
 
 /** "✔ text — why" / "✘ text" — the why separator only appears when a why exists. */
-function whyLine(prefix: string, text: string, why: string | undefined): string {
-  return `${prefix} ${renderInline(text)}${why ? ` — ${renderInline(why)}` : ""}`
+function whyLine(
+  prefix: string,
+  text: string,
+  why: string | undefined,
+  ctx: RenderContext,
+): string {
+  return `${prefix} ${renderInline(text, ctx)}${why ? ` — ${renderInline(why, ctx)}` : ""}`
 }
 
 export function renderQuiz(block: QuizBlock, ctx: RenderContext): string {
-  const question = `<p class="exp-quiz-question">${renderInline(block.question)}</p>`
+  const question = `<p class="exp-quiz-question">${renderInline(block.question, ctx)}</p>`
   const items = block.options
-    .map(o => `<li class="exp-quiz-option"><span class="exp-quiz-option-text">${renderInline(o.text)}</span></li>`)
+    .map(o => `<li class="exp-quiz-option"><span class="exp-quiz-option-text">${renderInline(o.text, ctx)}</span></li>`)
     .join("")
   const inRange = Number.isInteger(block.answer) && block.answer >= 0 && block.answer < block.options.length
   if (!inRange) {
@@ -23,11 +28,11 @@ export function renderQuiz(block: QuizBlock, ctx: RenderContext): string {
   }
   const correct = block.options[block.answer]
   const result =
-    `<p class="exp-quiz-answer">${whyLine("✔", correct.text, correct.why)}</p>` +
+    `<p class="exp-quiz-answer">${whyLine("✔", correct.text, correct.why, ctx)}</p>` +
     block.options
-      .map((o, i) => (i === block.answer ? "" : `<p class="exp-quiz-miss">${whyLine("✘", o.text, o.why)}</p>`))
+      .map((o, i) => (i === block.answer ? "" : `<p class="exp-quiz-miss">${whyLine("✘", o.text, o.why, ctx)}</p>`))
       .join("") +
-    (block.explanation ? `<p class="exp-quiz-explanation">${renderInline(block.explanation)}</p>` : "")
+    (block.explanation ? `<p class="exp-quiz-explanation">${renderInline(block.explanation, ctx)}</p>` : "")
   return (
     `<div class="exp-block exp-quiz">${question}` +
     `<ol class="exp-quiz-options">${items}</ol>` +

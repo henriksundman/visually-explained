@@ -13,13 +13,13 @@ function resolvePresentation(block: CauseEffectBlock): "text" | "figure" {
   return block.chain.length <= CAUSE_EFFECT_FIGURE_MAX ? "figure" : "text" // auto
 }
 
-function renderTextForm(block: CauseEffectBlock): string {
+function renderTextForm(block: CauseEffectBlock, ctx: RenderContext): string {
   const items = block.chain
     .map(
       c =>
         `<li class="exp-cause-item">` +
-        `<p class="exp-cause"><span class="exp-label">Because</span> ${renderInline(c.because)}</p>` +
-        `<p class="exp-effect"><span class="exp-label">Therefore</span> ${renderInline(c.therefore)}</p>` +
+        `<p class="exp-cause"><span class="exp-label">Because</span> ${renderInline(c.because, ctx)}</p>` +
+        `<p class="exp-effect"><span class="exp-label">Therefore</span> ${renderInline(c.therefore, ctx)}</p>` +
         `</li>`,
     )
     .join("")
@@ -43,7 +43,7 @@ function renderFigureForm(block: CauseEffectBlock, ctx: RenderContext): string {
 
 export function renderCauseEffect(block: CauseEffectBlock, ctx: RenderContext): string {
   if (resolvePresentation(block) === "figure") return renderFigureForm(block, ctx)
-  return renderTextForm(block)
+  return renderTextForm(block, ctx)
 }
 
 registerPrimitive("cause-effect", { schema: causeEffectBlockSchema, render: renderCauseEffect })

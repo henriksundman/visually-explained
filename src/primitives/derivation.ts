@@ -35,7 +35,7 @@ export function renderDerivation(block: DerivationBlock, ctx: RenderContext): st
         // formula was literal code and pulled in a monospace face that renders
         // math badly. The class is kept so existing theme rules still apply.
         `<span class="exp-derivation-expr">${expression}</span>` +
-        (s.note ? `<p class="exp-derivation-note">${renderInline(s.note)}</p>` : "") +
+        (s.note ? `<p class="exp-derivation-note">${renderInline(s.note, ctx)}</p>` : "") +
         `</li>`
       )
     })

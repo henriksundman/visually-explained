@@ -11,7 +11,7 @@ import { escapeHtml, renderInline } from "../core/inline"
 export function renderImage(block: ImageBlock, ctx: RenderContext): string {
   const resolved = resolveImage(ctx, block.image, block.id)
   const caption = block.caption
-    ? `<figcaption class="exp-fig-caption">${renderInline(block.caption)}</figcaption>`
+    ? `<figcaption class="exp-fig-caption">${renderInline(block.caption, ctx)}</figcaption>`
     : ""
   if (!resolved.ok) {
     if (!caption) return ""

@@ -69,9 +69,9 @@ function renderSectionBlocks(rawBlocks: unknown[], warnings: string[], sketch: b
   return blocks.map(b => renderSalvagedBlock(b, 1, warnings, sketch, datasets, images)).join("")
 }
 
-function renderToc(sections: { title: string; anchor: string }[], tocSticky: boolean): string {
+function renderToc(sections: { title: string; anchor: string }[], tocSticky: boolean, warnings: string[]): string {
   const items = sections
-    .map(s => `<li><a href="#${s.anchor}">${renderInline(s.title)}</a></li>`)
+    .map(s => `<li><a href="#${s.anchor}">${renderInline(s.title, { addWarning: m => warnings.push(m) })}</a></li>`)
     .join("")
   // Sticky comes from the theme (default); tocSticky: false adds the opt-out
   // class so the nav renders in normal flow instead of pinning.
@@ -158,14 +158,14 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
 
   const toc =
     opts.toc !== false && good.length > 0
-      ? renderToc(good.map((s, i) => ({ title: s.title, anchor: anchors[i] })), opts.tocSticky !== false)
+      ? renderToc(good.map((s, i) => ({ title: s.title, anchor: anchors[i] })), opts.tocSticky !== false, warnings)
       : ""
   const body = good
     .map((s, i) => {
       const blocksHtml = renderSectionBlocks(s.blocks, warnings, opts.sketch ?? false, opts.datasets, opts.images)
       return (
         `<section class="exp-doc-section" id="${anchors[i]}">` +
-        `<h2 class="exp-doc-section-title">${renderInline(s.title)}</h2>` +
+        `<h2 class="exp-doc-section-title">${renderInline(s.title, { addWarning: m => warnings.push(m) })}</h2>` +
         blocksHtml +
         `</section>`
       )
@@ -176,8 +176,8 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
   const summary = typeof rec!.summary === "string" && rec!.summary.length > 0 ? rec!.summary : null
   const header =
     `<header class="exp-doc-header">` +
-    `<h1 class="exp-doc-title">${renderInline(title)}</h1>` +
-    (summary ? `<p class="exp-doc-summary">${renderInline(summary)}</p>` : "") +
+    `<h1 class="exp-doc-title">${renderInline(title, { addWarning: m => warnings.push(m) })}</h1>` +
+    (summary ? `<p class="exp-doc-summary">${renderInline(summary, { addWarning: m => warnings.push(m) })}</p>` : "") +
     `</header>`
 
   // Degradation policy, FINAL phase: every block has now rendered, so the

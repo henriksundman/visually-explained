@@ -20,11 +20,11 @@ export function renderDataCallout(block: DataCalloutBlock, ctx: RenderContext): 
   const delta = b.delta
     ? `<span class="exp-delta${b.trend ? ` exp-delta-${b.trend}` : ""}">${escapeHtml(b.delta)}</span>`
     : ""
-  const context = b.context ? `<p class="exp-context">${renderInline(b.context)}</p>` : ""
+  const context = b.context ? `<p class="exp-context">${renderInline(b.context, ctx)}</p>` : ""
   return (
     `<div class="exp-block exp-data-callout">` +
     `<span class="exp-metric">${escapeHtml(b.metric)}</span>` +
-    `<span class="exp-metric-label">${renderInline(b.label)}</span>` +
+    `<span class="exp-metric-label">${renderInline(b.label, ctx)}</span>` +
     delta +
     (sparkSvg ? `<div class="exp-spark-box">${sparkSvg}</div>` : "") +
     context +

@@ -52,7 +52,7 @@ export function renderChart(block: ChartBlock, ctx: RenderContext): string {
   const { scene } = layoutChart({ kind: b.kind, points, unit: b.unit, caption: b.caption })
   const aria = b.caption ?? `Chart: ${points.map(p => p.label).join(" → ")}`
   const svg = sceneToSvg(scene, { ariaLabel: aria, sketch: ctx.sketch, seed: b.id ?? hashSeed(aria) })
-  const caption = b.caption ? `<p class="exp-fig-caption">${renderInline(b.caption)}</p>` : ""
+  const caption = b.caption ? `<p class="exp-fig-caption">${renderInline(b.caption, ctx)}</p>` : ""
   return `<div class="exp-block exp-chart">${svg}${caption}</div>`
 }
 

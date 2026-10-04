@@ -115,6 +115,13 @@ export function Explanation({
     return <div key={b.index} dangerouslySetInnerHTML={{ __html: renderBlock(b.type, b.data, 1, blockOpts) }} />
   })
 
+  // Also built BEFORE the policy check, for the same reason as `body`: a title
+  // or summary carrying unparseable inline math reports its degradation here,
+  // and rendering it afterwards would report the array without it.
+  const warnCtx = { addWarning: (m: string) => warnings.push(m) }
+  const titleHtml = salvaged.title ? renderInline(salvaged.title, warnCtx) : null
+  const summaryHtml = salvaged.summary ? renderInline(salvaged.summary, warnCtx) : null
+
   if (onWarning) onWarning([...warnings])
   if (failOnWarning && warnings.length > 0) {
     throw new Error(formatDegradationError(warnings))
@@ -122,11 +129,11 @@ export function Explanation({
 
   return (
     <div className={themeClassName(theme) + (sketch ? " exp-sketch" : "")}>
-      {salvaged.title && (
-        <h3 className="exp-title" dangerouslySetInnerHTML={{ __html: renderInline(salvaged.title) }} />
+      {titleHtml && (
+        <h3 className="exp-title" dangerouslySetInnerHTML={{ __html: titleHtml }} />
       )}
-      {salvaged.summary && (
-        <p className="exp-summary" dangerouslySetInnerHTML={{ __html: renderInline(salvaged.summary) }} />
+      {summaryHtml && (
+        <p className="exp-summary" dangerouslySetInnerHTML={{ __html: summaryHtml }} />
       )}
       {body}
     </div>

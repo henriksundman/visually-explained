@@ -7,13 +7,13 @@ export function renderSources(block: SourcesBlock, ctx: RenderContext): string {
     .map(it => {
       const href = it.url !== undefined ? safeHref(it.url) : null
       const title = href
-        ? `<a class="exp-source-link" href="${escapeHtml(href)}">${renderInline(it.title)}</a>`
-        : renderInline(it.title)
-      const detail = it.detail ? `<p class="exp-source-detail">${renderInline(it.detail)}</p>` : ""
+        ? `<a class="exp-source-link" href="${escapeHtml(href)}">${renderInline(it.title, ctx)}</a>`
+        : renderInline(it.title, ctx)
+      const detail = it.detail ? `<p class="exp-source-detail">${renderInline(it.detail, ctx)}</p>` : ""
       return `<li id="source-${escapeHtml(it.id)}" class="exp-source">${title}${detail}</li>`
     })
     .join("")
-  const heading = block.title ? `<p class="exp-sources-title">${renderInline(block.title)}</p>` : ""
+  const heading = block.title ? `<p class="exp-sources-title">${renderInline(block.title, ctx)}</p>` : ""
   return `<div class="exp-block exp-sources">${heading}<ol class="exp-sources-list">${items}</ol></div>`
 }
 

@@ -3,12 +3,12 @@ import { workedExampleBlockSchema, type WorkedExampleBlock } from "../core/schem
 import { renderInline } from "../core/inline"
 import { renderStepLi } from "./step-list"
 
-export function renderWorkedExample(block: WorkedExampleBlock, _ctx: RenderContext): string {
+export function renderWorkedExample(block: WorkedExampleBlock, ctx: RenderContext): string {
   return (
     `<div class="exp-block exp-worked-example">` +
-    `<p class="exp-example-problem">${renderInline(block.problem)}</p>` +
-    `<ol class="exp-example-steps">${block.steps.map((s, i) => renderStepLi(s, i)).join("")}</ol>` +
-    `<p class="exp-example-result">${renderInline(block.result)}</p>` +
+    `<p class="exp-example-problem">${renderInline(block.problem, ctx)}</p>` +
+    `<ol class="exp-example-steps">${block.steps.map((s, i) => renderStepLi(s, i, ctx)).join("")}</ol>` +
+    `<p class="exp-example-result">${renderInline(block.result, ctx)}</p>` +
     `</div>`
   )
 }
