@@ -41,6 +41,13 @@ describe("themes", () => {
     expect(css).toMatch(/\.exp-doc-toc-list a\[aria-current="true"\]\s*{[^}]*text-decoration: underline/)
   })
 
+  it("styles the mind-map nested list and leaves room between levels", () => {
+    const css = readFileSync("src/themes/tokens.css", "utf8")
+    expect(css).toMatch(/\.exp-mind-map-list\s*{[^}]*list-style/)
+    // Nesting must read as nesting: an indented inner list, not a flat one.
+    expect(css).toMatch(/\.exp-mind-map-list \.exp-mind-map-list\s*{[^}]*margin-left/)
+  })
+
   it("dark theme overrides surface tokens under .exp-theme-dark", () => {
     const dark = readFileSync("src/themes/dark.css", "utf8")
     expect(dark).toContain(".exp-theme-dark")

@@ -46,6 +46,10 @@ type Presentation = { form: "text" | "figure"; reason?: string }
  * The list is the better outcome, not a consolation prize: it is also the
  * degradation target, the accessible form, and the no-SVG fallback, so those
  * three cannot drift apart.
+ *
+ * The text form carries no `-text` modifier class, matching timeline: the
+ * list needs no styling of its own beyond `.exp-mind-map-list`, and a class
+ * nothing styles is a hook that will rot.
  */
 function resolvePresentation(block: MindMapBlock): Presentation {
   if (block.presentation === "text") return { form: "text" }
@@ -89,7 +93,7 @@ export function renderMindMap(block: MindMapBlock, ctx: RenderContext): string {
   const { form, reason } = resolvePresentation(block)
   if (form === "text") {
     if (reason) ctx.addWarning(`[mind-map] ${reason} — rendered as a nested list`)
-    return `<div class="exp-block exp-mind-map exp-mind-map-text"><ul class="exp-mind-map-list">${listHtml(block.root)}</ul></div>`
+    return `<div class="exp-block exp-mind-map"><ul class="exp-mind-map-list">${listHtml(block.root)}</ul></div>`
   }
   const { scene } = layoutTree(block.root as TreeNodeSpec)
   const aria = ariaFor(block.root)

@@ -150,7 +150,8 @@
 .exp-callout,
 .exp-diagram,
 .exp-chart,
-.exp-sources {
+.exp-sources,
+.exp-mind-map {
   min-width: 0;
 }
 
@@ -1021,4 +1022,40 @@
 }
 .exp-quiz-check-button:not(:disabled):hover {
   background: var(--exp-accent-soft);
+}
+
+/* mind-map: the nested-list form. Same list as the degradation target, the
+   accessible form and the no-SVG fallback — one rule set, three jobs. */
+.exp-mind-map-list {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+}
+
+.exp-mind-map-list > li {
+  position: relative;
+  padding-left: 18px;
+}
+
+.exp-mind-map-list > li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--exp-accent);
+}
+
+/* Nesting has to READ as nesting, so the inner list is indented and ruled
+   rather than merely stacked. */
+.exp-mind-map-list .exp-mind-map-list {
+  margin-left: 8px;
+  padding-left: 14px;
+  border-left: 1px solid var(--exp-border);
+}
+
+.exp-mind-map-figure .exp-figure {
+  margin: 4px auto 0;
 }

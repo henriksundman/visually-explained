@@ -48,5 +48,31 @@ export const allPrimitivesIr = {
       ],
     },
     { type: "image", id: "fixture-image", image: "fixture-platform", caption: "A **host** image." },
+    {
+      type: "mind-map",
+      id: "fixture-mind-map",
+      root: {
+        label: "Caching",
+        children: [
+          { label: "Browser cache" },
+          { label: "Server cache", children: [{ label: "Shared" }, { label: "Private" }] },
+        ],
+      },
+    },
+    {
+      // A second mind-map so the themes coverage gate sees the nested-list
+      // form's classes too: the figure form alone would leave them unstyled,
+      // and an unstyled degradation is the worst kind of degradation.
+      type: "mind-map",
+      id: "fixture-mind-map-text",
+      presentation: "text",
+      root: {
+        label: "Too wide to draw",
+        children: [
+          { label: "Cache", children: [{ label: "Browser" }, { label: "Shared" }] },
+          { label: "Storage", children: [{ label: "Disk" }, { label: "Memory" }] },
+        ],
+      },
+    },
   ],
 } as const
