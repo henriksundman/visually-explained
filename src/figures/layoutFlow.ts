@@ -299,43 +299,164 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   let width = direction === "lr" ? mainOffset - lastGutter + PAD : crossExtent + PAD
   let height = direction === "lr" ? crossExtent + PAD : mainOffset - lastGutter + PAD
 
-  // 6. Edges FIRST (so opaque node fills cover any crossing line), with
-  //    skip-rank edges routed orthogonally through the column gutter, and
-  //    back edges routed as return paths around the outside.
-  const elements: Scene["elements"] = []
+  // 6a. EDGE LABELS FIRST, before any path string exists.
+  //
+  //     Order matters: step 8 may have to shift the whole scene down when a
+  //     wrapped label block hangs above the origin. That shift must move node
+  //     boxes AND their edges together — the previous code adjusted
+  //     `node-box.y` and `arrow.labelY` but not `ArrowEl.d`/`head`, which
+  //     were already serialized strings, so nodes moved and arrows stayed put
+  //     (every arrow then floated 21px above its node's centre, reading as
+  //     "aligned to the top").
+  //
+  //     Labels need only node positions and line counts, never a path, so we
+  //     can resolve the shift here and build every path afterwards from the
+  //     final coordinates. Z-order is ARRAY order, not compute order, so edges
+  //     still go into `elements` before nodes and keep painting underneath.
+  interface EdgePlan {
+    e: FlowEdgeSpec
+    a: Placed
+    b: Placed
+    isBack: boolean
+    lane: number
+    adjacent: boolean
+    lines: string[]
+    labelX: number
+    labelY: number
+  }
+  const plans: EdgePlan[] = []
   // Lane index per back edge, so a diagram with two cycles draws them at
   // different depths instead of overprinting.
   let returnLane = 0
   for (const e of edges) {
     const a = placed.get(e.from)!
     const b = placed.get(e.to)!
-    let d: string
-    let head: string
-    let labelX: number
-    let labelY: number
+    const isBack = backEdges.has(edgeKey(e))
+    const lane = isBack ? returnLane++ : 0
     const adjacent = Math.abs(layer.get(e.to)! - layer.get(e.from)!) === 1
 
-    if (backEdges.has(edgeKey(e))) {
-      // A feedback loop. Route it out of the source and back into the target
-      // from below (lr) or from the right (tb), so it reads as "…and this
-      // feeds back" rather than fighting the left-to-right reading order.
-      const lane = returnLane++
+    let labelX = 0
+    let labelY = 0
+    let gutterW = 0
+    if (isBack) {
+      // A feedback loop returns around the outside, so its label is bound by
+      // the span it crosses, not by a column gutter. Positioned relative to
+      // the lane depth; 6b refines it against the curve's true extremum.
+      const laneY = crossExtent + PAD + RETURN_DROP + lane * RETURN_LANE
+      if (direction === "lr") {
+        labelX = (a.x + a.w / 2 + b.x + b.w / 2) / 2
+        labelY = laneY - 6
+        gutterW = Math.max(8, Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)))
+      } else {
+        labelX = laneY + 6
+        labelY = (a.y + a.h / 2 + b.y + b.h / 2) / 2
+        gutterW = Math.max(8, Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)))
+      }
+    } else if (direction === "lr") {
+      // For `lr` the label sits in the horizontal gutter between two columns
+      // (for a skip-rank edge, the whole span its route crosses).
+      // Structurally non-negative: forward edges always run from a lower layer
+      // to a higher one, and ranks advance strictly rightward, so the target
+      // is always clear of the source's right edge. (This was NOT true before
+      // cycles were handled -- a cycle could place a target LEFT of its
+      // source, giving a gutter of -538 that clamped to 8 and shredded
+      // "miss / stale" into two-character lines. Verified exhaustively over
+      // all 4-node graphs: no rendered edge can now face a negative gutter,
+      // so there is nothing here to warn about.)
+      gutterW = Math.max(8, b.x - (a.x + a.w))
+      const sx = a.x + a.w
+      const sy = a.y + a.h / 2
+      const ty = b.y + b.h / 2
+      labelX = adjacent ? (sx + b.x - 2) / 2 : a.x + a.w + gutterW / 2
+      labelY = adjacent ? (sy + ty) / 2 - 6 : Math.min(sy, ty) - 6
+    } else {
+      // For `tb` the label is horizontal text centred on the source column,
+      // so its bound is that column's width — a cross-axis span would shred
+      // it into three-character chunks.
+      gutterW = Math.min(MAX_LABEL_GUTTER, Math.max(a.w, b.w))
+      const sy = a.y + a.h
+      const ty = b.y - 2
+      if (adjacent) {
+        labelX = a.x + a.w / 2
+        labelY = (sy + ty) / 2 - 6
+      } else {
+        const gutterY = sy + (b.y - sy) / 2
+        labelX = a.x + a.w / 2
+        labelY = gutterY - 6
+      }
+    }
+
+    const lines = e.label ? wrapEdgeLabel(e.label, gutterW) : []
+    // The maths above places the FIRST line; shift up by half the block so
+    // the block as a whole is centred on the edge.
+    plans.push({
+      e,
+      a,
+      b,
+      isBack,
+      lane,
+      adjacent,
+      lines,
+      labelX,
+      labelY: labelY - ((lines.length - 1) * EDGE_LABEL_PITCH) / 2,
+    })
+  }
+
+  // 7. The scene extent must CONTAIN every wrapped label block: a multi-line
+  //    edge label can reach past the node bounds it was laid out against, and
+  //    a viewBox clips whatever falls outside it. Resolve the shift NOW, while
+  //    it can still be applied to node placement rather than to finished
+  //    geometry.
+  let minY = 0
+  let maxY = height
+  for (const p of plans) {
+    const n = p.lines.length > 0 ? p.lines.length : 1
+    const half = ((n - 1) * EDGE_LABEL_PITCH) / 2 + n * 2
+    minY = Math.min(minY, p.labelY - half)
+    maxY = Math.max(maxY, p.labelY + half)
+  }
+  if (minY < 0 || maxY > height) {
+    // Shift everything down when a block hangs above the origin; grow the box
+    // when it hangs below. Either way nothing is clipped.
+    for (const p of placed.values()) p.y -= minY
+    for (const p of plans) p.labelY -= minY
+    height = Math.max(height - minY, maxY)
+  }
+
+  // 6b. Edge paths, built from the FINAL node coordinates. Skip-rank edges
+  //     route orthogonally through the column gutter; back edges return around
+  //     the outside. Edges go into `elements` first so opaque node fills cover
+  //     any crossing line.
+  const elements: Scene["elements"] = []
+  for (const p of plans) {
+    const { e, a, b, isBack, lane, adjacent, lines } = p
+    let d: string
+    let head: string
+    let labelX = p.labelX
+    let labelY = p.labelY
+
+    if (isBack) {
+      // Route out of the source and back into the target from below (lr) or
+      // from the right (tb), so it reads as "…and this feeds back" rather
+      // than fighting the left-to-right reading order.
       if (direction === "lr") {
         const sx = a.x + a.w / 2
         const sy = a.y + a.h
         const tx = b.x + b.w / 2
         const ty = b.y + b.h
         const control = crossExtent + PAD + RETURN_DROP + lane * RETURN_LANE
+        // Size the scene from the curve's TRUE depth, not its control line:
+        // the curve only reaches 3/4 of the way to the control points.
         const real = cubicDepth(sy, ty, control)
         height = Math.max(height, real + PAD)
         d =
           Math.abs(sx - tx) < 1
             ? `M ${sx} ${sy} L ${sx} ${control} L ${tx} ${control} L ${tx} ${ty}`
             : `M ${sx} ${sy} C ${sx} ${control}, ${tx} ${control}, ${tx} ${ty}`
-        // Head sits at the target's bottom edge pointing UP into it.
+        // Head at the target's bottom edge, pointing UP into it.
         head = `M ${tx} ${ty} L ${tx - 4.5} ${ty + 9} L ${tx + 4.5} ${ty + 9} Z`
-        labelX = (sx + tx) / 2
-        labelY = real - 6
+        // Keep the label clear of the curve it annotates.
+        labelY = Math.min(labelY - ((lines.length - 1) * EDGE_LABEL_PITCH) / 2, real - 6)
       } else {
         const sx = a.x + a.w
         const sy = a.y + a.h / 2
@@ -348,29 +469,11 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
           Math.abs(sy - ty) < 1
             ? `M ${sx} ${sy} L ${control} ${sy} L ${control} ${ty} L ${tx} ${ty}`
             : `M ${sx} ${sy} C ${control} ${sy}, ${control} ${ty}, ${tx} ${ty}`
-        // Head sits at the target's right edge pointing LEFT into it.
+        // Head at the target's right edge, pointing LEFT into it.
         head = `M ${tx} ${ty} L ${tx + 9} ${ty - 4.5} L ${tx + 9} ${ty + 4.5} Z`
-        labelX = real + 6
-        labelY = (sy + ty) / 2
+        labelX = Math.max(labelX + ((lines.length - 1) * EDGE_LABEL_PITCH) / 2, real + 6)
       }
-
-      const lines = e.label ? wrapEdgeLabel(e.label, Math.max(8, Math.abs(direction === "lr" ? a.x + a.w / 2 - (b.x + b.w / 2) : a.y + a.h / 2 - (b.y + b.h / 2)))) : []
-      const shift = ((lines.length - 1) * EDGE_LABEL_PITCH) / 2
-      elements.push({
-        kind: "arrow",
-        d,
-        head,
-        edgeKind: e.kind ?? "leads",
-        label: e.label,
-        ...(lines.length > 1 ? { lines } : {}),
-        labelX,
-        labelY: labelY - shift,
-        id: edgeKey(e),
-      })
-      continue
-    }
-
-    if (direction === "lr") {
+    } else if (direction === "lr") {
       const sx = a.x + a.w
       const sy = a.y + a.h / 2
       const tx = b.x - 2
@@ -379,14 +482,10 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         const mx = (sx + tx) / 2
         d = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
         head = `M ${tx} ${ty} L ${tx - 9} ${ty - 4.5} L ${tx - 9} ${ty + 4.5} Z`
-        labelX = mx
-        labelY = (sy + ty) / 2 - 6
       } else {
         const gutterX = a.x + a.w + (b.x - (a.x + a.w)) / 2
         d = `M ${sx} ${sy} L ${gutterX} ${sy} L ${gutterX} ${ty} L ${tx} ${ty}`
         head = `M ${tx} ${ty} L ${tx - 9} ${ty - 4.5} L ${tx - 9} ${ty + 4.5} Z`
-        labelX = gutterX
-        labelY = Math.min(sy, ty) - 6
       }
     } else {
       const sx = a.x + a.w / 2
@@ -397,30 +496,12 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         const my = (sy + ty) / 2
         d = `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`
         head = `M ${tx} ${ty} L ${tx - 4.5} ${ty - 9} L ${tx + 4.5} ${ty - 9} Z`
-        labelX = sx
-        labelY = my - 6
       } else {
         const gutterY = a.y + a.h + (b.y - (a.y + a.h)) / 2
         d = `M ${sx} ${sy} L ${sx} ${gutterY} L ${tx} ${gutterY} L ${tx} ${ty}`
         head = `M ${tx} ${ty} L ${tx - 4.5} ${ty - 9} L ${tx + 4.5} ${ty - 9} Z`
-        labelX = sx
-        labelY = gutterY - 6
       }
     }
-    // Available label width for this edge. For `lr` the label sits in the
-    // horizontal gutter between two columns (for a skip-rank edge, the whole
-    // span its orthogonal route crosses). For `tb` the label is horizontal
-    // text centred on the source column, so its bound is that column's width —
-    // a cross-axis span would shred it into three-character chunks.
-    const gutterW =
-      direction === "lr"
-        ? Math.max(8, b.x - (a.x + a.w))
-        : Math.min(MAX_LABEL_GUTTER, Math.max(a.w, b.w))
-    const lines = e.label ? wrapEdgeLabel(e.label, gutterW) : []
-
-    // labelY from the path maths is where the FIRST line sits; shift it up by
-    // half the block so the block as a whole is centred on the edge.
-    const shift = ((lines.length - 1) * EDGE_LABEL_PITCH) / 2
 
     elements.push({
       kind: "arrow",
@@ -430,12 +511,13 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       label: e.label,
       ...(lines.length > 1 ? { lines } : {}),
       labelX,
-      labelY: labelY - shift,
-      id: `${e.from}->${e.to}`,
+      labelY,
+      id: edgeKey(e),
     })
   }
 
-  // 7. Nodes AFTER edges: their opaque fill covers crossings.
+  // 8. Nodes AFTER edges: their opaque fill covers crossings. Their y comes
+  //    from `placed`, which step 7 already shifted, so it matches the paths.
   for (const p of placed.values()) {
     elements.push({
       kind: "node-box",
@@ -449,29 +531,6 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       lines: p.lines,
       tip: p.tip,
     })
-  }
-
-  // 8. Scene extent must CONTAIN every wrapped label block: a multi-line edge
-  //    label can reach past the node bounds it was laid out against, and a
-  //    viewBox clips whatever falls outside it.
-  let minY = 0
-  let maxY = height
-  for (const el of elements) {
-    if (el.kind !== "arrow" || el.labelY === undefined) continue
-    const n = el.lines?.length ?? 1
-    const half = ((n - 1) * EDGE_LABEL_PITCH) / 2 + n * 2
-    minY = Math.min(minY, el.labelY - half)
-    maxY = Math.max(maxY, el.labelY + half)
-  }
-  if (minY < 0 || maxY > height) {
-    const grow = maxY - height
-    // Shift everything down when a block hangs above the origin; grow the box
-    // when it hangs below. Either way nothing is clipped.
-    for (const el of elements) {
-      if (el.kind === "node-box") el.y -= minY
-      else if (el.kind === "arrow" && el.labelY !== undefined) el.labelY -= minY
-    }
-    height = Math.max(height - minY, height + grow)
   }
 
   return { scene: { width: Math.max(width, 240), height: Math.max(height, 76), elements }, warnings }
