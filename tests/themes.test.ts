@@ -26,6 +26,15 @@ describe("themes", () => {
     expect(css).toMatch(/\.exp-doc-toc-inline\s*{[^}]*float: none/)
   })
 
+  it("renders inline math at body size in compact style, not display size", () => {
+    const css = readFileSync("src/themes/tokens.css", "utf8")
+    // .exp math is 1.2em + math-style: normal, which is right for a derivation
+    // step and wrong for a formula inside a sentence: 19.2px beside 16px body
+    // text, and full-size fractions where compact is the inline convention.
+    expect(css).toMatch(/\.exp-math-inline math\s*{[^}]*font-size: 1em/)
+    expect(css).toMatch(/\.exp-math-inline math\s*{[^}]*math-style: compact/)
+  })
+
   it("styles the TOC's active (aria-current) link for scroll-spy hosts", () => {
     const css = readFileSync("src/themes/tokens.css", "utf8")
     expect(css).toMatch(/\.exp-doc-toc-list a\[aria-current="true"\]\s*{[^}]*font-weight/)

@@ -235,6 +235,17 @@
   math-style: normal;
 }
 
+/* Inline math is prose, not a display formula. At 1.2em a single $x$ renders
+   at 19.2px inside 16px body text and bumps every line box it sits in, and
+   math-style: normal gives full-size fractions where compact is the inline
+   convention. The wrapper is explicit rather than a positional selector like
+   `.exp p math`, so it works in headings, table cells, list items, captions
+   and the TOC alike, and gives hosts a hook to restyle. */
+.exp-math-inline math {
+  font-size: 1em;
+  math-style: compact;
+}
+
 /* The degraded path: unparseable TeX shown as the literal source it is. */
 .exp-math-literal {
   font-family: var(--exp-mono);

@@ -4,6 +4,9 @@ export const allPrimitivesIr = {
   summary: "One of each",
   blocks: [
     { type: "text", body: "Plain text" },
+    // Inline math in prose, so the class-coverage gate in themes.test.ts sees
+    // exp-math-inline in rendered output and fails if the CSS rule goes away.
+    { type: "text", body: "The rate \\(r < 1\\) and the cost $5 and $10." },
     {
       type: "step-list",
       steps: [{ title: "Step one", detail: "Detail" }, { title: "Step two" }],
