@@ -307,15 +307,43 @@ at a lower value. The real fix, if it is ever needed, is to publish a
 shallower hand-written JSON schema to the model while validating against the
 deep ladder — two schemas, which is a maintenance cost nobody has asked for.
 
-## 17. Mind-map interactivity is deferred, not declined
+## 17. Mind-map interactivity: tips shipped, collapse still deferred
 
-The design chose static output, so nothing collapses, expands or highlights a
-path. A collapse interaction is the obvious next step and was deliberately not
-built: it would need per-node state that the current render path does not
-carry, and a half-built control is worse than none. Revisit alongside open
-thread 11 (no undo/redo in the figure runtime) rather than separately — both
-want the same interactive-state substrate, and building it twice would be the
-more expensive mistake.
+**PARTIALLY SHIPPED 2026-10-04.** An optional per-node `tip` now exists, and
+`mind-map` is routed through `onElementEvent`. That is the whole of tier 1;
+collapse/expand (tier 3) is still not built, for the reason below.
+
+**What a tip bought, and why it was not the spec's rejected `note`.** Every
+node already carried a `data-el-id`, so wiring the block into the events layer
+was one line — and on its own would have been pointer-only, because
+`wrapIdentity` emits `tabindex="0"` only where there is a tip. Spec §3.4
+declined a per-node `note`; that decision was about *inline prose* and its
+"double the height budget" cost, and a popover costs no layout at all. `tip` is
+the field `diagram` nodes, `chart` points and `figure` leaves already carry,
+with the same 200-char sanitizer, so the block is no longer the odd one out in
+the events layer.
+
+**The asymmetry is deliberate and pinned.** All 15 nodes are identified, so
+pointer events reach the host for every one; only tipped nodes are focusable
+and popover-bearing. A test asserts exactly that, because otherwise "wired
+into the events layer" reads as "keyboard accessible", which is false.
+
+**Why collapse is still deferred.** `layoutTree` assigns ids by **pre-order
+position** (`n0`, `n1`, …), measured: collapsing a node renumbers every
+subsequent sibling, so `In-memory` moved from `n5` to `n3` in a probe. Since
+`FocusPreservingSvg` restores keyboard focus by `data-el-id`, a keyboard user
+who collapses one node has focus silently teleported to whichever node
+inherited the old id. Tiers 2 and 3 together are therefore one change, not
+two: derive ids from the tree's **path** (`n0.1.0`), which is stable across
+collapses of unrelated subtrees, then build the UI on top. Tier 2 is
+prerequisites-only and ships no interactivity, so it is worth doing on its own
+merits for hosts keying state off ids.
+
+**Still an open design question, not just an unbuilt feature.** Collapse hides
+the node count, which is often the information the reader came for, and it buys
+depth on trees that already degrade to an accessible nested list. So the
+question is whether the degradation target is the right design for deep trees
+at all — which is a spec, not a patch.
 
 ## Conventions worth knowing before the next session
 
