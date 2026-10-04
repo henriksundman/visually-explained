@@ -1,7 +1,7 @@
 import { registerPrimitive, type RenderContext } from "../core/registry"
 import { derivationBlockSchema, type DerivationBlock } from "../core/schema"
 import { escapeHtml, renderInline } from "../core/inline"
-import { renderMath, MathParseError } from "../core/math"
+import { renderMath } from "../core/math"
 
 /** Render one TeX field. A parse failure degrades to the escaped literal
  *  source plus a warning (spec §7) — never the engine's own error markup,
@@ -12,9 +12,15 @@ function mathOrLiteral(tex: string, ctx: RenderContext): string {
   try {
     return renderMath(tex)
   } catch (e) {
-    if (!(e instanceof MathParseError)) throw e
+    // Every failure degrades to literal text, not just MathParseError. Measured
+    // 2026-10-04: `x^`, `x_`, `^`, `_`, `x^{^{^}}`, `x^&` and `x_^{\` throw a
+    // TypeError out of Temml's parser, so narrowing to ParseError let a single
+    // malformed model-authored expression escape the render pass entirely. The
+    // error type rides in the message so a novel failure stays visible under a
+    // host's failOnWarning instead of being silently swallowed.
+    const name = (e as { constructor?: { name?: string } })?.constructor?.name ?? "Error"
     const detail = String((e as { message?: string }).message ?? e).slice(0, 120)
-    ctx.addWarning(`[math] not TeX — rendered as literal text: ${detail}`)
+    ctx.addWarning(`[math] not TeX (${name}) — rendered as literal text: ${detail}`)
     return `<code class="exp-math-literal">${escapeHtml(tex)}</code>`
   }
 }

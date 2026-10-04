@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { escapeHtml } from "../src/core/inline"
 import { renderExplanation } from "../src/core/render"
 import { renderDocument } from "../src/core/renderDocument"
 import "../src/core/registerAll"
@@ -63,6 +64,29 @@ describe("derivation", () => {
     })
     expect(html).toContain(`<code class="exp-math-literal">\\frac{1</code>`)
     expect(warnings.some((w) => w.startsWith("[math]"))).toBe(true)
+  })
+
+  it("degrades the TeX that throws a TypeError rather than a ParseError", () => {
+    // Measured 2026-10-04: Temml's parser dereferences a null group for a
+    // trailing super/subscript, so it throws a TypeError, not a ParseError.
+    // The old "narrow to MathParseError and rethrow the rest" pattern let
+    // these escape the render pass and take the whole explanation with them.
+    for (const expression of ["x^", "x_", "^", "_", "x^{^{^}}", "x^&"]) {
+      const { html, warnings } = renderExplanation({
+        version: 1,
+        blocks: [{ type: "derivation", steps: [{ expression }] }],
+      })
+      expect(html).toContain(`<code class="exp-math-literal">${escapeHtml(expression)}</code>`)
+      expect(warnings.some((w) => w.startsWith("[math]"))).toBe(true)
+    }
+  })
+
+  it("names the error type in the warning so a novel failure stays visible", () => {
+    const { warnings } = renderExplanation({
+      version: 1,
+      blocks: [{ type: "derivation", steps: [{ expression: "x^" }] }],
+    })
+    expect(warnings.some((w) => w.includes("(TypeError)"))).toBe(true)
   })
 
   it("escapes the literal it degrades to, so malformed TeX cannot emit markup", () => {
