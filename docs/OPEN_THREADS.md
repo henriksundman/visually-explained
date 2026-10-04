@@ -4,7 +4,7 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-04, after the degradation-policy cycle.
+Last updated: 2026-10-04, after the degradation-policy and /editorial-fix cycles.
 
 ---
 
@@ -50,7 +50,35 @@ Two follow-ons the closed thread leaves in place:
   `failOnWarning` as authoritative and dedupe by set membership if you
   aggregate. Spec: `docs/superpowers/specs/2026-10-04-enforceable-no-degradation-design.md`.
 
-## 2. Math size is 1.2em because a human looked at it
+## 2. Prose in a TeX field parses cleanly, so the `not TeX` degradation never fires
+
+`derivation.expression` and `conclusion` are TeX. **Prose is valid TeX** — a run
+of letters is a run of variables — so an English sentence written into one
+parses without error and renders as one `<mi>` per letter with every space
+collapsed, on a single line that overflows its box.
+
+This shipped and was invisible: the editorial demo's `conclusion` held a full
+sentence and produced **47 single-letter identifiers and zero warnings**. The
+`not TeX` degradation path cannot catch it, because there is no parse error to
+catch. Neither can the test suite, because the render technically succeeds.
+
+**Consequence for the next session:** the safety net is narrower than it reads.
+`BLOCK_TYPE_DOCS` is the only thing telling an author to put prose in `note`, and
+a model will get this wrong the same way a human does — a TeX field is the
+natural place to conclude in words.
+
+**Revisit if** inline math in prose (the next roadmap item) lands: `$…$` inside
+a `text` field moves the mistake to the *other* side of the boundary, where
+prose is correct and a formula is the interloper. A `\text{…}`-aware heuristic
+is the only cheap detector, and it would be a heuristic, not validation.
+
+Pinned by `tests/math.test.ts` ("accepts prose silently — a known blind spot")
+and swept across every demo fixture by `tests/derivation-tex-hygiene.test.ts`.
+The escape hatch is `\text{…}`, which Temml emits as `<mtext>` with U+00A0
+no-break spaces — correct MathML, and worth knowing before writing a substring
+assertion against it.
+
+## 3. Math size is 1.2em because a human looked at it
 
 `--exp-math-size` and the `math-style: normal` rule on `.exp math` were both
 picked by eye on the demo's `/math` and `/document` pages, not derived. The
@@ -68,7 +96,16 @@ compact layout, which is a legibility difference, not breakage. If math ever
 looks wrong in a browser this suite has never run in, check `math-style`
 support before assuming the theme is at fault.
 
-## 3. The image catalog key transits the model, and nothing stops it being a prompt-injection vector
+**Update 2026-10-04:** the value is now demonstrably context-dependent, which is
+useful evidence rather than a contradiction. The `/editorial` showcase sets
+`--exp-math-size: 1em` from its host stylesheet and the user judged that
+*correct* — 1.2em overpowers 17px serif prose at a ~62ch measure, where 1em was
+visibly too small on the sans-serif `/math` and `/document` pages. Both were
+picked by eye; the lesson is that the right value depends on the measure and the
+surrounding type, not that 1.2em was wrong. No `src/` change — the token exists
+precisely so a host can decide.
+
+## 4. The image catalog key transits the model, and nothing stops it being a prompt-injection vector
 
 A host catalog is a `Record<string, ImageRef>`, and the compiler's menu
 (`src/compiler/prompts.ts`) emits the **record key** to the model, because the
@@ -94,7 +131,7 @@ and have the compiler map the placeholder back to the real key after the
 section parses. That keeps every host identifier out of the prompt, at the cost
 of a rewrite step and a transiently-unresolvable IR if a compile fails midway.
 
-## 4. Alt text quality is the host's responsibility
+## 5. Alt text quality is the host's responsibility
 
 `imageRefSchema` **requires** `alt`, which is what makes an inaccessible image
 unrepresentable rather than merely discouraged. It guarantees an alt *exists*,
@@ -108,7 +145,7 @@ path can detect a mismatch.
 **Revisit if** an image-captioning check ever becomes affordable. Until then
 this is a host-side quality bar, documented in the README rather than enforced.
 
-## 5. `src` deliberately has no scheme allowlist
+## 6. `src` deliberately has no scheme allowlist
 
 `imageRefSchema` validates `src` as a non-empty string and nothing more. Hosts
 legitimately serve from relative paths, CDNs, and signed URLs, so gating to
@@ -120,7 +157,7 @@ before emit, so it cannot break out of the attribute. **Revisit if** an
 untrusted catalog ever enters, or if `src` is ever reused in a position that
 *does* execute (an `<a href>`, a CSS `url()`, a redirect).
 
-## 6. A dragged value can fall between slider increments
+## 7. A dragged value can fall between slider increments
 
 `dragValueFor` (`src/react/dragGeometry.ts`) **ignores the param's `step`**.
 That is intentional — `step` exists so a *slider* lands on round numbers, and
@@ -137,7 +174,7 @@ compared for equality, or a host serialises param state. Any of those makes
 "a value the slider cannot represent" a real problem rather than a cosmetic
 one. Fixing it would mean rounding on *write-back* rather than on drag.
 
-## 7. The timeline's 825px legibility budget is unvalidated by eye
+## 8. The timeline's 825px legibility budget is unvalidated by eye
 
 `MAX_FIGURE_WIDTH` in `src/figures/layoutTimeline.ts` was derived
 arithmetically (the width at which `width: 100%` scaling shrinks the 11px
@@ -149,7 +186,7 @@ read". The demo shows the boundary; nobody has confirmed it sits in the right
 place. If timelines in real content look wrong at the boundary, this constant
 is the first thing to move.
 
-## 8. Focus restoration is browser-verified only
+## 9. Focus restoration is browser-verified only
 
 `FocusPreservingSvg` preserves keyboard focus across the `innerHTML` subtree
 swap that re-renders a figure. There is no jsdom in this repo, so this is
@@ -161,7 +198,7 @@ If the repo ever gains a DOM test environment, this is the first thing worth
 covering: the failure mode is silent and severe (a control that works exactly
 once).
 
-## 9. Groups still cannot be dragged
+## 10. Groups still cannot be dragged
 
 `group` deliberately carries no identity (`figure-id-unsupported` in
 `authored.ts`), so a nested group cannot be grabbed — arguably the most
@@ -169,7 +206,7 @@ natural thing to drag in a multi-element figure. This was scoped out
 deliberately (spec §3) and giving groups identity is its own decision, not a
 drag feature.
 
-## 10. No multi-touch, snapping, or undo
+## 11. No multi-touch, snapping, or undo
 
 Scoped out with the rest of §3. A drag is one pointer at a time, with no grid
 snapping and no undo history.
