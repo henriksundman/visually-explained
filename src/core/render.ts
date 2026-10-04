@@ -12,6 +12,29 @@ export interface RenderOptions {
   /** Hand-drawn (rough.js) stroke pass on every figure. */
   sketch?: boolean
   /**
+   * Called once at the end of the render with every warning emitted during
+   * the pass (an empty array when nothing degraded). Observation only — the
+   * host decides what to do with it; the renderer never throws on its behalf.
+   *
+   * Receives a copy: mutating it cannot corrupt the array returned alongside
+   * the html.
+   */
+  onWarning?: (warnings: string[]) => void
+  /**
+   * Throw when the pass emitted any warning, instead of returning.
+   *
+   * This gates the OUTPUT, which `strict` does not. `strict` gates the INPUT
+   * and runs before any block renders, so it can never fire on a degradation —
+   * and nearly every degradation here is a render-time one. The two options
+   * are deliberately not merged: widening `strict` would change behavior for
+   * every existing caller. When both are set, `strict` throws first.
+   *
+   * Counts lenient-validation diagnostics too (a dropped section is a
+   * degradation). Filter the `[code]` prefix if you want render-time failures
+   * only.
+   */
+  failOnWarning?: boolean
+  /**
    * When false, no root wrapper is emitted — the consumer's own element is the
    * token-bearing `.exp` scope. Use this when styling tokens on a wrapper you
    * control (demo pages, design-system hosts); a nested default `.exp` would
@@ -29,6 +52,34 @@ export interface RenderResult {
   warnings: string[]
 }
 
+/** Per-fragment bound on the thrown degradation message, matching the
+ *  MathML parse-error bound already applied in src/primitives/derivation.ts.
+ *  Message-only: a host inspecting `warnings` always gets the full text, so
+ *  truncation can never hide a warning from the policy that matters. */
+const MAX_WARNING_FRAGMENT = 120
+/** Cap on fragments rendered before summarizing. Mirrors the compiler's habit
+ *  of bounding warning payloads (MAX_SOURCES, MAX_IMAGES). */
+const MAX_WARNING_FRAGMENTS = 10
+
+/**
+ * Render the message for a `failOnWarning` throw.
+ *
+ * Bounded because warnings embed model- and host-supplied text (a MathML parse
+ * error, an image catalog key), and an unbounded join is a memory and log
+ * hazard in exactly the CI context this option targets. Plain text in an
+ * `Error` — never markup, so a hostile key cannot escape into rendered output.
+ *
+ * Shared by the string renderers and both React components so the four entry
+ * points cannot drift in how they report a failure.
+ */
+export function formatDegradationError(warnings: string[]): string {
+  const shown = warnings.slice(0, MAX_WARNING_FRAGMENTS)
+  const parts = shown.map(w => (w.length > MAX_WARNING_FRAGMENT ? w.slice(0, MAX_WARNING_FRAGMENT) + "…" : w))
+  const rest = warnings.length - shown.length
+  const tail = rest > 0 ? `; … and ${rest} more` : ""
+  return `Degradation policy: ${warnings.length} warning(s) — ${parts.join("; ")}${tail}`
+}
+
 export function renderExplanation(input: unknown, opts: RenderOptions = {}): RenderResult {
   const salvaged = salvageExplanation(input)
   if (opts.strict && salvaged.diagnostics.length > 0) {
@@ -40,6 +91,14 @@ export function renderExplanation(input: unknown, opts: RenderOptions = {}): Ren
   const inner =
     renderHeader(salvaged.title, salvaged.summary) +
     salvaged.blocks.map(b => renderSalvagedBlock(b, 1, warnings, opts.sketch ?? false, opts.datasets, opts.images)).join("")
+  // Every block has rendered, so `warnings` is complete. Placed before both
+  // return paths so opts.root: false is covered too. renderExplanation has no
+  // early return for a broken top level (salvage always yields a shape), so a
+  // single check here is sufficient — unlike renderDocument.
+  if (opts.onWarning) opts.onWarning([...warnings])
+  if (opts.failOnWarning && warnings.length > 0) {
+    throw new Error(formatDegradationError(warnings))
+  }
   if (opts.root === false) return { html: inner, warnings }
   return { html: `<div class="exp${themeClass}${opts.sketch ? " exp-sketch" : ""}">${inner}</div>`, warnings }
 }
@@ -51,12 +110,20 @@ export function renderHeader(title: string | null, summary: string | null): stri
   return out
 }
 
-/** Renders a single block by type; used by the React adapter. Warnings are discarded. */
-export function renderBlock(type: string, data: unknown, depth = 1, opts: { sketch?: boolean; datasets?: Record<string, unknown>; images?: Record<string, unknown> } = {}): string {
+/** Renders a single block by type; used by the React adapter. Warnings are
+ *  discarded unless the caller supplies `opts.warnings` — the React components
+ *  pass a per-render-pass array so a host can observe degradations, while a
+ *  standalone caller that omits it keeps the original discard behavior. */
+export function renderBlock(
+  type: string,
+  data: unknown,
+  depth = 1,
+  opts: { sketch?: boolean; datasets?: Record<string, unknown>; images?: Record<string, unknown>; warnings?: string[] } = {},
+): string {
   const raw = typeof data === "object" && data !== null ? { ...(data as object), type } : { type }
   const diagnostics: Diagnostic[] = []
   const b = salvageBlock(raw, -1, diagnostics)
-  return renderSalvagedBlock(b, depth, [], opts.sketch ?? false, opts.datasets, opts.images)
+  return renderSalvagedBlock(b, depth, opts.warnings ?? [], opts.sketch ?? false, opts.datasets, opts.images)
 }
 
 // Exported for renderDocument (document spec §4): the document composer

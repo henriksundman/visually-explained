@@ -1,5 +1,5 @@
 import { sectionAnchor, type DocumentSection } from "./documentSchema"
-import { renderSalvagedBlock } from "./render"
+import { renderSalvagedBlock, formatDegradationError } from "./render"
 import { salvageBlock, type Diagnostic } from "./salvage"
 import { renderInline } from "./inline"
 
@@ -8,8 +8,6 @@ export interface RenderDocumentOptions {
   strict?: boolean
   /** Theme class on the article root. Default "none". */
   theme?: "light" | "dark" | "none"
-  /** Hand-drawn (rough.js) stroke pass, passed through to every block. */
-  sketch?: boolean
   /** Host-supplied datasets for blocks carrying a `dataset` key. */
   datasets?: Record<string, unknown>
   /** Host-supplied image catalog for `image` blocks. */
@@ -18,6 +16,26 @@ export interface RenderDocumentOptions {
   toc?: boolean
   /** Emit exp-doc-toc-inline to un-pin the TOC (themes default to sticky). Default false. */
   tocSticky?: boolean
+  /** Hand-drawn (rough.js) stroke pass, passed through to every block. */
+  sketch?: boolean
+  /**
+   * Called once at the end of the render with every warning emitted during
+   * the pass (an empty array when nothing degraded). Observation only — the
+   * host decides what to do with it. Receives a copy.
+   *
+   * Not fired for a broken top level, which returns before the body renders;
+   * inspect the returned `warnings` for that case.
+   */
+  onWarning?: (warnings: string[]) => void
+  /**
+   * Throw when the pass emitted any warning, instead of returning.
+   *
+   * Gates the OUTPUT, which `strict` does not: `strict` gates the INPUT and
+   * runs before any block renders, so it cannot fire on a degradation. Counts
+   * lenient-validation diagnostics too (a dropped section is a degradation).
+   * When both are set, `strict` throws first.
+   */
+  failOnWarning?: boolean
 }
 
 export interface RenderDocumentResult {
@@ -100,6 +118,14 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
   if (opts.strict && warnings.length > 0) {
     throw new Error(`invalid document: ${warnings.join("; ")}`)
   }
+  // Degradation policy, EARLY phase. Guarded on docBroken because the full
+  // check runs at the end of the function; without this a broken top level
+  // would hit the return below and hand back a silent empty shell — the most
+  // total degradation the library can produce. After `strict` so a malformed
+  // document reports validation rather than degradation.
+  if (docBroken && opts.failOnWarning && warnings.length > 0) {
+    throw new Error(formatDegradationError(warnings))
+  }
   if (docBroken) {
     return { html: `${root}</article>`, warnings }
   }
@@ -131,6 +157,14 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
     `<h1 class="exp-doc-title">${renderInline(title)}</h1>` +
     (summary ? `<p class="exp-doc-summary">${renderInline(summary)}</p>` : "") +
     `</header>`
+
+  // Degradation policy, FINAL phase: every block has now rendered, so the
+  // array is complete. Section diagnostics were pushed earlier, block warnings
+  // during the body render above.
+  if (opts.onWarning) opts.onWarning([...warnings])
+  if (opts.failOnWarning && warnings.length > 0) {
+    throw new Error(formatDegradationError(warnings))
+  }
 
   return { html: root + header + toc + body + `</article>`, warnings }
 }
