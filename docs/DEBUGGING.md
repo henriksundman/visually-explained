@@ -44,6 +44,19 @@ Before deep-diving, test the failure against these recurring patterns:
 - **Entry-point families.** Threading an option through render paths? Grep
   every call site of the shared helpers (`renderSalvagedBlock`, `renderBlock`)
   — plan file lists have missed call sites before.
+- **Never hand-copy a sibling's decision logic.** If React and the string
+  renderers must agree on something, it belongs in a shared helper
+  (`documentDiagnostics`, `sectionOk`, `renderSalvagedBlock`,
+  `collectAnchors`), not in a second implementation. A copy is a fork, and it
+  drifts on exactly the broken-input path you wrote it to describe.
+- **Probe a fixture's actual warning before asserting on it.** A fixture more
+  broken than intended yields a *different* code: `series: []` gives
+  `[invalid-block]` not `[dataset]`, `stack` children live under `blocks` not
+  `children`, an explanation IR needs `version`. Three fixtures in one cycle
+  passed for the wrong reason before this was checked.
+- **A check that reads a side effect must follow the build.** In JSX the
+  producing `.map()` often sits *inside* the `return`, so a guard placed
+  before it reads an array that has not been filled yet.
 - **The test may be the bug.** If the implementation matches the spec and the
   test still fails, re-derive the test's expected contract from the spec
   before touching code.
@@ -72,6 +85,18 @@ Before deep-diving, test the failure against these recurring patterns:
   one input that *parses* so an assertion actually executes.
 
 ## Part 2 — Entries
+
+### 2026-10-04 — A duplicated predicate that silently diverged from its original
+- **Symptom:** the degradation-policy cycle shipped, all 534 tests green, and `<Document>` still reported **zero** warnings for a non-object IR where `renderDocument` reported three. Dropped-section warnings were missing from the React side entirely.
+- **Root cause:** to give React the same warnings as the string renderer, I copied `renderDocument`'s document-level checks into `Document.tsx` — and wrote the guard as `if (rec !== null)` where the original tests `!rec ||` on *every* condition. The copy was correct for the happy path and wrong for the broken one, which is exactly the path warnings exist to describe.
+- **Fix:** extracted `documentDiagnostics()` and `sectionOk()` into `renderDocument.ts` and pointed both renderers at them, mirroring how `renderSalvagedBlock` is already shared for block rendering. Six parity cases pin the agreement, including the non-object IR.
+- **Rule:** never reimplement a sibling renderer's decision logic in a component — extract the shared helper instead. This codebase already established the pattern (`renderSalvagedBlock`, `collectAnchors`); a hand-copy is a fork that will drift. **Corollary that bit three times in one cycle:** a fixture that is *more* broken than intended produces a *different* warning than expected and the test passes for the wrong reason — `series: []` yielded `[invalid-block]` not `[dataset]`, `stack` children live under `blocks` not `children`, and an explanation IR without `version` degrades with `[wrong-version]`. Probe a fixture's actual warning before asserting on it.
+
+### 2026-10-04 — A side-effecting map evaluated after the check that reads its output
+- **Symptom:** `failOnWarning` on `<Explanation>` and `<Document>` never threw. The option was threaded correctly and every test that targeted it passed.
+- **Root cause:** `renderBlock` populates the warnings array as a side effect of the block `.map()`, and both components ran the policy check *before* the `return` containing that map. The array was always empty at the check, so the guard was correct code reading a value that did not exist yet.
+- **Fix:** build the block list into a `const body = …` first, then run the policy check, then return the JSX containing `body`.
+- **Rule:** if a value is produced as a side effect of building output, the check that reads it must come after the build, not adjacent to it. JSX makes this trap easy to hit, because the "build" is syntactically inside the return. When hoisting, move the *whole* map — a partial hoist reintroduces the same bug one level down.
 
 ### 2026-10-03 — A security test that passed because every case threw
 - **Symptom:** the math boundary's injection test was green, and it would have stayed green against a boundary that did nothing at all. The loop over hostile TeX (`\href`, `\url`, `\includegraphics`, `\htmlClass`, `\htmlId`, `\def`-abuse) wrapped each case in `try { render } catch { continue }` and then asserted no `<a href>` / `<img src>` / no `onerror` — but Temml *throws* on every one of those constructs, so each iteration hit `continue` and no assertion ever executed.

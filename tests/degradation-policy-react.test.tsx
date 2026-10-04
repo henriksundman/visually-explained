@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { Explanation } from "../src/react/Explanation"
 import { Document } from "../src/react/Document"
 import { renderDocument } from "../src/core/renderDocument"
+import { renderExplanation } from "../src/core/render"
 
 const img = { type: "image", image: "chart" }
 const math = { type: "derivation", steps: [{ expression: "\\frac{1" }] }
@@ -39,11 +40,13 @@ describe("degradation policy — React", () => {
     // The controls MUST be genuinely clean: a negative assertion passes
     // vacuously if the input degrades for an unrelated reason. An explanation
     // missing `version` degrades with [wrong-version]; a document missing a
-    // title degrades too.
-    expect(() =>
-      renderToStaticMarkup(<Explanation ir={{ version: 1, title: "T", blocks: [clean] }} failOnWarning />),
-    ).not.toThrow()
-    expect(() => renderToStaticMarkup(<Document ir={doc(clean)} failOnWarning />)).not.toThrow()
+    // title degrades too. Assert the emptiness before asserting no throw.
+    const expIr = { version: 1, title: "T", blocks: [clean] }
+    const docIr = doc(clean)
+    expect(renderExplanation(expIr).warnings).toEqual([])
+    expect(renderDocument(docIr).warnings).toEqual([])
+    expect(() => renderToStaticMarkup(<Explanation ir={expIr} failOnWarning />)).not.toThrow()
+    expect(() => renderToStaticMarkup(<Document ir={docIr} failOnWarning />)).not.toThrow()
   })
 
   it("reports the same warning set as the string renderer", () => {
