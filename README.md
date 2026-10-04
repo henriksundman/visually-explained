@@ -265,7 +265,8 @@ Leaf elements accept `id` and `tip` (hover text); the SVG carries
 `data-el-id` / `data-tip`. In React, pass `onElementEvent` to receive
 hover/click events with the built-in popover.
 
-A `diagram` block names nodes and edges and lets the renderer place them. If
+A `diagram` block names nodes and edges and lets the renderer place them. Set
+`direction: "tb"` to flow top-to-bottom instead of the default `"lr"`. If
 the graph contains a cycle — a feedback loop like "revalidate → cache" — the
 layout breaks that cycle for ranking purposes and draws the closing edge as a
 return path around the outside, so a loop stays as compact as an acyclic

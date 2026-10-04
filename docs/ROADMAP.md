@@ -268,6 +268,39 @@ cycle):
      reasoning from the math spec has to be re-derived for it rather than
      assumed. Its degradations ride the `warnings` channel shipped above, so a
      host's `failOnWarning` policy covers inline math with no extra wiring.
+- **Diagram orientation** — recorded 2026-10-04 from a user question; split
+  because the two halves have very different costs.
+  - **Show `tb` (small).** `direction: "lr" | "tb"` has been in the IR schema
+    (`src/core/schema.ts`) and implemented in `layoutFlow` all along, and the
+    LLM contract already advertises it — but **every demo fixture declares
+    `direction: "lr"`**, so nothing on any page shows a top-down diagram, and a
+    host has no way to see the option works or judge when it is the better
+    choice. Cheap: add a `tb` diagram beside the existing one in the `/`
+    figures showcase, and a line in the README. Worth noting the `tb` path is
+    *not* untrodden — the 2026-10-04 cycle extended it with `tb` back-edge
+    return paths and found a tb-only bug (the return lane was offset by the
+    vertical extent while travelling horizontally, so it cut through the nodes
+    it exists to pass outside of), which is exactly the kind of branch that
+    needs a demo to keep honest.
+  - **`rl` (parked, gated on RTL text).** Right-to-left is **not** a mirror of
+    `lr`, for two reasons. (1) The label gutter is `b.x - (a.x + a.w)`, which
+    the 2026-10-04 cycle made *structurally* non-negative — forward edges always
+    run to a strictly later rank, verified exhaustively over all 4-node graphs.
+    Mirror the placement and that expression goes negative for **every** edge,
+    which is precisely the defect that shredded `"miss / stale"` into
+    `["miss","/","stal","e"]`; `rl` needs its own gutter derivation and loses
+    the invariant that made the code simple. (2) `lr` emits arrowhead wings at
+    `tx - 9`, behind the tip, so heads must flip too — including skip-rank and
+    return paths. The cheap route is a post-process mirror (`x → width - x - w`
+    plus head flips) rather than a third branch through placement, but it is
+    still geometry and needs its own invariant tests.
+    **The gating question is not "which orientations are useful" but "who
+    decides".** A model choosing `rl` for one diagram in an LTR document is
+    more likely a mistake than a design decision. RTL reading order is really a
+    property of the *text*: if the library ever supports Arabic or Hebrew prose,
+    diagram, chart and timeline should mirror *together* and `direction` should
+    inherit from the document rather than be chosen per block. Take this up when
+    there is a real RTL text requirement to drive it, not before.
 - **Compiler v1 deferrals** (spec §9) — parallel section calls; client
   surface growth (usage reporting, abort signals, retries); caching;
   human-in-the-loop outline approval.
