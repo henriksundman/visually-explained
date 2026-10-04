@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { layoutFlow } from "../../src/figures/layoutFlow"
+import * as demoExamples from "../../demo/examples"
 import type { NodeBoxEl, Scene } from "../../src/figures/scene"
 
 function mustNode(scene: Scene, id: string): NodeBoxEl {
@@ -272,5 +273,349 @@ describe("edge label overflow", () => {
     }
     // Guards the guard: without this the loop can pass by never running.
     expect(checked).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Cycles, back-edge return paths, and the endpoint-alignment invariant.
+//
+// These cover the 2026-10-04 flow-cycle fix: a diagram containing a feedback
+// loop used to explode its layer count, which widened the scene until the
+// emit layer scaled it to half size, gave one edge a NEGATIVE gutter (so its
+// label wrapped to two characters per line), and — because that shredded
+// label hung above the origin — triggered a scene clamp that moved node boxes
+// without moving the already-serialized edge paths, leaving every arrow
+// floating above its node's centre.
+// ---------------------------------------------------------------------------
+
+/** First coordinate pair of an arrow's path. */
+function pathStart(d: string): { x: number; y: number } {
+  const n = d.match(/-?[\d.]+/g)!.map(Number)
+  return { x: n[0], y: n[1] }
+}
+
+
+/** Sample a path made of M/L/C segments and return every point it passes
+ *  through. Used to check where a curve ACTUALLY reaches — a control point
+ *  sits outside the drawn curve (see the 3/4 rule in layoutFlow), so raw
+ *  control coordinates are not a valid bound. */
+function samplePath(d: string, steps = 64): { x: number; y: number }[] {
+  const pts: { x: number; y: number }[] = []
+  const tokens = d.match(/[MLC][^MLC]*/g) ?? []
+  let cur = { x: 0, y: 0 }
+  for (const tok of tokens) {
+    const n = (tok.slice(1).match(/-?[\d.]+/g) ?? []).map(Number)
+    const cmd = tok[0]
+    if (cmd === "M" || cmd === "L") {
+      for (let i = 0; i + 1 < n.length; i += 2) {
+        cur = { x: n[i], y: n[i + 1] }
+        pts.push(cur)
+      }
+    } else {
+      const [x1, y1, x2, y2, x3, y3] = n
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps
+        const mt = 1 - t
+        pts.push({
+          x: mt * mt * mt * cur.x + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3,
+          y: mt * mt * mt * cur.y + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3,
+        })
+      }
+      cur = { x: x3, y: y3 }
+    }
+  }
+  return pts
+}
+
+/** Last coordinate pair of an arrow's path. */
+function pathEnd(d: string): { x: number; y: number } {
+  const n = d.match(/-?[\d.]+/g)!.map(Number)
+  return { x: n[n.length - 2], y: n[n.length - 1] }
+}
+
+interface FlowSpecLike {
+  direction?: "lr" | "tb"
+  nodes: { id: string; label: string; shape?: "box" | "round" | "pill" | "note" }[]
+  edges: { from: string; to: string; label?: string; kind?: "causes" | "leads" | "part-of" | "conflict" }[]
+}
+
+/** True when this arrow is a return path (it leaves via a node's far edge). */
+function isReturnPath(
+  start: { x: number; y: number },
+  a: NodeBoxEl,
+  direction: "lr" | "tb",
+): boolean {
+  return direction === "lr"
+    ? Math.abs(start.x - (a.x + a.w / 2)) < 0.01 && Math.abs(start.y - (a.y + a.h)) < 0.01
+    : Math.abs(start.x - (a.x + a.w)) < 0.01
+}
+
+/** Every `diagram` block in the demo fixtures, so these assertions cover the
+ *  IR a real model emits rather than only hand-built specs. */
+function demoDiagrams(): { name: string; spec: FlowSpecLike }[] {
+  const found: { name: string; spec: FlowSpecLike }[] = []
+  const walk = (x: unknown, name: string): void => {
+    if (Array.isArray(x)) {
+      x.forEach(v => walk(v, name))
+    } else if (x && typeof x === "object") {
+      const o = x as Record<string, unknown>
+      if (o.type === "diagram") found.push({ name, spec: o as unknown as FlowSpecLike })
+      Object.values(o).forEach(v => walk(v, name))
+    }
+  }
+  Object.entries(demoExamples).forEach(([name, v]) => walk(v, name))
+  return found
+}
+
+/** THE INVARIANT. A forward edge must leave its source node at that node's
+ *  own midpoint on the flow axis, and arrive at the target's. This is the
+ *  property the clamp violated, and it is why every arrow appeared to point
+ *  at the top of its box. */
+function expectEndpointsAligned(scene: Scene, spec: FlowSpecLike, label: string): number {
+  const direction = spec.direction ?? "lr"
+  let checked = 0
+  for (const el of scene.elements) {
+    if (el.kind !== "arrow" || !el.id) continue
+    const [from, to] = el.id.split("->")
+    const a = mustNode(scene, from)
+    const b = mustNode(scene, to)
+    const start = pathStart(el.d)
+    // Return paths deliberately exit the far edge; they are not centre-anchored.
+    if (isReturnPath(start, a, direction)) continue
+    checked++
+    const wantStart = direction === "lr" ? a.y + a.h / 2 : a.y + a.h
+    const wantEndX = direction === "lr" ? b.x - 2 : b.x + b.w / 2
+    const wantEndY = direction === "lr" ? b.y + b.h / 2 : b.y - 2
+    const end = pathEnd(el.d)
+    const msg = `${label}: ${el.id}`
+    expect(`${msg} start y ${start.y} === source mid ${wantStart}`).toBe(
+      `${msg} start y ${start.y} === source mid ${wantStart}`,
+    )
+    expect(Math.abs(start.y - wantStart)).toBeLessThan(0.01)
+    expect(Math.abs(end.x - wantEndX)).toBeLessThan(0.01)
+    expect(Math.abs(end.y - wantEndY)).toBeLessThan(0.01)
+  }
+  return checked
+}
+
+describe("flow cycles and back-edge routing", () => {
+  // The reported bug, asserted over the real fixtures rather than a spec built
+  // to fail: a golden file would have been re-baselined along with the bug.
+  it("anchors every forward edge to its node's midpoint in every demo diagram", () => {
+    const diagrams = demoDiagrams()
+    expect(diagrams.length).toBeGreaterThan(0)
+    let total = 0
+    for (const { name, spec } of diagrams) {
+      const { scene } = layoutFlow(spec)
+      total += expectEndpointsAligned(scene, spec, name)
+    }
+    // Guards the guard: the assertion must not pass by checking nothing.
+    expect(total).toBeGreaterThan(0)
+  })
+
+  it("does not inflate the layer count of a cyclic diagram", () => {
+    // howToIr's pipeline diagram closes a loop with reval -> cache.
+    const spec = (demoExamples.howToIr as { blocks: { type: string }[] }).blocks.find(
+      b => b.type === "diagram",
+    ) as unknown as FlowSpecLike
+    const { scene } = layoutFlow(spec)
+    const nodes = spec.nodes.map(n => mustNode(scene, n.id))
+    // Before the fix this was 1556px wide across 17 ranks, 13 of them empty.
+    // The emit layer scales by viewBox, so that rendered the figure at 0.49x
+    // and its 13px labels at 6.4px.
+    expect(scene.width).toBeLessThan(900)
+    // Four ranks, not seventeen: nodes sharing a rank share an x, which is
+    // exactly what a correct layered layout does.
+    const ranks = new Set(nodes.map(n => n.x))
+    expect(ranks.size).toBe(4)
+    const xs = [...ranks].sort((p, q) => p - q)
+    for (let i = 1; i < xs.length; i++) expect(xs[i]).toBeGreaterThan(xs[i - 1])
+  })
+
+  it("gives a cyclic diagram the same layout as the same graph minus its cycle", () => {
+    const spec = (demoExamples.howToIr as { blocks: { type: string }[] }).blocks.find(
+      b => b.type === "diagram",
+    ) as unknown as FlowSpecLike
+    const cyclic = layoutFlow(spec).scene
+    const acyclic = layoutFlow({
+      ...spec,
+      edges: spec.edges.filter(e => !(e.from === "reval" && e.to === "cache")),
+    }).scene
+    const rank = (s: Scene): number =>
+      new Set(s.elements.filter(e => e.kind === "node-box").map(e => (e as NodeBoxEl).x)).size
+    expect(rank(cyclic)).toBe(rank(acyclic))
+    expect(cyclic.width).toBe(acyclic.width)
+  })
+
+  it("keeps every rendered edge label free of negative gutters", () => {
+    // A cycle used to push `cache` right of `origin`, giving their edge a
+    // gutter of -538 that clamped to 8 and wrapped "miss / stale" into
+    // ["miss", "/", "stal", "e"].
+    for (const { name, spec } of demoDiagrams()) {
+      const { scene } = layoutFlow(spec)
+      for (const el of scene.elements) {
+        if (el.kind !== "arrow" || !el.lines) continue
+        const [from, to] = el.id!.split("->")
+        const a = mustNode(scene, from)
+        const b = mustNode(scene, to)
+        if (isReturnPath(pathStart(el.d), a, spec.direction ?? "lr")) continue
+        expect(`${name}: ${el.id} gutter non-negative`).toBe(
+          `${name}: ${el.id} gutter non-negative`,
+        )
+        expect(b.x - (a.x + a.w)).toBeGreaterThanOrEqual(0)
+        // No line may be shredded to a stub.
+        for (const line of el.lines) expect(line.length).toBeGreaterThanOrEqual(4)
+      }
+    }
+  })
+
+  it("routes a back edge as a return path below the nodes, head pointing up", () => {
+    const { scene } = layoutFlow({
+      direction: "lr",
+      nodes: [
+        { id: "req", label: "Request" },
+        { id: "cache", label: "Cache lookup" },
+        { id: "reval", label: "Background revalidate" },
+      ],
+      edges: [
+        { from: "req", to: "cache" },
+        { from: "cache", to: "reval" },
+        { from: "reval", to: "cache", kind: "part-of" }, // the cycle
+      ],
+    })
+    const back = mustArrow(scene, "reval->cache")
+    const a = mustNode(scene, "reval")
+    const b = mustNode(scene, "cache")
+    const start = pathStart(back.d)
+    const end = pathEnd(back.d)
+    // Leaves the source's bottom edge and enters the target's bottom edge.
+    expect(start.y).toBeCloseTo(a.y + a.h, 5)
+    expect(end.y).toBeCloseTo(b.y + b.h, 5)
+    // Head base sits below the tip, i.e. the arrow points UP into the target.
+    const headNums = back.head.match(/-?[\d.]+/g)!.map(Number)
+    expect(headNums[1]).toBeCloseTo(b.y + b.h, 5)
+    expect(headNums[3]).toBeCloseTo(b.y + b.h + 9, 5)
+    // The dip must clear every node and stay inside the scene. Measured on the
+    // DRAWN curve: with equal endpoints it reaches only 3/4 of the control line.
+    const lowest = Math.max(...samplePath(back.d).map(p => p.y))
+    for (const n of scene.elements) {
+      if (n.kind !== "node-box") continue
+      expect(lowest).toBeGreaterThan(n.y + n.h)
+    }
+    expect(scene.height).toBeGreaterThan(lowest)
+  })
+
+  it("gives each back edge its own lane so two cycles do not overprint", () => {
+    const { scene } = layoutFlow({
+      direction: "lr",
+      nodes: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" },
+        { id: "c", label: "C" },
+        { id: "d", label: "D" },
+      ],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+        { from: "c", to: "d" },
+        { from: "d", to: "b" }, // one back edge
+        { from: "c", to: "a" }, // another
+      ],
+    })
+    const first = mustArrow(scene, "d->b")
+    const second = mustArrow(scene, "c->a")
+    const dipOf = (d: string): number => Math.max(...samplePath(d).map(p => p.y))
+    expect(dipOf(first.d)).not.toBeCloseTo(dipOf(second.d), 1)
+    // Both must pass BELOW every node, not through them — the second lane is
+    // deeper than the first, and neither clips against a box.
+    const lowestNode = Math.max(
+      ...scene.elements
+        .filter(e => e.kind === "node-box")
+        .map(e => (e as NodeBoxEl).y + (e as NodeBoxEl).h),
+    )
+    expect(dipOf(first.d)).toBeGreaterThan(lowestNode)
+    expect(dipOf(second.d)).toBeGreaterThan(dipOf(first.d))
+    // Both still land inside the scene.
+    expect(scene.height).toBeGreaterThan(dipOf(first.d))
+    expect(scene.height).toBeGreaterThan(dipOf(second.d))
+  })
+
+  it("keeps arrows aligned when a label block hangs above the origin", () => {
+    // The clamp regression: a tall wrapped label forced the whole scene down,
+    // and the node boxes moved while the serialized edge paths did not.
+    const spec: FlowSpecLike = {
+      direction: "lr",
+      nodes: [
+        { id: "a", label: "Alpha" },
+        { id: "b", label: "Beta" },
+        { id: "c", label: "Gamma" },
+      ],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c", label: "a very long explanatory edge label that has to wrap" },
+      ],
+    }
+    const { scene } = layoutFlow(spec)
+    // Force the condition: the label block must actually be multi-line,
+    // otherwise this test would pass without exercising the clamp.
+    const wrapped = scene.elements.filter(e => e.kind === "arrow" && (e.lines?.length ?? 0) > 1)
+    expect(wrapped.length).toBeGreaterThan(0)
+    expect(expectEndpointsAligned(scene, spec, "clamp case")).toBeGreaterThan(0)
+  })
+
+  it("lays out a tb cycle with the return path to the right", () => {
+    const spec: FlowSpecLike = {
+      direction: "tb",
+      nodes: [
+        { id: "a", label: "Alpha" },
+        { id: "b", label: "Beta" },
+        { id: "c", label: "Gamma" },
+      ],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+        { from: "c", to: "a" },
+      ],
+    }
+    const { scene } = layoutFlow(spec)
+    expect(expectEndpointsAligned(scene, spec, "tb cycle")).toBeGreaterThan(0)
+    const back = mustArrow(scene, "c->a")
+    const a = mustNode(scene, "a")
+    const c = mustNode(scene, "c")
+    const start = pathStart(back.d)
+    expect(start.x).toBeCloseTo(c.x + c.w, 5) // exits to the right
+    // Head base is right of its tip, i.e. the arrow points LEFT into `a`.
+    const headNums = back.head.match(/-?[\d.]+/g)!.map(Number)
+    expect(headNums[0]).toBeCloseTo(a.x, 5)
+    expect(headNums[2]).toBeCloseTo(a.x + 9, 5)
+    // The lane must clear every node it passes, not cut back through them.
+    // Measured on the DRAWN curve: the control point lies outside it.
+    const rightmost = Math.max(...samplePath(back.d).map(p => p.x))
+    for (const n of scene.elements) {
+      if (n.kind !== "node-box") continue
+      expect(rightmost).toBeGreaterThan(n.x + n.w)
+    }
+    expect(scene.width).toBeGreaterThan(rightmost)
+  })
+
+  it("is deterministic across repeated calls", () => {
+    const spec = (demoExamples.howToIr as { blocks: { type: string }[] }).blocks.find(
+      b => b.type === "diagram",
+    ) as unknown as FlowSpecLike
+    const first = JSON.stringify(layoutFlow(spec).scene)
+    for (let i = 0; i < 5; i++) {
+      expect(JSON.stringify(layoutFlow(spec).scene)).toBe(first)
+    }
+  })
+
+  it("leaves a cycle-free spec byte-identical to the pre-cycle layout", () => {
+    // Nothing about a DAG should have changed: only cycle handling and the
+    // clamp's application point moved. These values are the pre-fix output,
+    // captured from commit 0945bfd — not derived from the new code.
+    const { scene } = layoutFlow(overflowIr)
+    expect(scene.width).toBe(591)
+    expect(scene.height).toBe(76)
+    expect(mustArrow(scene, "sun->air").d).toBe("M 106 38 C 175 38, 175 38, 244 38")
+    expect(mustArrow(scene, "air->eye").d).toBe("M 345 38 C 414 38, 414 38, 483 38")
   })
 })

@@ -298,6 +298,11 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   })
   let width = direction === "lr" ? mainOffset - lastGutter + PAD : crossExtent + PAD
   let height = direction === "lr" ? crossExtent + PAD : mainOffset - lastGutter + PAD
+  // A return path leaves through the far side of the CROSS axis, so its lane
+  // is offset from that axis' node extent: below every node for `lr`, to the
+  // right of every node for `tb`. Using the other axis here would route the
+  // path back THROUGH the boxes it is meant to pass outside of.
+  const laneBase = direction === "lr" ? crossExtent : mainOffset - lastGutter
 
   // 6a. EDGE LABELS FIRST, before any path string exists.
   //
@@ -342,7 +347,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       // A feedback loop returns around the outside, so its label is bound by
       // the span it crosses, not by a column gutter. Positioned relative to
       // the lane depth; 6b refines it against the curve's true extremum.
-      const laneY = crossExtent + PAD + RETURN_DROP + lane * RETURN_LANE
+      const laneY = laneBase + PAD + RETURN_DROP + lane * RETURN_LANE
       if (direction === "lr") {
         labelX = (a.x + a.w / 2 + b.x + b.w / 2) / 2
         labelY = laneY - 6
@@ -444,7 +449,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         const sy = a.y + a.h
         const tx = b.x + b.w / 2
         const ty = b.y + b.h
-        const control = crossExtent + PAD + RETURN_DROP + lane * RETURN_LANE
+        const control = laneBase + PAD + RETURN_DROP + lane * RETURN_LANE
         // Size the scene from the curve's TRUE depth, not its control line:
         // the curve only reaches 3/4 of the way to the control points.
         const real = cubicDepth(sy, ty, control)
@@ -462,7 +467,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         const sy = a.y + a.h / 2
         const tx = b.x
         const ty = b.y + b.h / 2
-        const control = crossExtent + PAD + RETURN_DROP + lane * RETURN_LANE
+        const control = laneBase + PAD + RETURN_DROP + lane * RETURN_LANE
         const real = cubicDepth(sx, tx, control)
         width = Math.max(width, real + PAD)
         d =
