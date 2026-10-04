@@ -31,6 +31,10 @@ describe("degradation policy — React", () => {
     expect(() => renderToStaticMarkup(<Document ir={doc(img)} failOnWarning />)).toThrow(/Degradation policy/)
   })
 
+  it("failOnWarning fires for a document-level breakage with no blocks", () => {
+    expect(() => renderToStaticMarkup(<Document ir={null} failOnWarning />)).toThrow(/Degradation policy/)
+  })
+
   it("does not throw when nothing degrades", () => {
     // The controls MUST be genuinely clean: a negative assertion passes
     // vacuously if the input degrades for an unrelated reason. An explanation
@@ -47,6 +51,37 @@ describe("degradation policy — React", () => {
     renderToStaticMarkup(<Document ir={doc(img, math)} onWarning={w => fromReact.push(w)} />)
     const fromHtml = renderDocument(doc(img, math)).warnings
     expect(fromReact[0]).toEqual(fromHtml)
+  })
+
+  // Regression: Document once reimplemented renderDocument's diagnostics
+  // inline, and the copy reported NO warnings for a non-object IR where
+  // renderDocument reports three, and none for a dropped section. Both are
+  // now shared helpers; these pin the agreement so it cannot drift again.
+  it.each([
+    ["a non-object IR", null],
+    ["a missing version", { title: "T", sections: [{ title: "S", blocks: [] }] }],
+    ["an empty title", { version: 1, title: "", sections: [{ title: "S", blocks: [] }] }],
+    ["no sections", { version: 1, title: "T", sections: [] }],
+    ["a dropped section", { version: 1, title: "T", sections: [{ title: "", blocks: [] }, { title: "ok", blocks: [] }] }],
+    ["document and block diagnostics together", { version: 1, title: "T", sections: [{ title: "", blocks: [] }, { title: "ok", blocks: [img, math] }] }],
+  ])("matches the string renderer on %s", (_name, ir) => {
+    let reactSeen: string[] | null = null
+    renderToStaticMarkup(<Document ir={ir} onWarning={w => { reactSeen = w }} />)
+    expect(reactSeen).toEqual(renderDocument(ir).warnings)
+  })
+
+  // Deliberate asymmetry, not drift: a broken top level makes renderDocument
+  // return early WITHOUT rendering blocks, so it cannot report their warnings.
+  // <Document> has no early return and renders the sections it can, so it
+  // reports MORE. Documented here so a future reader does not "fix" it by
+  // suppressing React's warnings -- that would hide real degradations.
+  it("reports block warnings the string renderer misses when the top level is broken", () => {
+    const ir = { version: 2, title: "", sections: [{ title: "ok", blocks: [img] }] }
+    let reactSeen: string[] = []
+    renderToStaticMarkup(<Document ir={ir} onWarning={w => { reactSeen = w }} />)
+    const fromHtml = renderDocument(ir).warnings
+    expect(fromHtml.some(w => w.startsWith("[image]"))).toBe(false)
+    expect(reactSeen.some(w => w.startsWith("[image]"))).toBe(true)
   })
 
   it("Explanation and Document agree with each other", () => {

@@ -1,7 +1,7 @@
 import type { FC } from "react"
 import { renderBlock, formatDegradationError } from "../core/render"
 import { renderInline } from "../core/inline"
-import { collectAnchors } from "../core/renderDocument"
+import { collectAnchors, documentDiagnostics, sectionOk } from "../core/renderDocument"
 import { validateDocument } from "../core/documentValidate"
 import type { DocumentSection } from "../core/documentSchema"
 
@@ -54,17 +54,17 @@ export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc =
     const v = validateDocument(ir)
     if (!v.ok) throw new Error(`invalid document: ${v.diagnostics.map(d => d.message).join("; ")}`)
   }
-  const rec = typeof ir === "object" && ir !== null && !Array.isArray(ir) ? (ir as Record<string, unknown>) : null
+  // Document-level diagnostics come from the shared helper so React and the
+  // string renderer agree on what counts as broken -- an inline reimplementation
+  // here already drifted once, reporting no warnings for a non-object IR where
+  // renderDocument reports three.
+  const { warnings, rec } = documentDiagnostics(ir)
   const title = typeof rec?.title === "string" && rec.title.length > 0 ? rec.title : null
   const summary = typeof rec?.summary === "string" && rec.summary.length > 0 ? rec.summary : null
   const rawSections = Array.isArray(rec?.sections) ? (rec!.sections as unknown[]) : []
-  const sections = rawSections.filter(
-    (raw): raw is DocumentSection =>
-      typeof raw === "object" && raw !== null && !Array.isArray(raw) &&
-      typeof (raw as Record<string, unknown>).title === "string" &&
-      ((raw as Record<string, unknown>).title as string).length > 0 &&
-      Array.isArray((raw as Record<string, unknown>).blocks),
-  )
+  // Survivor filter uses the shared predicate, so the set of sections React
+  // renders is the set renderDocument renders -- the two must not disagree.
+  const sections = rawSections.filter(sectionOk)
 
   // Anchor assignment mirrors renderDocument exactly: collectAnchors runs
   // over the SURVIVORS in survivor order (a dropped section never shifts a
@@ -72,24 +72,10 @@ export const Document: FC<DocumentProps> = ({ ir, theme = "light", strict, toc =
   // React cannot drift (parity is test-enforced in document-react.test.tsx).
   const { anchors } = collectAnchors(sections)
 
-  // Collected per render pass into a plain local and threaded through
-  // renderBlock -- a hook here would make this a client component. Mirrors
-  // renderDocument, which seeds from the same document/section diagnostics;
-  // that parity is test-locked. The `strict` check above already threw, so a
-  // validation failure is reported before any degradation policy applies.
-  const warnings: string[] = []
-  if (rec !== null) {
-    if (rec.version !== 1) warnings.push("[wrong-version] expected version 1, got " + JSON.stringify(rec.version ?? null))
-    if (typeof rec.title !== "string" || rec.title.length === 0) warnings.push("[invalid-document] title must be a non-empty string")
-    if (!Array.isArray(rec.sections) || rec.sections.length === 0) warnings.push("[invalid-document] sections must be a non-empty array")
-    rawSections.forEach((raw, i) => {
-      const ok = typeof raw === "object" && raw !== null && !Array.isArray(raw) &&
-        typeof (raw as Record<string, unknown>).title === "string" &&
-        ((raw as Record<string, unknown>).title as string).length > 0 &&
-        Array.isArray((raw as Record<string, unknown>).blocks)
-      if (!ok) warnings.push(`[invalid-section] section ${i}: dropped — title must be a non-empty string and blocks an array`)
-    })
-  }
+  // Block warnings are threaded through renderBlock into this same array --
+  // a plain local per render pass, because a hook here would make this a
+  // client component. The `strict` check above already threw, so a validation
+  // failure is reported before any degradation policy applies.
   const blockOpts = { sketch, datasets, images, warnings }
 
   // Built BEFORE the policy check: renderBlock populates `warnings` as a side

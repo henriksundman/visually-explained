@@ -79,13 +79,19 @@ function renderToc(sections: { title: string; anchor: string }[], tocSticky: boo
   return `<nav class="${cls}" aria-label="On this page"><ol class="exp-doc-toc-list">${items}</ol></nav>`
 }
 
-export function renderDocument(input: unknown, opts: RenderDocumentOptions = {}): RenderDocumentResult {
-  const warnings: string[] = []
-  const theme = opts.theme ?? "none"
-  const themeClass = theme === "none" ? "" : ` exp-theme-${theme}`
-  const root = `<article class="exp exp-doc${themeClass}${opts.sketch ? " exp-sketch" : ""}">`
-
+/** Document-level diagnostics, shared by renderDocument and the React
+ *  <Document> so the two surfaces cannot drift on what counts as broken.
+ *
+ *  Exported for the React adapter (document parity spec §4), the same way
+ *  renderSalvagedBlock is shared for block rendering. Note the `!rec ||` in
+ *  every condition: a non-object IR is broken on all three counts, and an
+ *  earlier React reimplementation guarded on `rec !== null` and so reported
+ *  none of them.
+ *
+ *  Returns the warnings in order plus whether the top level is unusable. */
+export function documentDiagnostics(input: unknown): { warnings: string[]; docBroken: boolean; rec: Record<string, unknown> | null; rawSections: unknown[] } {
   const rec = typeof input === "object" && input !== null && !Array.isArray(input) ? (input as Record<string, unknown>) : null
+  const warnings: string[] = []
   let docBroken = false
   if (!rec || rec.version !== 1) {
     warnings.push("[wrong-version] expected version 1, got " + JSON.stringify(rec?.version ?? null))
@@ -99,19 +105,35 @@ export function renderDocument(input: unknown, opts: RenderDocumentOptions = {})
     warnings.push("[invalid-document] sections must be a non-empty array")
     docBroken = true
   }
-
+  // Section-level pass. Skipped when the top level is already broken, matching
+  // renderDocument: there are no sections to report on.
   const rawSections = docBroken ? [] : (rec!.sections as unknown[])
-  const sectionOk = (raw: unknown): raw is DocumentSection =>
-    typeof raw === "object" && raw !== null && !Array.isArray(raw) &&
+  rawSections.forEach((raw, i) => {
+    if (!sectionOk(raw)) {
+      warnings.push(`[invalid-section] section ${i}: dropped — title must be a non-empty string and blocks an array`)
+    }
+  })
+  return { warnings, docBroken, rec, rawSections }
+}
+
+/** One section is usable iff it has a non-empty string title and a blocks
+ *  array. Shared by both renderers' survivor filter and diagnostic pass. */
+export function sectionOk(raw: unknown): raw is DocumentSection {
+  return typeof raw === "object" && raw !== null && !Array.isArray(raw) &&
     typeof (raw as Record<string, unknown>).title === "string" &&
     ((raw as Record<string, unknown>).title as string).length > 0 &&
     Array.isArray((raw as Record<string, unknown>).blocks)
+}
+
+export function renderDocument(input: unknown, opts: RenderDocumentOptions = {}): RenderDocumentResult {
+  const theme = opts.theme ?? "none"
+  const themeClass = theme === "none" ? "" : ` exp-theme-${theme}`
+  const root = `<article class="exp exp-doc${themeClass}${opts.sketch ? " exp-sketch" : ""}">`
+
+  const { warnings: docWarnings, docBroken, rec, rawSections } = documentDiagnostics(input)
+  const warnings: string[] = [...docWarnings]
+
   const good = rawSections.filter(sectionOk)
-  for (let i = 0; i < rawSections.length; i++) {
-    if (!sectionOk(rawSections[i])) {
-      warnings.push(`[invalid-section] section ${i}: dropped — title must be a non-empty string and blocks an array`)
-    }
-  }
 
   // Strict throws on document-level AND section-level diagnostics; lenient
   // degrades: broken top level to the empty shell, bad section alone dropped.
