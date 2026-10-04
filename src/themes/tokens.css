@@ -471,7 +471,12 @@
      diagram's 13px labels at 26px. */
   max-width: 100%;
   height: auto;
-  margin: 4px 0 0;
+  /* Centre a figure narrower than its column. This only bites NARROW
+     figures: a figure scaled down still has a full-width box (the content is
+     centred inside it by preserveAspectRatio), so wide figures are unaffected.
+     Without it every `tb` diagram and every small chart sat hard against the
+     left edge. */
+  margin: 4px auto 0;
 }
 
 .exp-figure text {
