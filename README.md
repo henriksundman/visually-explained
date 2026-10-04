@@ -249,10 +249,36 @@ prompts interpolate, so it never drifts:
 import { BLOCK_TYPE_DOCS } from "explanations"
 ```
 
-Inline emphasis only: `**bold**`, `*italic*`, `` `code` ``, `[text](url)` —
-links are scheme-gated to http(s), `mailto:`, and `#anchors`; anything else
-degrades to literal text. No HTML in any
+Inline emphasis only: `**bold**`, `*italic*`, `` `code` ``, `[text](url)`,
+and inline math — links are scheme-gated to http(s), `mailto:`, and
+`#anchors`; anything else degrades to literal text. No HTML in any
 field.
+
+### Inline math in prose
+
+A formula can live inside any prose field, in the same engine and under the
+same security argument as `derivation`:
+
+```ts
+{ type: "text", body: "Dividing by \\(\\frac{p}{q}\\) multiplies by \\(\\frac{q}{p}\\)." }
+```
+
+- **`\\(...\\)`** is always honored. Backslash-paren does not occur in English
+  prose, so there is nothing to collide with.
+- **`$...$`** is honored only when it plausibly is math: no whitespace against
+  either delimiter, the closing `$` not followed by a digit, and the content
+  containing a TeX signal (`\ ^ _ { } = < >`) or being a tight whitespace-free
+  expression with a letter in it.
+
+Anything failing that is left as literal text, byte-identical to the pre-math
+output. So **a dollar amount in prose needs no escaping** — "costs $5 and
+returns $10" renders as itself. Prefer `\\(...\\)`: it has no gate, and a
+`$...$` that looks like prose (`$a + b$`, `$5$`) is deliberately left alone.
+
+Unparseable math degrades to its own source text — not a code chip — with a
+`[math]` warning, so `failOnWarning` still gates it. Inline math renders at
+body size in compact style (`.exp-math-inline`), where a `derivation` step
+renders at `--exp-math-size` in display style.
 
 ## Figures
 

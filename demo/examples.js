@@ -73,6 +73,17 @@ export const educationIr = {
           conclusion: String.raw`\frac{3}{1/2} = 3 \times 2 = 6`,
         },
         {
+          // Inline math in prose, deliberately shaped. The two dollar amounts
+          // are the point: a naive $...$ scanner reads "$12 basket. A $20"
+          // as one formula and renders it as variables with no warning, so
+          // this block puts literal-dollar prose right beside typeset math and
+          // the page shows the gate working rather than only the tests.
+          // \(...\) is preferred in prose because it needs no gate at all.
+          type: "callout",
+          variant: "note",
+          body: "The general rule: dividing by \\(\\frac{p}{q}\\) is multiplying by \\(\\frac{q}{p}\\). A serving of \\(\\frac{1}{4}\\) cup means \\(4\\) servings per cup, so a $12 basket holds 48 of them. A $20 basket holds the same 48 — the price changed, the serving count did not.",
+        },
+        {
           type: "callout",
           variant: "tip",
           body: "The **smaller** the piece you divide by, the *more* of it fits — that's why the number grows.",

@@ -114,8 +114,90 @@ Before deep-diving, test the failure against these recurring patterns:
   does not contain X" is satisfied by a crash. Prove a security or escaping test
   bites by running it against a deliberately broken stub, and include at least
   one input that *parses* so an assertion actually executes.
+- **A `$…$` scanner without a plausibility gate silently corrupts prose.**
+  The symptom is invisible: "It costs $5 and returns $10" renders with a
+  typeset formula where a price should be, the output looks deliberate, and
+  **zero warnings fire** — because prose is valid TeX (a run of letters is a
+  run of variables), so the `not TeX` degradation cannot catch it. When
+  scanning prose for a delimiter that also occurs in ordinary text, measure
+  the collision before designing the scanner, and gate toward false negatives:
+  a rejected candidate should be byte-identical to the pre-scanner output.
+- **An engine's error TYPE is part of its contract.** Narrowing a catch to
+  `ParseError` and rethrowing "the rest" is only safe if everything else is a
+  real bug. Probing temml found seven malformed-TeX shapes that throw a
+  `TypeError` instead, and the narrow let them out of the render pass. Enumerate
+  what the engine actually throws before relying on its class hierarchy.
+- **Scope an assertion to where the danger lives.** "The output does not contain
+  `javascript:`" is wrong when the payload legitimately survives as escaped
+  *text*. Assert against real attributes and real tags, never the raw string —
+  the raw string contains exactly the residue that is safe.
 
 ## Part 2 — Entries
+
+### 2026-10-04 — A `$…$` scanner that rendered prices as formulas
+
+**Symptom.** None, at first. The point of adding inline math is that formulas
+appear inside sentences, so nothing looks broken. The defect only becomes
+visible when someone reads the prose closely — and it is worst in the one
+place it is least expected.
+
+**Root cause.** `$` occurs literally in prose: currency, shell variables, regex
+anchors. Feeding the naive capture to temml shows why this is the worst
+available failure rather than an ugly one:
+
+| prose | naive capture | temml |
+|---|---|---|
+| `It costs $5 and returns $10.` | ` and returns` | four `<mi>`, **zero warnings** |
+| `Set $HOME and $PATH` | `OME and` | four `<mi>`, zero warnings |
+| `Revenue was $5M, up from $4M.` | `M, up from` | three `<mi>`, zero warnings |
+
+Zero warnings is the load-bearing part. `mathOrLiteral` degrades on
+`MathParseError`, and open thread 2 already records that prose is *valid* TeX
+— so the existing degradation structurally cannot catch this class, and neither
+can any test asserting on warnings.
+
+**Fix.** Two delimiters with different rules. `\(…\)` is honored
+unconditionally, because backslash-paren does not occur in prose. `$…$` must
+clear Pandoc's two delimiter rules plus a plausibility check. Both arms of that
+check are needed, and dropping either reintroduces a different bug:
+
+- strong signals only (`\ ^ _ { } = < >`) rejects `f(x)`;
+- a tight whitespace-free expression alone accepts `5-` out of
+  `costs $5-$3`, because `-` looks like an operator — requiring a letter is
+  what separates symbolic expressions from arithmetic accidents.
+
+A candidate failing any gate is left as literal text, byte-identical to the
+pre-math output, which makes a false negative the status quo rather than a
+degradation. Verified before implementing: 27/27 hand-built cases, and 0 of the
+410 strings in the demo/README/ROADMAP corpus change.
+
+**Rule.** Before shipping a scanner for a delimiter that also occurs in
+ordinary text, run the real corpus through it and look at what it captures.
+Gate toward false negatives. And put a literal-`$` sentence next to a math
+sentence in the demo fixture, so the gate is visible on the page and not only
+in a test that already agrees with it.
+
+### 2026-10-04 — A `ParseError`-only catch let malformed TeX crash the render
+
+**Symptom.** `renderExplanation` threw
+`TypeError: Cannot read properties of null (reading 'type')` and returned
+nothing, for a `derivation` step of `x^`. No degradation, no warning, no
+partial output — the whole explanation was gone.
+
+**Root cause.** `mathOrLiteral` caught `MathParseError` and rethrew everything
+else, on the assumption that anything else was a bug in our code rather than in
+the input. temml's parser disagrees: a dangling super/subscript dereferences a
+null group. Seven shapes do it — `x^`, `x_`, `^`, `_`, `x^{^{^}}`, `x^&`,
+`x_^{\` — and none of them is a `ParseError`.
+
+**Fix.** Catch every failure and degrade, with the error's constructor name in
+the warning so a genuinely novel failure stays visible under `failOnWarning`
+instead of being silently swallowed. The same narrow existed in the new inline
+boundary, where it would have been reachable from ambient prose.
+
+**Rule.** An engine's error *type* is part of its contract. Enumerate what it
+actually throws before narrowing a catch to one class and rethrowing "the
+rest" — the rethrow is only safe if everything else is a bug in your code.
 
 ### 2026-10-04 — A figure scaled UP because it had no intrinsic size
 - **Symptom:** the top-down demo diagram rendered at **26px labels filling 1753px of vertical space**, next to 16px body text. A figure far *too big*, the mirror of the "figures scale down, they don't overflow" entry above.

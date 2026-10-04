@@ -143,4 +143,23 @@ describe("checks prompts", () => {
     expect(p.indexOf("ONE quiz block")).toBeGreaterThan(-1)
     expect(p.indexOf("ONE quiz block")).toBeLessThan(p.indexOf("Sources for this document"))
   })
+
+  // The prompt used to say "no LaTeX delimiters", which became wrong the
+  // moment inline math shipped. Pin the replacement so it cannot silently rot
+  // back into contradicting the renderer.
+  it("teaches the inline math delimiters and never says not to use them", () => {
+    const p = sectionSystemPrompt()
+    expect(p).not.toContain("no LaTeX delimiters")
+    expect(p).toContain("inline math")
+    expect(p).toContain("\\(...\\)")
+    expect(p).toContain("left as literal text")
+  })
+
+  it("tells the model a dollar amount needs no escaping", () => {
+    // The gate is the reason: a prose dollar that is left literal is correct
+    // behaviour, not a bug to route around.
+    expect(sectionSystemPrompt()).toContain(
+      "needs no escaping",
+    )
+  })
 })

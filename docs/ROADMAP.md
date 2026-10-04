@@ -276,19 +276,48 @@ cycle):
   undo. Any of those is its own cycle.
 - **Math typesetting subset** — SHIPPED (2026-10-03), but not as planned: the
   hand-rolled subset was replaced by real TeX through the `temml` dependency
-  (see above). If it is ever revisited, the remaining gaps are inline math in
-  `text` fields (today only `derivation` is a TeX field) and display-mode
-  centering of a formula on its own paragraph.
-- **Next up** — the thread the 2026-10-03 math cycle left named, now the only
-  one left in this queue:
-  1. **Inline math in prose.** `renderInline` gains `$…$` (or another delimiter)
-     so a formula can live inside a `text` field, which is where an explanation
-     actually talks about one. This is the one place the new boundary could
-     leak: inline parsing is a second context (scriptlevel, `math-style: compact`
-     by default, a delimiter that can appear literally) and the security
-     reasoning from the math spec has to be re-derived for it rather than
-     assumed. Its degradations ride the `warnings` channel shipped above, so a
-     host's `failOnWarning` policy covers inline math with no extra wiring.
+  (see above). Inline math in prose followed on 2026-10-04 (see "Inline math
+  in prose" below). The one remaining gap is display-mode centering of a
+  formula on its own paragraph.
+- **Inline math in prose** — **SHIPPED** 2026-10-04. `renderInline` is the
+  chokepoint for every model prose field, so this reached all 40 of them from
+  one implementation. The delimiter turned out to be the whole design:
+  - **The `$…$` collision is real and silent.** Probing Temml with real prose,
+    "It costs $5 and returns $10" captures " and returns", which parses
+    cleanly as four `<mi>` and emits **zero warnings**. Open thread 2 already
+    records that prose is valid TeX, so the `not TeX` degradation
+    structurally cannot catch it — a naive dollar scanner is a
+    silent-corruption engine, and its output looks deliberate.
+  - **`\(…\)` is honored unconditionally**; backslash-paren does not occur in
+    prose. `$…$` must clear Pandoc's two delimiter rules plus a plausibility
+    check (a strong TeX signal, or a tight whitespace-free expression with a
+    letter). Anything that fails is left as literal text, byte-identical to
+    the pre-math output, so a false negative is the status quo rather than a
+    degradation. Accepted false negatives: `$a + b$`, `$5$`. **No `\$`
+    escape** — the gate makes it unnecessary and it would collide with Windows
+    paths.
+  - Measured before designing: 27/27 scanner cases behave as specified, and
+    **0 of the 410 strings** in the demo/README/ROADMAP corpus become math.
+  - **Math is substituted as a placeholder**, not by splitting prose into
+    fragments, so emphasis and links pair across a math boundary. A math
+    candidate inside a link *target* is skipped, because `safeHref` strips the
+    placeholder's NUL and would emit a silently corrupted href.
+  - Unparseable math degrades to **its own source text** plus a `[math]`
+    warning, riding the `warnings` channel, so `failOnWarning` gates it with no
+    extra wiring. Inline math renders at 1em / `math-style: compact` under
+    `.exp-math-inline`, which settles open thread 3's size question.
+  - Found on the way: Temml throws a **TypeError**, not a `ParseError`, on a
+    dangling super/subscript (`x^`, `x_`, `^`, `_`, `x^{^{^}}`, `x^&`,
+    `x_^{\`). `mathOrLiteral` narrowed to `MathParseError` and rethrew the
+    rest, so a `derivation` step of `x^` **crashed the whole render pass** —
+    a shipped bug, now degrading.
+- **Next up** — the queue is empty. Candidates, none committed:
+  - **Display-mode centering** for a formula on its own paragraph — the last
+    gap the math cycle named.
+  - **A host switch to disable inline math.** `renderInline` is public and
+    deliberately un-decorated; a host whose prose is full of `$` may want the
+    old behaviour. Not added without being asked for.
+  - **Widening the React warning surface** — see open thread 13.
 - **Diagram orientation** — recorded 2026-10-04 from a user question; split
   because the two halves have very different costs.
   - **Show `tb`** — **SHIPPED** 2026-10-04. `direction: "lr" | "tb"` was

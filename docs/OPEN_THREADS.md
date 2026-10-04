@@ -236,6 +236,46 @@ model-authored graph again, break cycles for ranking purposes explicitly —
 
 ---
 
+## 13. Three React sites render prose with no warnings sink
+
+`renderInline` takes an optional warnings sink so a degradation in prose
+reaches the host. Every string-renderer call site passes one, and React's
+`Document` and `Explanation` do too. Three components do not:
+
+- `src/react/Quiz.tsx` — no `warnings` array exists; `renderBlock("quiz", …)`
+  is called without `opts.warnings`, so block warnings are **already**
+  discarded wholesale. This predates inline math.
+- `src/react/InteractiveFigure.tsx` — a `warnings` array exists but is scoped
+  inside a `useMemo`, while the title and caption render outside it.
+- `src/react/ElementPopover.tsx` — `PopoverDiv` is purely presentational.
+
+So an unparseable inline formula in a quiz question, a figure caption or a
+popover tip degrades to literal text with **no warning**, even under
+`failOnWarning`. Accepted for now: widening the React warning surface is a
+separate change from adding inline math, and `Quiz`'s pre-existing discard is
+its own bug.
+
+Revisit if a host reports silent degradations in those three surfaces. The
+fix is mechanical once the sinks exist — thread it the way `Document` does.
+
+---
+
+## 14. Inline math's `$…$` gate has accepted false negatives
+
+The gate in `src/core/inline.ts` rejects `$a + b$` and `$5$` and leaves them
+literal, because both arms it needs are load-bearing: a strong-signal-only rule
+rejects `f(x)`, and a tight-expression rule alone accepts `5-` out of
+"costs $5-$3". Chosen deliberately — a false negative is the pre-math output
+byte-for-byte, while a false positive is the silent corruption the gate
+exists to prevent.
+
+`\(…\)` has no gate, so the escape is to use it. This is stated in the README
+and the LLM prompt. Revisit only if a host reports the model writing
+`$a + b$` and expecting typesetting; the fix is a third arm, not a looser
+first arm.
+
+---
+
 ## Conventions worth knowing before the next session
 
 - **Verify by measurement, and diff rendered output against `main`.** Three
