@@ -46,20 +46,31 @@ export const editorialDocIr = {
           type: "derivation",
           steps: [
             {
-              expression: "I(λ) ∝ 1 / λ^4",
+              // `expression` and `conclusion` are TeX fields (math spec §3), so
+              // they hold formulas. Prose belongs in `note`, which stays text.
+              // Temml does NOT reject prose -- it parses it as a run of
+              // variables, which is how a sentence once rendered here as one
+              // <mi> per letter with every space collapsed.
+              expression: "I \\propto \\lambda^{-4}",
               note: "Scattered intensity against wavelength.",
             },
             {
-              expression: "I(450) / I(700) = (700 / 450)^4 ≈ 5.9",
+              expression: "\\frac{I(450)}{I(700)} = \\left(\\frac{700}{450}\\right)^{4} \\approx 5.9",
               note: "Blue is scattered nearly six times harder than deep red.",
             },
             {
-              expression: "I(400) / I(700) = (700 / 400)^4 ≈ 9.4",
+              expression: "\\frac{I(400)}{I(700)} = \\left(\\frac{700}{400}\\right)^{4} \\approx 9.4",
               note: "Violet, at the short end, is scattered hardest of all.",
             },
           ],
-          conclusion:
-            "Violet scatters more than blue, yet the zenith reads blue: the sun's own spectrum, light scattered in from the rest of the sky, and the eye's sensitivity all pull the perceived colour away from violet.",
+          // A formula, not a sentence. The prose this used to hold is the
+          // `text` block that follows, which is where an explanation actually
+          // says something.
+          conclusion: "\\text{scattering}\\ \\propto\\ \\lambda^{-4}",
+        },
+        {
+          type: "text",
+          body: "Violet scatters more than blue, yet the zenith reads blue: the sun's own spectrum, light scattered in from the rest of the sky, and the eye's sensitivity all pull the perceived colour away from violet.",
         },
         {
           type: "worked-example",

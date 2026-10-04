@@ -59,6 +59,14 @@
   --exp-radius-sm: 2px;
   --exp-gap: 16px;
   --exp-pad: 20px;
+
+  /* Math sits inline in 17px serif prose on a ~62ch measure. The library's
+     1.2em was picked by eye on the sans-serif /math and /document pages, where
+     a formula reads as a display object on its own line; here it is set into a
+     running paragraph and 1.2em overpowers the serif text beside it. Back to
+     1em so MathML inherits the surrounding type -- which is the whole point of
+     compiling to MathML rather than shipping a math font. */
+  --exp-math-size: 1em;
 }
 
 /* ---- layer 2: editorial details the tokens cannot reach ----------------- */

@@ -129,6 +129,35 @@ describe("renderMath errors", () => {
       expect(typeof (e as { position?: unknown }).position).toBe("number")
     }
   })
+
+  // Characterizes a real trap rather than asserting a fix. Prose is VALID TeX
+  // -- a run of letters is a run of variables -- so a sentence written into a
+  // TeX field renders as one <mi> per letter with every space collapsed, and
+  // emits NO warning. The `not TeX` degradation path cannot catch it, because
+  // there is no parse error to catch.
+  //
+  // This shipped: the editorial demo's `derivation.conclusion` held a full
+  // sentence and rendered as "Violetscattersmorethanblue" on one overflowing
+  // line, with a clean warning list. Recorded here so the limitation stays
+  // visible; BLOCK_TYPE_DOCS is what tells an author to use `note` for prose.
+  it("accepts prose silently -- a known blind spot, not a bug", () => {
+    const prose = "Violet scatters more than blue, yet the zenith reads blue."
+    let out = ""
+    expect(() => { out = renderMath(prose) }).not.toThrow()
+    // Every letter becomes its own identifier, and no space survives.
+    expect(out).toContain("<mi>V</mi><mi>i</mi><mi>o</mi>")
+    expect(out).not.toContain("Violet scatters")
+  })
+
+  it("keeps prose safe when wrapped in \\text{}", () => {
+    const out = renderMath(String.raw`\text{Violet scatters more than blue}`)
+    // Temml emits U+00A0 (no-break space) inside \text{}, which is correct
+    // MathML: prose set in math must not wrap mid-phrase. Asserting on plain
+    // ASCII spaces here fails on correct output.
+    const inner = out.match(/<mtext>([\s\S]*?)<\/mtext>/)?.[1] ?? ""
+    expect(inner.replace(/ /g, " ")).toBe("Violet scatters more than blue")
+    expect(out).not.toContain("<mi>V</mi>")
+  })
 })
 
 describe("renderMath determinism", () => {
