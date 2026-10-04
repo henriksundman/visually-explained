@@ -102,6 +102,76 @@ function wrapLabel(label: string, w: number): string[] {
   return lines.length > 0 ? lines : [label]
 }
 
+/** Stable key for an edge, shared by the back-edge set and the arrow `id`. */
+function edgeKey(e: FlowEdgeSpec): string {
+  return `${e.from}->${e.to}`
+}
+
+/** Edges that point back at a node currently on the DFS stack. Any cycle in
+ *  the graph contains at least one, so removing them leaves a DAG — which is
+ *  what makes step 3's relaxation terminate.
+ *
+ *  Iterative rather than recursive: this walks a model-authored graph, and a
+ *  deep chain must not overflow the stack. Adjacency is visited in SPEC order
+ *  so the classification (and therefore the layout) is deterministic. */
+function findBackEdges(nodes: FlowNodeSpec[], edges: FlowEdgeSpec[]): Set<string> {
+  const outgoing = new Map<string, FlowEdgeSpec[]>()
+  for (const n of nodes) outgoing.set(n.id, [])
+  for (const e of edges) outgoing.get(e.from)!.push(e)
+
+  const WHITE = 0 // unvisited
+  const GREY = 1 // on the current stack
+  const BLACK = 2 // finished
+  const state = new Map<string, number>(nodes.map(n => [n.id, WHITE]))
+  const back = new Set<string>()
+
+  for (const root of nodes) {
+    if (state.get(root.id) !== WHITE) continue
+    // Explicit stack of [nodeId, next adjacency index].
+    const stack: [string, number][] = [[root.id, 0]]
+    state.set(root.id, GREY)
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]
+      const adj = outgoing.get(frame[0])!
+      if (frame[1] >= adj.length) {
+        state.set(frame[0], BLACK)
+        stack.pop()
+        continue
+      }
+      const e = adj[frame[1]++]
+      const s = state.get(e.to)
+      if (s === GREY) {
+        back.add(edgeKey(e)) // to an ancestor: a back edge
+      } else if (s === WHITE) {
+        state.set(e.to, GREY)
+        stack.push([e.to, 0])
+      }
+    }
+  }
+  return back
+}
+
+const RETURN_DROP = 26 // how far below the last node a return path dips
+const RETURN_LANE = 18 // extra depth per back edge, so two cycles don't overlap
+
+/** The TRUE lowest point of a cubic whose two control points both sit at
+ *  `ly`, given endpoints at `y0`/`y3`.
+ *
+ *  The control line is NOT the curve's extent. With equal endpoints the curve
+ *  reaches only `y0 + 0.75*(ly - y0)` — three quarters of the way — so sizing
+ *  a scene from `ly` would clip a return path by ~26px. Differentiating
+ *  y(t) = mt³y0 + 3mt²t·ly + 3mt·t²·ly + t³y3 gives t* = u/(1+u) with
+ *  u = √((ly-y0)/(ly-y3)); this evaluates y there.
+ *
+ *  Computed FORWARD (control depth → real depth): exact, and no inversion. */
+function cubicDepth(y0: number, y3: number, ly: number): number {
+  if (ly <= Math.max(y0, y3)) return Math.max(y0, y3)
+  const u = Math.sqrt((ly - y0) / (ly - y3))
+  const t = u / (1 + u)
+  const mt = 1 - t
+  return mt * mt * mt * y0 + 3 * mt * mt * t * ly + 3 * mt * t * t * ly + t * t * t * y3
+}
+
 interface Placed {
   id: string
   label: string
@@ -145,12 +215,23 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     edges.push(e)
   }
 
-  // 3. Longest-path layering via capped relaxation (deterministic even with
-  //    cycles: capped at nodes.length passes, so cyclic layers stabilize).
+  // 3. Layering. A model-authored graph may contain a CYCLE (a feedback loop
+  //    such as "revalidate -> cache" pointing back at an earlier node), and
+  //    plain longest-path relaxation cannot terminate on one: every pass finds
+  //    some edge it can still push, so layers grow without bound until the
+  //    pass cap stops it. A 5-node cycle reached layer 16 and left 13 empty
+  //    ranks, which tripled the figure's width and forced the emit layer to
+  //    scale it down to half size.
+  //
+  //    So: classify back edges with a DFS, then relax over the acyclic
+  //    remainder, which terminates by construction. Back edges keep their
+  //    authored direction and are routed as return paths in step 6.
+  const backEdges = findBackEdges(nodes, edges)
+  const forward = edges.filter(e => !backEdges.has(edgeKey(e)))
   const layer = new Map<string, number>(nodes.map(n => [n.id, 0]))
   for (let pass = 0; pass < nodes.length; pass++) {
     let changed = false
-    for (const e of edges) {
+    for (const e of forward) {
       const next = layer.get(e.from)! + 1
       if (next > layer.get(e.to)!) {
         layer.set(e.to, next)
@@ -215,12 +296,16 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     lastGutter = gutters[r] ?? GAP_MAIN
     mainOffset += Math.max(0, ...rankIds.map(id => placed.get(id)!.w)) + lastGutter
   })
-  const width = direction === "lr" ? mainOffset - lastGutter + PAD : crossExtent + PAD
+  let width = direction === "lr" ? mainOffset - lastGutter + PAD : crossExtent + PAD
   let height = direction === "lr" ? crossExtent + PAD : mainOffset - lastGutter + PAD
 
   // 6. Edges FIRST (so opaque node fills cover any crossing line), with
-  //    skip-rank edges routed orthogonally through the column gutter.
+  //    skip-rank edges routed orthogonally through the column gutter, and
+  //    back edges routed as return paths around the outside.
   const elements: Scene["elements"] = []
+  // Lane index per back edge, so a diagram with two cycles draws them at
+  // different depths instead of overprinting.
+  let returnLane = 0
   for (const e of edges) {
     const a = placed.get(e.from)!
     const b = placed.get(e.to)!
@@ -229,6 +314,62 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     let labelX: number
     let labelY: number
     const adjacent = Math.abs(layer.get(e.to)! - layer.get(e.from)!) === 1
+
+    if (backEdges.has(edgeKey(e))) {
+      // A feedback loop. Route it out of the source and back into the target
+      // from below (lr) or from the right (tb), so it reads as "…and this
+      // feeds back" rather than fighting the left-to-right reading order.
+      const lane = returnLane++
+      if (direction === "lr") {
+        const sx = a.x + a.w / 2
+        const sy = a.y + a.h
+        const tx = b.x + b.w / 2
+        const ty = b.y + b.h
+        const control = crossExtent + PAD + RETURN_DROP + lane * RETURN_LANE
+        const real = cubicDepth(sy, ty, control)
+        height = Math.max(height, real + PAD)
+        d =
+          Math.abs(sx - tx) < 1
+            ? `M ${sx} ${sy} L ${sx} ${control} L ${tx} ${control} L ${tx} ${ty}`
+            : `M ${sx} ${sy} C ${sx} ${control}, ${tx} ${control}, ${tx} ${ty}`
+        // Head sits at the target's bottom edge pointing UP into it.
+        head = `M ${tx} ${ty} L ${tx - 4.5} ${ty + 9} L ${tx + 4.5} ${ty + 9} Z`
+        labelX = (sx + tx) / 2
+        labelY = real - 6
+      } else {
+        const sx = a.x + a.w
+        const sy = a.y + a.h / 2
+        const tx = b.x
+        const ty = b.y + b.h / 2
+        const control = crossExtent + PAD + RETURN_DROP + lane * RETURN_LANE
+        const real = cubicDepth(sx, tx, control)
+        width = Math.max(width, real + PAD)
+        d =
+          Math.abs(sy - ty) < 1
+            ? `M ${sx} ${sy} L ${control} ${sy} L ${control} ${ty} L ${tx} ${ty}`
+            : `M ${sx} ${sy} C ${control} ${sy}, ${control} ${ty}, ${tx} ${ty}`
+        // Head sits at the target's right edge pointing LEFT into it.
+        head = `M ${tx} ${ty} L ${tx + 9} ${ty - 4.5} L ${tx + 9} ${ty + 4.5} Z`
+        labelX = real + 6
+        labelY = (sy + ty) / 2
+      }
+
+      const lines = e.label ? wrapEdgeLabel(e.label, Math.max(8, Math.abs(direction === "lr" ? a.x + a.w / 2 - (b.x + b.w / 2) : a.y + a.h / 2 - (b.y + b.h / 2)))) : []
+      const shift = ((lines.length - 1) * EDGE_LABEL_PITCH) / 2
+      elements.push({
+        kind: "arrow",
+        d,
+        head,
+        edgeKind: e.kind ?? "leads",
+        label: e.label,
+        ...(lines.length > 1 ? { lines } : {}),
+        labelX,
+        labelY: labelY - shift,
+        id: edgeKey(e),
+      })
+      continue
+    }
+
     if (direction === "lr") {
       const sx = a.x + a.w
       const sy = a.y + a.h / 2
