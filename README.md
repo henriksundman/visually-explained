@@ -135,7 +135,7 @@ import { Explanation, Document } from "explanations/react"
 
 ## Block types
 
-18 primitives; each block is `{ type, ...payload }`:
+19 primitives; each block is `{ type, ...payload }`:
 
 - **Content:** `text`, `code` (verbatim snippet, never markdown/HTML)
 - **Structure:** `stack` (group of blocks, one nesting level), `step-list`
@@ -143,8 +143,15 @@ import { Explanation, Document } from "explanations/react"
   `cause-effect`, `callout`, `data-callout`, `sources`, `quiz` (multiple
   choice with per-option `why` feedback; static `<details>` check reveal, or
   click-graded under `<Explanation interactive>`)
-- **Visuals:** `timeline`, `diagram`, `chart`, `figure`, `image` (one image from
-  the host catalog, by key)
+- **Visuals:** `timeline`, `mind-map`, `diagram`, `chart`, `figure`, `image`
+  (one image from the host catalog, by key)
+
+`mind-map` takes `{ root: { label, children? } }` and draws what nests inside
+what — a taxonomy as a horizontal dendrogram, or a nested list when the tree
+would be too deep, too large, or too wide to read legibly (`presentation`
+forces either form). Use it for containment, never for a sequence:
+`timeline` and `step-list` already do that, and a dendrogram encodes order as
+ancestry rather than position.
 
 Host data, not model guesses: `chart`, `data-callout`, and `timeline` accept
 `dataset: "<key>"`. At render time the key is looked up in the `datasets`

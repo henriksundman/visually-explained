@@ -73,6 +73,33 @@ export const educationIr = {
           conclusion: String.raw`\frac{3}{1/2} = 3 \times 2 = 6`,
         },
         {
+          // Mind map, DELIBERATELY SHAPED and commented as such: a real
+          // taxonomy with a genuine second level, nothing parked near a cap,
+          // so the demo shows the block working rather than its edges. Four
+          // children and depth 3 sit inside all three guards (24 nodes, depth
+          // 5, 825px), so it renders as the figure rather than degrading. The
+          // same shape is the one layoutFlow measurably misplaces — its
+          // children are centred on their own boxes instead of their subtree
+          // extents, which is what makes this the right tree to compare
+          // against.
+          type: "mind-map",
+          root: {
+            label: "Cache",
+            children: [
+              { label: "Browser cache", children: [{ label: "Per-origin" }, { label: "Shared per-user" }] },
+              { label: "CDN edge", children: [{ label: "PoP" }, { label: "Anycast" }] },
+              {
+                label: "Shared cache",
+                children: [
+                  { label: "In-memory", children: [{ label: "LRU" }, { label: "LFU" }] },
+                  { label: "On-disk" },
+                ],
+              },
+              { label: "Eviction", children: [{ label: "TTL" }, { label: "Size cap" }] },
+            ],
+          },
+        },
+        {
           // Inline math in prose, deliberately shaped. The two dollar amounts
           // are the point: a naive $...$ scanner reads "$12 basket. A $20"
           // as one formula and renders it as variables with no warning, so

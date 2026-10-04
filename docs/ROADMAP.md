@@ -227,6 +227,33 @@ decisions that survive across sessions.
   node collide) and are recorded in the Backlog with the demo fixture shaped
   to avoid them — noted in a comment so the demo cannot hide them again.
 
+- **Mind map** — **SHIPPED** 2026-10-04. `mind-map` block: what nests inside
+  what, drawn as a horizontal dendrogram. Spec:
+  `docs/superpowers/specs/2026-10-04-mind-map-design.md`.
+  - The job is **containment**, not sequence — chosen because `layoutFlow`
+    measurably misplaces the same tree (children centred on their own boxes
+    rather than their subtree extents, off by 162px), which is what a
+    dendrogram has to get right and a flowchart does not.
+  - The IR is a **nested** tree, so cycles and orphans are unrepresentable
+    rather than merely rejected: there is no `id` to dangle and no back-edge
+    to close. A flat `nodes`+`edges` IR would have needed cycle detection.
+  - The schema is an **explicitly unrolled 12-level ladder**, not
+    `z.lazy()`. A lazy schema re-enters the parser per input level, so a deep
+    tree overflows the stack; `safeParse` throws `RangeError` and does not
+    catch it, `salvage.ts` calls `safeParse` with no `try/catch`, and the
+    exception escapes `renderExplanation` entirely. Same failure shape as the
+    Temml `TypeError` found in the math cycle.
+  - Two depths, deliberately unequal: the **schema** guards against crashing
+    (12), the **renderer** guards against illegibility (5). A 6-deep tree is
+    valid but unreadable, so it degrades to a nested list and says so rather
+    than being dropped as an invalid block.
+  - Width is a function of **depth**, not label length — node labels wrap at
+    176px, one column per level — so three 400-character labels measure 314px
+    and fit. The measured width check is the guard that matters; node count
+    alone is how a long-label timeline once overlapped its own labels.
+  - **Interactivity deferred**: the design chose static output, so a collapsing
+    node is future work rather than a half-built control.
+
 ## Open threads
 
 Deliberately-deferred judgement calls and known-rough edges in shipped work —

@@ -8,6 +8,7 @@ export const BLOCK_TYPE_DOCS = `
 - derivation: { steps: [{ expression, note? }], conclusion? } — equation/argument steps. expression and conclusion are TeX and span the whole field — no $ delimiters, no wrapping; note is prose. Keep each expression on one line.
 - concept: { term, definition, intuition?, analogy? } — define and ground an idea.
 - comparison: { items: [{ name }], dimensions: [{ name, values: string[] }] } — dimensions x items table.
+- mind-map: { root: { label, children? } } — what nests inside what. Nest a label's children under it to show containment at a glance; the renderer computes all layout. Use it for a taxonomy ("kinds of cache"), never for a sequence — use timeline or step-list for that. Keep labels to a few words; the figure wraps long ones but gets wide. Drawn as a figure by default, falling back to a nested list when the tree is too deep, too many nodes, or too wide to read; presentation forces either form.
 - cause-effect: { chain: [{ because, therefore }] } — causal reasoning.
 - data-callout: { metric, label, delta?, trend?: "up"|"down"|"flat", series?: number[] (2-24 samples for the trend sparkline), context? } — one number that matters.
 - timeline: { events: [{ when, what, detail? }], presentation?: "auto"|"text"|"figure" } — ordered events. By default a timeline is drawn as a figure when its labels are short enough to stay legible, and falls back to a text list when they are not; set presentation to force either form.

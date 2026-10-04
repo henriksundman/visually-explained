@@ -163,3 +163,16 @@ describe("checks prompts", () => {
     )
   })
 })
+
+describe("mind-map contract", () => {
+  it("teaches the mind-map as a containment tool, not a sequence tool", () => {
+    // The distinction is the whole value claim. Left unstated, the model
+    // reaches for mind-map whenever content has any shape at all, and a
+    // timeline-shaped mind map is unreadable — order needs position, and a
+    // dendrogram's positions are determined by ancestry instead.
+    const p = sectionSystemPrompt()
+    expect(p).toContain("mind-map")
+    expect(p).toContain("what nests inside what")
+    expect(p).toContain("never for a sequence")
+  })
+})
