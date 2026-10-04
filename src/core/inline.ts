@@ -130,6 +130,19 @@ function extractMath(text: string, sentinel: string, ctx?: InlineWarnings): { ma
   const out: string[] = []
   let last = 0
   MATH_RE.lastIndex = 0
+  /** Resume one character past a REJECTED candidate's opening delimiter.
+   *
+   *  Without this the rejection eats the next span: "Costs $12, so $y = mx$
+   *  holds." matches `$12, so $y = ` first, the gate rejects it as prose, and
+   *  because lastIndex has moved past that text the real `$y = mx$` is never
+   *  offered as a candidate. A sentence containing a dollar amount followed by
+   *  a formula is the common case, not the contrived one.
+   *
+   *  Strictly increasing (start + 1 > the index the match was found at), so
+   *  the loop cannot spin. */
+  const rewind = (start: number): void => {
+    MATH_RE.lastIndex = start + 1
+  }
   let m: RegExpExecArray | null
   while ((m = MATH_RE.exec(text)) !== null) {
     const full = m[0]
@@ -141,11 +154,11 @@ function extractMath(text: string, sentinel: string, ctx?: InlineWarnings): { ma
     if (m[1] === undefined) {
       // \(...\) has no prose to collide with, so it is honored as written.
       tex = full.slice(2, -2)
-      if (tex.length === 0) continue
+      if (tex.length === 0) { rewind(start); continue }
     } else {
       const after = text[end]
-      if (after !== undefined && after >= "0" && after <= "9") continue
-      if (!plausibleDollarMath(m[1])) continue
+      if (after !== undefined && after >= "0" && after <= "9") { rewind(start); continue }
+      if (!plausibleDollarMath(m[1])) { rewind(start); continue }
       tex = m[1]
     }
 

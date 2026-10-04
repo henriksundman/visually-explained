@@ -51,6 +51,42 @@ describe("inline math delimiter gate", () => {
     expect(isMath(renderInline(prose))).toBe(true)
   })
 
+  // The rewind: a rejected candidate must not eat the next one. Without it
+  // the match "$12, so $y = " is rejected as prose and, because the scan has
+  // already moved past that text, the real $y = mx$ is never offered at all.
+  // A sentence with a dollar amount AND a formula is the common case.
+  it("still finds the math after a rejected dollar candidate", () => {
+    const html = renderInline("Costs $12, so $y = mx$ holds.")
+    expect(html).toBe(
+      'Costs $12, so <span class="exp-math-inline"><math><mrow><mi>y</mi><mo>=</mo><mi>m</mi><mi>x</mi></mrow></math></span> holds.',
+    )
+  })
+
+  it("still finds the math after a dollar candidate rejected by the digit rule", () => {
+    const html = renderInline("It costs $5 and returns $10, and $r < 1$ holds.")
+    expect(html).toContain("$5 and returns $10")
+    expect(html).toContain("exp-math-inline")
+    expect(html.match(/<math>/g)).toHaveLength(1)
+  })
+
+  it("keeps scanning through several rejected candidates", () => {
+    const html = renderInline("$ a $ b $ c $ and $x$")
+    expect(html).toContain("$ a $ b $ c $ and ")
+    expect(html.match(/<math>/g)).toHaveLength(1)
+  })
+
+  // Isolates the letter requirement in the tight arm. "costs $5-$3 total"
+  // cannot be used for this: its closer is followed by a digit, so Pandoc's
+  // third rule rejects it first and the letter check is never reached. Here the
+  // closer is followed by "x", so only the letter requirement can reject "5-".
+  it("rejects a digit-only candidate the Pandoc rules do not catch", () => {
+    const html = renderInline("pay $5-$x$ today")
+    // "5-" stays literal, "$x$" typesets.
+    expect(html).toContain("pay $5-<span")
+    expect(html.match(/<math>/g)).toHaveLength(1)
+    expect(html).not.toContain("<mn>5</mn>")
+  })
+
   it("honors \\(...\\) with no gate at all", () => {
     expect(isMath(renderInline("\\(5 and \\)"))).toBe(true)
   })
