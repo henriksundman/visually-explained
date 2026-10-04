@@ -342,3 +342,79 @@ export const figureBlockSchema = z.object({
   elements: z.array(z.unknown()),
 })
 export type FigureBlock = z.infer<typeof figureBlockSchema>
+
+// ---- mind-map ------------------------------------------------------------
+// The node tree is validated by an EXPLICITLY UNROLLED ladder, not a
+// recursive `z.lazy()`. A lazy schema re-enters the parser for every level of
+// the input, so a deep enough tree overflows the JS stack: `safeParse` throws
+// `RangeError` and does not catch it. `salvage.ts` calls `entry.schema.safeParse`
+// with no try/catch, so that exception escapes `renderExplanation` and takes
+// the whole render pass down — the same failure shape as the Temml TypeError
+// fixed on 2026-10-04: a boundary whose error assumption was narrower than
+// reality. An unrolled ladder makes validation O(1) in depth: level 13 simply
+// matches nothing, so an absurd tree is an ordinary validation failure.
+//
+// MIND_MAP_SCHEMA_DEPTH is a CRASH guard (the deepest tree we can parse at
+// all), not a design limit. The legibility policy is separate and much lower:
+// see MIND_MAP_MAX_DEPTH in primitives/mind-map.
+//
+// It is paid for in the prompt: llm.ts runs this ladder through
+// `z.toJSONSchema` for the model-facing schema, and each level is inlined in
+// full. 12 levels costs ~2.2 KB against an 8.3 KB explanationJsonSchema today
+// (~27% more prompt). Lowering MIND_MAP_SCHEMA_DEPTH is the dial if that
+// matters; 12 is the largest depth the layout can usefully draw anyway.
+export const MIND_MAP_SCHEMA_DEPTH = 12
+
+// Siblings cap. Breadth is nearly free in layoutTree (each column hugs its own
+// widest label), so this is a legibility/authoring bound rather than a width
+// bound.
+export const MIND_MAP_MAX_CHILDREN = 8
+
+const treeLabel = z.string().min(1)
+
+// `min(1)` so `children: []` is a validation failure rather than silently
+// meaning "leaf" — the two spellings must not render identically, because a
+// model that emits `children: []` is telling us it lost its children.
+const treeChildren = <T extends z.ZodTypeAny>(inner: T) =>
+  z.array(inner).min(1).max(MIND_MAP_MAX_CHILDREN).optional()
+
+/**
+ * Level 12, and any leaf: a label with no children.
+ *
+ * `.strict()` is load-bearing, not tidiness. zod's default object mode is
+ * "strip": unknown keys are dropped rather than rejected. So a non-strict leaf
+ * accepts `children` at level 12 and SILENTLY DISCARDS the entire subtree
+ * below it — a 500-deep chain validates as a clean 12-deep tree, losing 488
+ * nodes with no diagnostic at all. That is the same failure class as the
+ * unguarded inline-math scanner fixed on 2026-10-04 (open thread 2): input that
+ * looks fine and renders wrong, silently. Strict makes an over-deep tree an
+ * ordinary validation failure, which is the whole point of the ladder.
+ */
+const treeLeaf = z.object({ label: treeLabel }).strict()
+
+/** Level k (1..11): a label whose children are level k-1 nodes. */
+const treeAt = (inner: z.ZodTypeAny) => z.object({ label: treeLabel, children: treeChildren(inner) })
+
+const t12 = treeLeaf
+const t11 = treeAt(t12)
+const t10 = treeAt(t11)
+const t9 = treeAt(t10)
+const t8 = treeAt(t9)
+const t7 = treeAt(t8)
+const t6 = treeAt(t7)
+const t5 = treeAt(t6)
+const t4 = treeAt(t5)
+const t3 = treeAt(t4)
+const t2 = treeAt(t3)
+const t1 = treeAt(t2)
+
+export const mindMapNodeSchema = t1
+export type MindMapNode = z.infer<typeof mindMapNodeSchema>
+
+export const mindMapBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("mind-map"),
+  root: mindMapNodeSchema,
+  presentation: presentationSchema.optional(),
+})
+export type MindMapBlock = z.infer<typeof mindMapBlockSchema>
