@@ -175,4 +175,14 @@ describe("mind-map contract", () => {
     expect(p).toContain("what nests inside what")
     expect(p).toContain("never for a sequence")
   })
+
+  it("teaches the tip as a keyboard affordance, not decoration", () => {
+    // Without this the model either writes none (every node pointer-only, no
+    // keyboard path at all) or one on every node (a wall of hover text). The
+    // contract has to name both failure modes or it steers into one of them.
+    const p = sectionSystemPrompt()
+    expect(p).toContain("tip")
+    expect(p).toContain("keyboard")
+    expect(p).toContain("never to every node")
+  })
 })

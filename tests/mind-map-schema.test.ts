@@ -43,6 +43,40 @@ describe("mind-map schema — valid shapes", () => {
     expect(mindMapBlockSchema.safeParse(block(nest(MIND_MAP_SCHEMA_DEPTH))).success).toBe(true)
   })
 
+  it("accepts a tip on a node at EVERY depth, not just the leaf", () => {
+    // The 11 intermediate rungs are built by `treeAt`, not inherited from the
+    // leaf, so a field declared on one and not the other is accepted at exactly
+    // one depth and silently stripped at the rest. A tip is what makes a node
+    // keyboard-reachable, so losing it on 11 of 12 levels would be invisible
+    // in the figure and total in the a11y path.
+    let node: { label: string; tip?: string; children?: unknown[] } = { label: "deepest", tip: "leaf tip" }
+    for (let i = 10; i >= 0; i--) node = { label: `L${i}`, tip: `tip ${i}`, children: [node] }
+    const r = mindMapBlockSchema.safeParse(block(node))
+    expect(r.success).toBe(true)
+
+    // Asserting only `success` would be VACUOUS: zod strips unknown keys, so a
+    // rung that does not declare `tip` accepts it and drops it, and the parse
+    // still succeeds. This test passed against a `treeAt` with no `tip` at all.
+    // What matters is that every tip SURVIVED the parse.
+    const walk = (n: { label: string; tip?: string; children?: unknown[] }): string[] => [
+      n.tip ?? "MISSING",
+      ...(n.children ?? []).flatMap(c => walk(c as typeof n)),
+    ]
+    const parsed = (r as { data: { root: { label: string; tip?: string; children?: unknown[] } } }).data.root
+    const tips = walk(parsed)
+    expect(tips).toHaveLength(12)
+    expect(tips.filter(t => t === "MISSING")).toEqual([])
+  })
+
+  it("rejects a tip outside 1-200 chars at depth", () => {
+    for (const tip of ["", "x".repeat(201)]) {
+      expect(
+        mindMapBlockSchema.safeParse(block({ label: "root", children: [{ label: "kid", tip }] })).success,
+        `tip of ${tip.length} chars accepted`,
+      ).toBe(false)
+    }
+  })
+
   it("accepts the maximum sibling count", () => {
     const kids = Array.from({ length: MIND_MAP_MAX_CHILDREN }, (_, i) => ({ label: `c${i}` }))
     expect(mindMapBlockSchema.safeParse(block({ label: "r", children: kids })).success).toBe(true)

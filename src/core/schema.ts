@@ -392,10 +392,17 @@ const treeChildren = <T extends z.ZodTypeAny>(inner: T) =>
  * looks fine and renders wrong, silently. Strict makes an over-deep tree an
  * ordinary validation failure, which is the whole point of the ladder.
  */
-const treeLeaf = z.object({ label: treeLabel }).strict()
+/** Hover/focus text, 1-200 chars, matching `resolveTip`'s cap. Declared once
+ *  and used by every rung: the 11 intermediate shapes are built by `treeAt`,
+ *  not inherited from the leaf, so a field added to one and not the other
+ *  would be accepted at exactly one depth. */
+const treeTip = z.string().min(1).max(200).optional()
+
+const treeLeaf = z.object({ label: treeLabel, tip: treeTip }).strict()
 
 /** Level k (1..11): a label whose children are level k-1 nodes. */
-const treeAt = (inner: z.ZodTypeAny) => z.object({ label: treeLabel, children: treeChildren(inner) })
+const treeAt = (inner: z.ZodTypeAny) =>
+  z.object({ label: treeLabel, tip: treeTip, children: treeChildren(inner) })
 
 const t12 = treeLeaf
 const t11 = treeAt(t12)
@@ -422,6 +429,11 @@ const t1 = treeAt(t2)
 export interface MindMapNode {
   label: string
   children?: MindMapNode[]
+  /** Hover/focus text (1-200 chars). Off-layout: it never moves a node box.
+   *  Present so a node is keyboard-reachable, not pointer-only — without it
+   *  `wrapIdentity` emits no `tabindex` and no popover. Optional per node, so
+   *  an author who writes none gets today's behaviour exactly. */
+  tip?: string
 }
 
 export const mindMapNodeSchema: z.ZodType<MindMapNode> = t1 as unknown as z.ZodType<MindMapNode>

@@ -239,6 +239,42 @@ describe("layoutTree — containment and structure", () => {
     expect(boxes(scene).map(b => b.id)).toEqual(preOrder(CACHE_TREE).map((_, i) => `n${i}`))
   })
 
+  it("carries a node's tip through to the emitted box, and omits it when absent", () => {
+    // A tip is the ONLY thing that makes wrapIdentity emit tabindex, so it is
+    // what turns a mind-map node into a keyboard-reachable element rather than
+    // a pointer-only one. Losing it in the layout would silently cost the
+    // whole keyboard path, so it is pinned at the layer that could drop it.
+    const { scene } = layoutTree({
+      label: "Cache",
+      children: [
+        { label: "With a tip", tip: "Hover text." },
+        { label: "Without one" },
+      ],
+    })
+    const emitted = byId(scene)
+    expect(emitted.get("n1")!.tip).toBe("Hover text.")
+    // Absent, not empty string: wrapIdentity tests hasTip() truthiness, so an
+    // empty string would pass through as a focusable element with no text.
+    expect(emitted.get("n2")!.tip).toBeUndefined()
+  })
+
+  it("does not let a tip change any geometry", () => {
+    // The tip is a hover affordance, never layout input (spec 3.4 declined the
+    // inline note precisely because it would cost height budget). If a tip ever
+    // moved a box, the width guards would be measuring something no reader
+    // can see.
+    const plain = layoutTree(CACHE_TREE).scene
+    const tipped = layoutTree({
+      ...CACHE_TREE,
+      children: CACHE_TREE.children?.map(c => ({ ...c, tip: "A".repeat(200) })),
+    }).scene
+    expect(JSON.stringify(tipped.elements.map(e => [e.kind, (e as any).x, (e as any).y]))).toBe(
+      JSON.stringify(plain.elements.map(e => [e.kind, (e as any).x, (e as any).y])),
+    )
+    expect(tipped.width).toBe(plain.width)
+    expect(tipped.height).toBe(plain.height)
+  })
+
   it("gives depth to the node shape so hierarchy reads without connectors", () => {
     const { scene } = layoutTree(CACHE_TREE)
     const emitted = byId(scene)

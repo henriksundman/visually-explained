@@ -32,8 +32,14 @@ export interface ExplanationProps {
    *  Default false — keeps this component RSC-safe. */
   interactive?: boolean
   /** Delegate hover/click events for identified figure elements. Presence
-   *  routes figure/diagram/chart blocks through a small client wrapper;
-   *  default undefined keeps this component RSC-safe. */
+   *  routes figure/diagram/chart/mind-map blocks through a small client
+   *  wrapper; default undefined keeps this component RSC-safe.
+   *
+   *  mind-map participates for pointer events alone: every node already
+   *  carries a `data-el-id`, but `wrapIdentity` only emits `tabindex` for an
+   *  element with a `tip`, so a node without one is reachable by pointer and
+   *  not by keyboard. Give a node a `tip` and it gets the popover and the
+   *  keyboard path with it. */
   onElementEvent?: (e: FigureElementEvent) => void
   /**
    * Called once at the end of the render pass with every warning emitted
@@ -108,7 +114,7 @@ export function Explanation({
     if (interactive && b.kind === "valid" && b.type === "quiz") {
       return <Quiz key={b.index} block={b.data} />
     }
-    if (onElementEvent && b.kind === "valid" && (b.type === "figure" || b.type === "diagram" || b.type === "chart")) {
+    if (onElementEvent && b.kind === "valid" && (b.type === "figure" || b.type === "diagram" || b.type === "chart" || b.type === "mind-map")) {
       const html = renderBlock(b.type, b.data, 1, blockOpts)
       return <FigureEvents key={b.index} html={html} onEvent={onElementEvent} />
     }

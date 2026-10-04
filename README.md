@@ -146,12 +146,19 @@ import { Explanation, Document } from "explanations/react"
 - **Visuals:** `timeline`, `mind-map`, `diagram`, `chart`, `figure`, `image`
   (one image from the host catalog, by key)
 
-`mind-map` takes `{ root: { label, children? } }` and draws what nests inside
-what — a taxonomy as a horizontal dendrogram, or a nested list when the tree
-would be too deep, too large, or too wide to read legibly (`presentation`
+`mind-map` takes `{ root: { label, children?, tip? } }` and draws what nests
+inside what — a taxonomy as a horizontal dendrogram, or a nested list when the
+tree would be too deep, too large, or too wide to read legibly (`presentation`
 forces either form). Use it for containment, never for a sequence:
 `timeline` and `step-list` already do that, and a dendrogram encodes order as
 ancestry rather than position.
+
+Every node carries a `data-el-id` (`n0`, `n1`, … in pre-order), so a host
+passing `onElementEvent` receives hover and click for any node without wiring
+anything. A node's optional `tip` (1–200 chars) is what makes it **keyboard
+reachable** — the popover, `tabindex` and Escape-to-close come with it. Without
+a tip a node is pointer-only, so give one to any node whose label alone leaves
+a reader guessing, and skip it elsewhere.
 
 Host data, not model guesses: `chart`, `data-callout`, and `timeline` accept
 `dataset: "<key>"`. At render time the key is looked up in the `datasets`

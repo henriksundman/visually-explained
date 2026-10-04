@@ -5,6 +5,10 @@ import type { LinePathEl, NodeBoxEl, NodeShape, Scene } from "./scene"
 export interface TreeNodeSpec {
   label: string
   children?: TreeNodeSpec[]
+  /** Hover/focus text (1-200 chars). NOT layout input: it never moves a box.
+   *  Carried so `wrapIdentity` can emit `data-tip` + `tabindex`, which is what
+   *  makes a node keyboard-reachable rather than pointer-only. */
+  tip?: string
 }
 
 export const TREE_PAD = 16
@@ -29,6 +33,7 @@ export const TREE_MAX_SCENE_W = 825
 
 interface Measured {
   label: string
+  tip?: string
   depth: number
   w: number
   h: number
@@ -74,6 +79,7 @@ function measure(spec: TreeNodeSpec, depth: number): Measured {
   const kids = (spec.children ?? []).map(c => measure(c, depth + 1))
   return {
     label: spec.label,
+    tip: spec.tip,
     depth,
     w: nodeWidth(lines),
     h: nodeHeight(lines),
@@ -157,6 +163,9 @@ export function layoutTree(root: TreeNodeSpec): { scene: Scene } {
       shape: shapeFor(node.depth),
       label: node.label,
     }
+    // Only when present: `wrapIdentity` tests tip truthiness, so an empty
+    // string would emit a focusable element that says nothing.
+    if (node.tip) box.tip = node.tip
     if (lines.length > 1) box.lines = lines
     elements.push(box)
   }

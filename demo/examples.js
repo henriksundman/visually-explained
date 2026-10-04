@@ -81,13 +81,16 @@ export const educationIr = {
           // same shape is the one layoutFlow measurably misplaces — its
           // children are centred on their own boxes instead of their subtree
           // extents, which is what makes this the right tree to compare
-          // against.
+          // against. One node carries a `tip` — the ONLY node that does — so
+          // the page shows the keyboard/hover affordance on a real figure
+          // rather than describing it: it is the one that reaches
+          // tabindex="0", and the others are pointer-only by design.
           type: "mind-map",
           root: {
             label: "Cache",
             children: [
               { label: "Browser cache", children: [{ label: "Per-origin" }, { label: "Shared per-user" }] },
-              { label: "CDN edge", children: [{ label: "PoP" }, { label: "Anycast" }] },
+              { label: "CDN edge", tip: "Nodes you never reach the origin for.", children: [{ label: "PoP" }, { label: "Anycast" }] },
               {
                 label: "Shared cache",
                 children: [

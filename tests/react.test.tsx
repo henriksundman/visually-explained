@@ -220,6 +220,37 @@ describe("element popover wiring (SSR)", () => {
     expect(without).not.toContain(`exp-fig-events`) // RSC-safe default
   })
 
+  it("static wrapper also covers mind-map blocks, and only tipped nodes are focusable", () => {
+    // The asymmetry is the point, and it is worth pinning: EVERY mind-map node
+    // carries a data-el-id (so pointer events reach the host for all of them),
+    // but `wrapIdentity` emits `tabindex="0"` only where there is a `tip`.
+    // Without this test, "mind-map is wired into the events layer" reads as
+    // "mind-map is keyboard accessible", which is false for untipped nodes.
+    const html = renderToStaticMarkup(
+      <Explanation
+        ir={{
+          version: 1,
+          blocks: [
+            {
+              type: "mind-map",
+              root: {
+                label: "Cache",
+                children: [{ label: "Tipped", tip: "Has a tip" }, { label: "Bare" }],
+              },
+            },
+          ],
+        }}
+        theme="none"
+        onElementEvent={() => {}}
+      />,
+    )
+    expect(html).toContain(`exp-fig-events`)
+    expect(html).toContain(`data-tip="Has a tip"`)
+    // Three nodes identified (root + two children), exactly one focusable.
+    expect(html.match(/data-el-id="n\d"/g)).toHaveLength(3)
+    expect(html.match(/tabindex="0"/g)).toHaveLength(1)
+  })
+
   it("static wrapper also covers diagram blocks", () => {
     const html = renderToStaticMarkup(
       <Explanation
