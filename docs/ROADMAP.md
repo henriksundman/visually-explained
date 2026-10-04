@@ -192,6 +192,19 @@ decisions that survive across sessions.
   (test-locked); they stay server components, so StrictMode's dev-only
   double-invoke is documented rather than fixed. Spec:
   `docs/superpowers/specs/2026-10-04-enforceable-no-degradation-design.md`.
+- **Cycle-aware diagram layering + return paths** (2026-10-04) — a `diagram`
+  whose graph contains a feedback loop no longer explodes its rank count.
+  Longest-path relaxation cannot terminate on a cycle (the 5-node pipeline
+  diagram reached layer 16, leaving 13 empty ranks that still consumed width,
+  so the figure scaled to 0.49x and its 13px labels to 6.4px), and the resulting
+  inversion gave one edge a **negative** gutter, wrapping "miss / stale" into
+  two-character lines. Cycles are now broken by DFS back-edge classification
+  for ranking only; the closing edge keeps its authored direction and is drawn
+  as a return path around the outside. Separately, the scene clamp now shifts
+  node placement *before* edge paths are serialized — it previously moved node
+  boxes and label anchors but not the already-built path strings, leaving every
+  arrow floating above its node's centre. Spec:
+  `docs/superpowers/specs/2026-10-04-flow-cycle-layering-design.md`.
 
 ## Open threads
 

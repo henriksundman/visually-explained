@@ -4,7 +4,8 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-04, after the degradation-policy and /editorial-fix cycles.
+Last updated: 2026-10-04, after the degradation-policy, /editorial-fix, and
+flow-cycle cycles.
 
 ---
 
@@ -210,6 +211,28 @@ drag feature.
 
 Scoped out with the rest of §3. A drag is one pointer at a time, with no grid
 snapping and no undo history.
+
+## 12. A cubic's control line is not its extent
+
+`cubicDepth` in `src/figures/layoutFlow.ts` exists because sizing a scene from
+a Bezier control point is wrong. When both control points sit at `ly` with
+endpoints at `y0`/`y3`, the curve's true extremum is **not** `ly` — for equal
+endpoints it reaches only `y0 + 0.75·(ly - y0)`. The first draft of the
+back-edge routing sized the scene from the control line and would have clipped
+the return path by ~26px.
+
+This is not specific to return paths. Any future curve geometry that has to
+stay inside a `viewBox` must be sized from the sampled or analytic extremum,
+never from a control coordinate. The tests sample the path rather than reading
+control points for exactly this reason — reading them would encode the bug back
+in as an assertion.
+
+Related: the cycle itself. Longest-path layering was originally capped rather
+than cycle-aware, on the belief that a pass limit made cyclic layers
+"stabilize". They did not; a 5-node cycle reached layer 16. That comment was
+the bug's cover story, and it is now deleted. If a layout ever needs to rank a
+model-authored graph again, break cycles for ranking purposes explicitly —
+`findBackEdges` does this — and never let a cap stand in for termination.
 
 ---
 

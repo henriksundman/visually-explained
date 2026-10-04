@@ -41,6 +41,23 @@ Before deep-diving, test the failure against these recurring patterns:
   is *shrunk* to its column, not allowed to stick out. An 11px label in a
   2,472px scene renders at ~3px in a 700px column. Before adding a horizontal
   scrollbar or a wider figure, check what the width budget costs at render time.
+- **A tiny figure is usually a layout bug, not a size budget.** If a figure
+  renders far smaller than its siblings at the same font size, print
+  `scene.width` before touching CSS — an unexpectedly wide scene is the
+  cause, and the emit layer will hide it by shrinking. For `diagram`, the
+  usual culprit is a CYCLE in the node graph: relaxed ranking cannot terminate
+  on one, so layers inflate and the empty ranks between them still consume
+  width. Also check for a negative label gutter (`b.x - (a.x + a.w) < 0`),
+  which clamps to a few pixels and shreds the label into stubs.
+- **Never move geometry that was already serialized.** `ArrowEl.d`/`.head`
+  are path STRINGS built before the scene clamp runs. A clamp that adjusts
+  `node-box.y` and `arrow.labelY` but not `d` moves the boxes and leaves the
+  arrows behind — every arrow then floats above its node's centre and reads as
+  "aligned to the top". Resolve the shift on node placement and build paths
+  from the final coordinates; z-order is array order, so this costs nothing.
+- **A Bezier's control point is not on the curve.** With both control points
+  at `ly`, the curve reaches only `y0 + 0.75·(ly - y0)` — sizing a `viewBox`
+  from `ly` clips it. Sample the path, or use `cubicDepth`.
 - **Entry-point families.** Threading an option through render paths? Grep
   every call site of the shared helpers (`renderSalvagedBlock`, `renderBlock`)
   — plan file lists have missed call sites before.
@@ -85,6 +102,13 @@ Before deep-diving, test the failure against these recurring patterns:
   one input that *parses* so an assertion actually executes.
 
 ## Part 2 — Entries
+
+### 2026-10-04 — A cycle inflated the ranks, and a clamp then desynced the arrows from the nodes
+- **Symptom:** on `/`, the pipeline diagram's arrows pointed at the **top** of their nodes instead of the middle, and the figure was so small the text was barely legible. Reported as two separate problems; one cause.
+- **Root cause:** the diagram contains a feedback loop (`reval → cache`). Layering used capped relaxation, which cannot terminate on a cycle — that 5-node graph reached layer 16, leaving 13 *empty* ranks that still consumed column gutters, so the scene came out 1556px wide and `viewBox` scaling shrank it to 0.49×. The same inversion put `cache` right of `origin`, giving their edge a gutter of **−538**, which clamped to 8 and wrapped `"miss / stale"` into `["miss","/","stal","e"]`. Four lines made that label block hang 21px above the origin, so the scene clamp shifted node boxes down — but `ArrowEl.d`/`head` were already serialized path strings and were never translated with them. Nodes moved, arrows stayed, and every arrow floated 21px above its centre.
+- **Fix:** break cycles for ranking with DFS back-edge classification (relax over the acyclic remainder, which terminates by construction), draw back edges as return paths around the outside, and resolve the clamp on **node placement** before serializing any path. A cubic's true extremum is `y0 + 0.75·(ly − y0)`, not its control line, so the scene is sized from the sampled depth.
+- **Rule:** two lessons, both about ordering. (1) A relaxation loop over model-authored input must not be made to terminate by a pass cap — a cap hides non-termination instead of fixing it, and the old comment claimed cyclic layers "stabilized" when they did not. Break the cycle explicitly. (2) When a layout pass has to move geometry, it must move **all** of it, and the safest moment is before serialization. A clamp that adjusts the fields it remembers and silently skips the ones already written to strings will desync, and the symptom points at the wrong thing entirely (it looks like an alignment bug, not a state bug). **Corollary on the diagnosis:** the visible symptom and the actual cause were two and a half steps apart. Print the *scene* dimensions next to the rendered ones — 1556 vs 748 — before theorising about CSS.
+- **Also worth recording:** three of my own tests in this cycle passed against the *pre-fix* code for the wrong reason — I asserted distinct `x` per node when same-rank nodes legitimately share one, and I bounded curves by their control points, which is the very bug being fixed. Both were caught by running the new suite against the baseline worktree. Eight of the ten bite; the two that do not are deliberate guards.
 
 ### 2026-10-04 — A duplicated predicate that silently diverged from its original
 - **Symptom:** the degradation-policy cycle shipped, all 534 tests green, and `<Document>` still reported **zero** warnings for a non-object IR where `renderDocument` reported three. Dropped-section warnings were missing from the React side entirely.
