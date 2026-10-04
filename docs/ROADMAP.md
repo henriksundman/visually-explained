@@ -206,6 +206,27 @@ decisions that survive across sessions.
   arrow floating above its node's centre. Spec:
   `docs/superpowers/specs/2026-10-04-flow-cycle-layering-design.md`.
 
+- **Diagram orientation + intrinsic figure sizing** (2026-10-04) — `tb` shown
+  on `/` for the first time (every fixture had pinned `direction: "lr"`, so the
+  option existed in the schema, the renderer and the LLM contract but was
+  invisible). Adding the demo surfaced two real `tb` bugs, both from one
+  conflation: same-rank siblings were spaced by node *height* on the
+  horizontal axis, so boxes overlapped, and `tb`'s scene width came from a sum
+  of heights rather than the rightmost edge, clipping wide nodes. Also fixed
+  the emit layer: `.exp-figure` was `width: 100%` with no intrinsic size, so a
+  tall narrow `tb` figure scaled *up* to 26px labels filling 1753px of vertical
+  space. The SVG now emits `width`/`height` and the rule is `max-width: 100%`,
+  so scaling responds to overflow rather than applying in both directions.
+  Verified in Chrome across `/`, `/document` and `/interactive`: every figure
+  renders 1:1 at 13px unless it is genuinely wider than the column, and **zero
+  figures overflow**. Rendered-output diff against b1a1f39: the only change
+  anywhere is two attributes per `<svg>` plus the two new demo blocks — proven
+  by stripping exactly those and re-comparing byte-for-byte. Three `tb` rough
+  edges remain (skip-rank edges route down the source column and overprint;
+  edge labels sit at the source column centre so two labelled edges from one
+  node collide) and are recorded in the Backlog with the demo fixture shaped
+  to avoid them — noted in a comment so the demo cannot hide them again.
+
 ## Open threads
 
 Deliberately-deferred judgement calls and known-rough edges in shipped work —
@@ -270,18 +291,29 @@ cycle):
      host's `failOnWarning` policy covers inline math with no extra wiring.
 - **Diagram orientation** — recorded 2026-10-04 from a user question; split
   because the two halves have very different costs.
-  - **Show `tb` (small).** `direction: "lr" | "tb"` has been in the IR schema
-    (`src/core/schema.ts`) and implemented in `layoutFlow` all along, and the
-    LLM contract already advertises it — but **every demo fixture declares
-    `direction: "lr"`**, so nothing on any page shows a top-down diagram, and a
-    host has no way to see the option works or judge when it is the better
-    choice. Cheap: add a `tb` diagram beside the existing one in the `/`
-    figures showcase, and a line in the README. Worth noting the `tb` path is
-    *not* untrodden — the 2026-10-04 cycle extended it with `tb` back-edge
-    return paths and found a tb-only bug (the return lane was offset by the
-    vertical extent while travelling horizontally, so it cut through the nodes
-    it exists to pass outside of), which is exactly the kind of branch that
-    needs a demo to keep honest.
+  - **Show `tb`** — **SHIPPED** 2026-10-04. `direction: "lr" | "tb"` was
+    already in the IR schema, implemented in `layoutFlow`, and advertised in
+    the LLM contract; what was missing was that every demo fixture declared
+    `"lr"`, so nothing showed a top-down diagram. Adding one exposed that `tb`
+    had **two real bugs and three rough edges**, all pre-existing and all
+    invisible precisely because nothing exercised it:
+    - **Fixed.** Same-rank siblings were spaced by node *height* on what is
+      the horizontal axis, so a 129px and a 144px box landed 72px apart and
+      **overlapped**; and `tb`'s scene *width* was derived from a sum of node
+      heights rather than the rightmost edge, clipping a 227px box inside a
+      240-unit viewBox. One line fixed both.
+    - **Fixed.** `.exp-figure` was `width: 100%` with no intrinsic size, so a
+      tall narrow `tb` figure was stretched *up* — 26px labels filling 1753px
+      of vertical space. The SVG now emits `width`/`height` and the rule is
+      `max-width: 100%`, so scaling responds to overflow instead of applying
+      in both directions at once.
+    - **Still rough, recorded not hidden.** A skip-rank edge routes down the
+      **source column**, where it overprints an adjacent edge; and an edge
+      label is placed at the source column centre, so two labelled edges out
+      of one node land on the **same point** and a label can sit on a sibling
+      edge. The demo fixture is shaped to avoid both (all edges
+      rank-adjacent, one labelled edge per source) and says so in a comment —
+      a demo that silently dodged these would have hidden them again.
   - **`rl` (parked, gated on RTL text).** Right-to-left is **not** a mirror of
     `lr`, for two reasons. (1) The label gutter is `b.x - (a.x + a.w)`, which
     the 2026-10-04 cycle made *structurally* non-negative — forward edges always

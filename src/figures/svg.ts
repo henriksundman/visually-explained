@@ -321,7 +321,15 @@ export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
         .join("")
     : scene.elements.map((el, i) => cleanElement(el, i, claimed, opts.draggable)).join("")
   return (
-    `<svg class="exp-figure" viewBox="0 0 ${n2(scene.width)} ${n2(scene.height)}" role="img" ` +
+    // width/height give the SVG an INTRINSIC size, so `max-width: 100%` +
+    // `height: auto` can scale a too-wide figure DOWN without also forcing a
+    // narrow one UP to the full column width. With `width: 100%` alone (the
+    // previous rule) a tall narrow figure — every `direction: "tb"` diagram,
+    // for instance — was stretched to the column and rendered its 13px labels
+    // at 26px, filling 1753px of vertical space. Scaling should be a response
+    // to overflow, not something applied in both directions at once.
+    `<svg class="exp-figure" width="${n2(scene.width)}" height="${n2(scene.height)}" ` +
+    `viewBox="0 0 ${n2(scene.width)} ${n2(scene.height)}" role="img" ` +
     `aria-label="${escapeHtml(opts.ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +
     `<title>${escapeHtml(opts.ariaLabel)}</title>` +
     body +

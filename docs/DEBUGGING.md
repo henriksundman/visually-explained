@@ -41,6 +41,20 @@ Before deep-diving, test the failure against these recurring patterns:
   is *shrunk* to its column, not allowed to stick out. An 11px label in a
   2,472px scene renders at ~3px in a 700px column. Before adding a horizontal
   scrollbar or a wider figure, check what the width budget costs at render time.
+- **A figure that is too BIG is a sizing-model bug, not a layout bug.** If a
+  figure renders larger than the surrounding type, the scene is probably fine
+  and the box is wrong: `.exp-figure` is `max-width: 100%` and the `<svg>`
+  carries an intrinsic `width`/`height`, so a narrow figure renders 1:1 rather
+  than stretching. Measure `box.width / viewBox.width` before touching
+  `layoutFlow` — a `tb` figure at 2x is this, not a coordinate bug. A
+  `max-height` cap does **not** help: `width: 100%` has already fixed the box
+  width, so the cap letterboxes the content down instead.
+- **Diagram `direction: "tb"` is exercised far less than `lr`.** Same-rank
+  siblings are spaced by node *width* on the horizontal cross axis (spacing by
+  height was a real bug, fixed 2026-10-04), skip-rank edges route down the
+  source column and can overprint an adjacent edge, and an edge label sits at
+  the source column centre — so two labelled edges out of one node land on the
+  same point. Two of those three are still open; see ROADMAP Backlog.
 - **A tiny figure is usually a layout bug, not a size budget.** If a figure
   renders far smaller than its siblings at the same font size, print
   `scene.width` before touching CSS — an unexpectedly wide scene is the
@@ -102,6 +116,13 @@ Before deep-diving, test the failure against these recurring patterns:
   one input that *parses* so an assertion actually executes.
 
 ## Part 2 — Entries
+
+### 2026-10-04 — A figure scaled UP because it had no intrinsic size
+- **Symptom:** the top-down demo diagram rendered at **26px labels filling 1753px of vertical space**, next to 16px body text. A figure far *too big*, the mirror of the "figures scale down, they don't overflow" entry above.
+- **Root cause:** `.exp-figure` was `width: 100%; height: auto` on an `<svg>` that carried only a `viewBox`. With no intrinsic size, "fill the column" is the only sizing the browser has — so it stretched a 333×865 figure up 2.03×. Every warning in the playbook was about the *downward* direction, so the upward one read as a layout bug rather than a sizing-model bug.
+- **Fix:** emit `width`/`height` alongside `viewBox`, and change the rule to `max-width: 100%; height: auto`. Scaling now responds to overflow only. Measured across `/`, `/document` and `/interactive`: narrow figures 1.00× at 13px, wide ones 0.87–0.94× (unchanged), **0 figures overflowing**.
+- **Rule:** three lessons. (1) **A CSS cap is not a fix when `width:100%` sets the box.** All four caps tried (`max-height`, `+object-fit`, shrink-to-fit, and combinations) letterboxed the content down to 7.8px labels — worse than the 26px problem. The box has to be allowed to shrink first. (2) **Measure the scale, don't reason about it.** `box.width / viewBox.width` and `getScreenCTM().a` answered in one line what four CSS theories could not; on `lr` the same arithmetic is the "825px legibility budget" check, so it is the same tool pointed the other way. (3) **Check the emit layer before the layout when a figure is the wrong SIZE.** Wrong geometry and wrong scale look identical on the page and have opposite fixes.
+- **Also worth recording:** making the demo exposed that `tb` had never been exercised (every fixture pinned `lr`) and carried two real bugs — see the sibling-spacing and scene-width entries. A demo request turned into a bug hunt, which is the point of adding demos at all.
 
 ### 2026-10-04 — A cycle inflated the ranks, and a clamp then desynced the arrows from the nodes
 - **Symptom:** on `/`, the pipeline diagram's arrows pointed at the **top** of their nodes instead of the middle, and the figure was so small the text was barely legible. Reported as two separate problems; one cause.

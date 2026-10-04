@@ -465,7 +465,11 @@
 /* Figures — svg emitted by the drawing layer. Colors only via tokens. */
 .exp-figure {
   display: block;
-  width: 100%;
+  /* The SVG carries an intrinsic width/height (see sceneToSvg), so this
+     scales a too-wide figure DOWN and leaves a narrow one at its natural
+     size. `width: 100%` stretched both ways, which rendered a tall `tb`
+     diagram's 13px labels at 26px. */
+  max-width: 100%;
   height: auto;
   margin: 4px 0 0;
 }

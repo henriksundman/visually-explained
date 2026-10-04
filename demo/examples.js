@@ -229,6 +229,45 @@ export const figuresIr = {
       direction: "lr",
     },
     {
+      type: "text",
+      body: "The next diagram is the **same block type** with `direction: \"tb\"`. Nothing about the IR changes and the renderer owns the geometry either way — only the declared orientation does, so the ranks stack downward instead of advancing rightward. A layered stack reads better this way: you read it top to bottom, the way the request actually travels.",
+    },
+    {
+      // `tb`, so the option is visible rather than merely documented. Same
+      // subject as the lr diagram above on purpose: the only difference
+      // between them is the declared orientation.
+      //
+      // Every edge here is rank-adjacent and no source has two labelled
+      // edges. Those are not arbitrary: `tb` routes a skip-rank edge down the
+      // SOURCE column, where it overprints an adjacent edge (see
+      // `demo/editorial.css`-independent note in docs/ROADMAP.md), and it puts
+      // an edge label at the source column centre, where it can land on a
+      // SIBLING edge leaving the same node -- so `api`'s two outgoing edges
+      // carry no label, and `db` explains itself with a tip instead. All of
+      // this is recorded in docs/ROADMAP.md rather than hidden: the point of
+      // the demo is to show what `tb` does well.
+      type: "diagram",
+      nodes: [
+        { id: "req", label: "Request arrives", shape: "pill", tip: "The browser opens the connection" },
+        { id: "cdn", label: "CDN", tip: "Served from the edge when the asset is cached" },
+        { id: "bcache", label: "Browser cache" },
+        { id: "edge", label: "Edge worker" },
+        { id: "api", label: "API server" },
+        { id: "rcache", label: "Response cache" },
+        { id: "db", label: "Primary database", shape: "note", tip: "Only reached on a cache miss" },
+      ],
+      edges: [
+        { from: "req", to: "cdn", label: "cached", kind: "leads" },
+        { from: "req", to: "bcache", kind: "leads" },
+        { from: "cdn", to: "edge", kind: "leads" },
+        { from: "bcache", to: "edge", kind: "leads" },
+        { from: "edge", to: "api", kind: "leads" },
+        { from: "api", to: "rcache", kind: "leads" },
+        { from: "api", to: "db", kind: "leads" },
+      ],
+      direction: "tb",
+    },
+    {
       type: "chart",
       kind: "bar",
       points: [

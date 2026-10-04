@@ -222,3 +222,32 @@ describe("draggable handles", () => {
     expect(svg).toContain('data-draggable="y"')
   })
 })
+
+describe("intrinsic figure size", () => {
+  // `.exp-figure` is `max-width: 100%; height: auto`, which scales a too-wide
+  // figure down and leaves a narrow one alone. That only works because the SVG
+  // declares its own width/height; without them the browser has no intrinsic
+  // size and falls back to filling the column, which stretched a tall `tb`
+  // diagram to 26px labels and 1753px of height.
+  it("emits width and height matching the viewBox", () => {
+    const s: Scene = { width: 333, height: 865, elements: [] }
+    const svg = sceneToSvg(s, { ariaLabel: "f" })
+    expect(svg).toContain('width="333"')
+    expect(svg).toContain('height="865"')
+    expect(svg).toContain('viewBox="0 0 333 865"')
+  })
+
+  it("keeps the attributes in step with the viewBox after rounding", () => {
+    // n2() rounds to 2dp; all three numbers must come from the same source or
+    // the intrinsic aspect ratio stops matching the viewBox.
+    const s: Scene = { width: 177.5, height: 76.25, elements: [] }
+    const svg = sceneToSvg(s, { ariaLabel: "f" })
+    expect(svg).toContain('width="177.5" height="76.25"')
+    expect(svg).toContain('viewBox="0 0 177.5 76.25"')
+  })
+
+  it("emits the same intrinsic size in the sketch pass", () => {
+    const s: Scene = { width: 460, height: 220, elements: [] }
+    expect(sceneToSvg(s, { ariaLabel: "f", sketch: true })).toContain('width="460" height="220"')
+  })
+})
