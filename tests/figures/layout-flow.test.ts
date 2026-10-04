@@ -632,6 +632,55 @@ describe("flow cycles and back-edge routing", () => {
     }
   })
 
+  it("spaces tb siblings by WIDTH, so same-rank boxes never overlap", () => {
+    // `tb` puts the cross axis horizontal, so siblings advance by `w`. The
+    // step used to advance by `h` for both directions, which put two ~130px
+    // boxes 72px apart in a tb rank -- they overlapped.
+    const { scene } = layoutFlow({
+      direction: "tb",
+      nodes: [
+        { id: "api", label: "API server" },
+        { id: "cache", label: "Response cache" },
+        { id: "db", label: "Primary database" },
+      ],
+      edges: [{ from: "api", to: "cache" }, { from: "api", to: "db" }],
+    })
+    const boxes = scene.elements.filter((e): e is NodeBoxEl => e.kind === "node-box")
+    expect(boxes).toHaveLength(3)
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]
+        const b = boxes[j]
+        const overlaps =
+          a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+        expect(`${a.id} vs ${b.id}: ${overlaps ? "OVERLAP" : "clear"}`).toBe(
+          `${a.id} vs ${b.id}: clear`,
+        )
+      }
+    }
+  })
+
+  it("sizes a tb scene to its widest node, not to a sum of node heights", () => {
+    // `crossExtent` accumulated node heights and then became tb's WIDTH, so a
+    // 227px box in a 240-unit viewBox was clipped by 3px. lr got this right.
+    const { scene } = layoutFlow({
+      direction: "tb",
+      nodes: [
+        { id: "a", label: "A very wide node label that stretches the box out considerably" },
+        { id: "b", label: "B" },
+      ],
+      edges: [{ from: "a", to: "b" }],
+    })
+    for (const n of scene.elements) {
+      if (n.kind !== "node-box") continue
+      expect(`${n.id} right edge ${n.x + n.w} <= width ${scene.width}`).toBe(
+        `${n.id} right edge ${n.x + n.w} <= width ${scene.width}`,
+      )
+      expect(n.x + n.w).toBeLessThanOrEqual(scene.width)
+      expect(n.x).toBeGreaterThanOrEqual(0)
+    }
+  })
+
   it("is deterministic across repeated calls", () => {
     const spec = (demoExamples.howToIr as { blocks: { type: string }[] }).blocks.find(
       b => b.type === "diagram",

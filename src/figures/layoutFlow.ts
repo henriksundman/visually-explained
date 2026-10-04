@@ -290,7 +290,15 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         x: direction === "lr" ? mainOffset : cross,
         y: direction === "lr" ? cross : mainOffset,
       })
-      cross += h + GAP_CROSS
+      // The cross axis is VERTICAL for `lr` but HORIZONTAL for `tb`, so it
+      // must advance by that axis' own dimension. Advancing by `h` always
+      // was right for `lr` and wrong for `tb`, where it spaced same-rank
+      // siblings by their heights: two 130px boxes landed 72px apart and
+      // overlapped. `crossExtent` is the same measure, which is why `tb`'s
+      // scene width (derived from it) tracked a sum of heights rather than
+      // the rightmost node edge and clipped a 227px box inside a 240px
+      // viewBox. Fixing the step fixes both.
+      cross += (direction === "lr" ? h : w) + GAP_CROSS
     })
     crossExtent = Math.max(crossExtent, cross - GAP_CROSS)
     lastGutter = gutters[r] ?? GAP_MAIN
