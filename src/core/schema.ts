@@ -158,6 +158,7 @@ export type Block =
   | SourcesBlock
   | QuizBlock
   | ImageBlock
+  | MindMapBlock
 
 export const stackBlockSchema = z.object({
   id: idSchema,
@@ -233,6 +234,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     sourcesBlockSchema,
     quizBlockSchema,
     imageBlockSchema,
+    mindMapBlockSchema,
   ]) as unknown as z.ZodType<Block>,
 )
 
@@ -408,8 +410,21 @@ const t3 = treeAt(t4)
 const t2 = treeAt(t3)
 const t1 = treeAt(t2)
 
-export const mindMapNodeSchema = t1
-export type MindMapNode = z.infer<typeof mindMapNodeSchema>
+/**
+ * The node type, declared recursively rather than inferred.
+ *
+ * `z.infer` on the ladder is a union of 12 distinct object shapes, so
+ * `node.children` comes back as a union of 11 different array types and every
+ * recursive walk (`kids.map(...)`) fails to typecheck. The runtime shape is
+ * genuinely recursive, so the type should say so; the ladder is a validation
+ * strategy, not the domain model.
+ */
+export interface MindMapNode {
+  label: string
+  children?: MindMapNode[]
+}
+
+export const mindMapNodeSchema: z.ZodType<MindMapNode> = t1 as unknown as z.ZodType<MindMapNode>
 
 export const mindMapBlockSchema = z.object({
   id: idSchema,

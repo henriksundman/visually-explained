@@ -1,0 +1,187 @@
+import { describe, expect, it } from "vitest"
+import { renderExplanation } from "../src/core/render"
+import "../src/core/registerAll"
+import { mindMapFigureWidth, mindMapTreeStats } from "../src/figures/layoutTree"
+
+const TREE = {
+  label: "Cache",
+  children: [
+    { label: "Browser cache" },
+    { label: "Shared cache", children: [{ label: "In-memory" }, { label: "On-disk" }] },
+  ],
+}
+
+/** A chain of exactly `depth` nodes, each label `wide` chars of filler. */
+function chain(depth: number, wide = 0): unknown {
+  let node: { label: string; children?: unknown[] } = { label: `L${depth - 1}` }
+  for (let i = depth - 2; i >= 0; i--) {
+    const label = `L${i}` + (wide ? " " + "x".repeat(wide) : "")
+    node = { label, children: [node] }
+  }
+  return node
+}
+
+function render(root: unknown, extra: Record<string, unknown> = {}) {
+  return renderExplanation({
+    version: 1,
+    blocks: [{ type: "mind-map", root, ...extra }],
+  } as never)
+}
+
+describe("mind-map — figure form", () => {
+  it("draws a figure by default and typesets its labels", () => {
+    const { html, warnings } = render(TREE)
+    expect(html).toContain("exp-mind-map")
+    expect(html).toContain("<svg")
+    expect(html).toContain("Browser cache")
+    expect(warnings).toEqual([])
+  })
+
+  it("degrades to a nested list when told to", () => {
+    const { html } = render(TREE, { presentation: "text" })
+    expect(html).not.toContain("<svg")
+    expect(html).toContain("<ul")
+    expect(html).toContain("Shared cache")
+  })
+
+  it("nests the text form so containment survives without the figure", () => {
+    const { html } = render(TREE, { presentation: "text" })
+    // "Shared cache" must be an <li> inside a <ul> that is itself inside the
+    // outer <ul>. Matching the markup shape (rather than comparing offsets)
+    // keeps this honest: an off-by-one in the search origin would otherwise
+    // make a flat list look nested.
+    expect(html).toMatch(
+      /<ul[^>]*><li>Cache<ul><li>Browser cache<\/li><li>Shared cache<ul><li>In-memory<\/li><li>On-disk<\/li><\/ul><\/li><\/ul><\/li><\/ul>/,
+    )
+  })
+
+  it("carries an aria-label that linearises the tree", () => {
+    const { html } = render(TREE)
+    const label = html.match(/aria-label="([^"]*)"/)?.[1] ?? ""
+    expect(label).toContain("Cache contains")
+    expect(label).toContain("Shared cache contains In-memory")
+  })
+
+  it("keeps inline markup out of the aria-label", () => {
+    // The aria-label is spoken, not rendered. Sibling primitives
+    // (diagram, cause-effect, timeline) all pass raw label text, and
+    // sceneToSvg escapes the attribute — so piping renderInline's HTML in
+    // here would have a screen reader announce literal "<strong>".
+    const { html } = render({ label: "**Bold** root", children: [{ label: "*it*" }] })
+    const label = html.match(/aria-label="([^"]*)"/)?.[1] ?? ""
+    expect(label).not.toContain("<")
+    expect(label).toContain("Bold")
+  })
+})
+
+describe("mind-map — degradation", () => {
+  it("honours an explicit figure even when the tree is enormous", () => {
+    const big = {
+      label: "r",
+      children: Array.from({ length: 3 }, (_, i) => ({
+        label: `c${i}`,
+        children: Array.from({ length: 8 }, (_, j) => ({ label: `g${i}${j}` })),
+      })),
+    }
+    expect(mindMapTreeStats(big as never).nodes).toBeGreaterThan(24)
+    const { html, warnings } = render(big, { presentation: "figure" })
+    expect(html).toContain("<svg")
+    expect(warnings).toEqual([])
+  })
+
+  it("reports NO degradation for an explicit text choice", () => {
+    // The author asked for the list; a warning blaming the width for it would
+    // be a lie, and `failOnWarning` would throw on a deliberate choice.
+    const { html, warnings } = render(TREE, { presentation: "text" })
+    expect(html).not.toContain("<svg")
+    expect(warnings).toEqual([])
+  })
+
+  it("falls back to text past MIND_MAP_MAX_NODES and says so", () => {
+    // Must stay INSIDE the schema to reach this primitive at all: the schema
+    // allows at most 8 siblings, so a 30-child star is rejected before
+    // resolvePresentation runs and lands in exp-fallback instead. Breadth
+    // alone cannot make a big tree — a 3-level tree of legal fan-out does.
+    const big = {
+      label: "r",
+      children: Array.from({ length: 3 }, (_, i) => ({
+        label: `c${i}`,
+        children: Array.from({ length: 8 }, (_, j) => ({ label: `g${i}${j}` })),
+      })),
+    }
+    expect(mindMapTreeStats(big as never).nodes).toBeGreaterThan(24)
+
+    const { html, warnings } = render(big)
+    expect(html).not.toContain("<svg")
+    expect(warnings.some(w => w.startsWith("[mind-map]"))).toBe(true)
+  })
+
+  it("falls back to text past MIND_MAP_MAX_DEPTH and says so", () => {
+    const { html, warnings } = render(chain(7))
+    expect(html).not.toContain("<svg")
+    expect(warnings.some(w => w.startsWith("[mind-map]"))).toBe(true)
+  })
+
+  it("falls back to text when the scene would be too wide, and says so", () => {
+    // The fixture has to be measured, not guessed. Label length alone does not
+    // make a tree wide — node labels wrap at TREE_NODE_W_MAX (176px), so three
+    // 400-character labels lay out at 314px and fit comfortably. Width is a
+    // function of DEPTH (one column per level), so the only way past 825 while
+    // staying inside the node/depth guards is a chain at the depth limit whose
+    // labels each fill their column.
+    const wide = chain(5, 40)
+    expect(mindMapTreeStats(wide as never)).toMatchObject({ nodes: 5, depth: 5 })
+    expect(mindMapFigureWidth(wide as never)).toBeGreaterThan(825)
+
+    const { html, warnings } = render(wide)
+    expect(html).not.toContain("<svg")
+    expect(warnings.some(w => w.includes("825"))).toBe(true)
+  })
+
+  it("keeps the three guards independent", () => {
+    // Each condition must be able to fire alone, or one of them is dead code.
+    // Count fires on a shallow, narrow, 30-child star; depth on a 7-chain;
+    // width on the depth-5 chain above.
+    const wideLabels = render(TREE, { presentation: "text" })
+    expect(wideLabels.warnings).toEqual([])
+    expect(mindMapFigureWidth(TREE as never)).toBeLessThanOrEqual(825)
+  })
+
+  it("throws under failOnWarning", () => {
+    const big = {
+      label: "r",
+      children: Array.from({ length: 3 }, (_, i) => ({
+        label: `c${i}`,
+        children: Array.from({ length: 8 }, (_, j) => ({ label: `g${i}${j}` })),
+      })),
+    }
+    expect(() =>
+      renderExplanation({ version: 1, blocks: [{ type: "mind-map", root: big }] } as never, {
+        failOnWarning: true,
+      }),
+    ).toThrow(/mind-map/)
+  })
+})
+
+describe("mind-map — prose integration", () => {
+  it("typesets inline math in a node label in the text form", () => {
+    const { html } = render({ label: "Rate \\(\\eta\\)" }, { presentation: "text" })
+    expect(html).toContain("exp-math-inline")
+  })
+
+  it("escapes a node label rather than emitting markup", () => {
+    const { html } = render({ label: '<img src=x onerror=alert(1)>' })
+    expect(html).not.toContain("<img")
+    expect(html).toContain("&lt;img")
+  })
+
+  it("escapes a node label in the text form too", () => {
+    const { html } = render({ label: '<img src=x onerror=alert(1)>' }, { presentation: "text" })
+    expect(html).not.toContain("<img")
+    expect(html).toContain("&lt;img")
+  })
+
+  it("is deterministic", () => {
+    expect(render(TREE).html).toBe(render(TREE).html)
+  })
+})
