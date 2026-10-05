@@ -121,4 +121,127 @@ describe("degradation policy — React", () => {
     expect(received).toEqual([])
     expect(renderDocument(doc(img, math)).warnings).toHaveLength(2)
   })
+  // --- open thread 13: Quiz, InteractiveFigure and ElementPopover reported no
+  // degradations at all, so the no-degradation policy was silently defeated
+  // there. An unparseable formula in quiz prose produced BYTE-IDENTICAL html
+  // with and without a sink, so the degradation was invisible in the DOM, to
+  // diffing, and to onWarning — and a failOnWarning host did not throw.
+  //
+  // The fix is a synchronous PRE-PASS in Explanation's own body, not a prop
+  // threaded into the child: a child component's side effects land after the
+  // parent's body has run (measured), so the parent would read an empty array.
+  // `interactive` is REQUIRED throughout, because without it Explanation never
+  // routes to <Quiz>/<InteractiveFigure> at all and the plain renderBlock path
+  // reports correctly — a green test that never touches the broken component.
+  //
+  // A dangling superscript throws inside Temml and degrades with [math].
+  const BAD = "\\(x^\\)"
+
+  it("reports a quiz's block warnings, which were discarded wholesale", () => {
+    const badAnswer = {
+      type: "quiz",
+      id: "q1",
+      question: "Q?",
+      answer: 7, // out of range for 2 options — schema-valid, cross-field check
+      options: [{ text: "a", why: "x" }, { text: "b", why: "y" }],
+    }
+    // Anchored to the string renderer, not to whatever React does.
+    expect(renderExplanation({ version: 1, title: "T", blocks: [badAnswer] }).warnings).toEqual([
+      'quiz-answer-invalid: quiz "q1" answer index out of range — check reveal hidden',
+    ])
+
+    const onWarning = vi.fn()
+    renderToStaticMarkup(
+      <Explanation ir={{ version: 1, title: "T", blocks: [badAnswer] }} interactive onWarning={onWarning} />,
+    )
+    expect(onWarning).toHaveBeenCalledTimes(1)
+    expect(onWarning.mock.calls[0][0]).toEqual([
+      'quiz-answer-invalid: quiz "q1" answer index out of range — check reveal hidden',
+    ])
+  })
+
+  it("reports prose degradations inside a quiz", () => {
+    const ir = {
+      version: 1,
+      title: "T",
+      blocks: [
+        {
+          type: "quiz",
+          id: "q1",
+          question: `Bad ${BAD} here`,
+          answer: 0,
+          options: [{ text: `a ${BAD}`, why: `w ${BAD}` }, { text: "b", why: "n" }],
+          explanation: `e ${BAD}`,
+        },
+      ],
+    }
+    const fromString = renderExplanation(ir).warnings
+    // Measured, not guessed: the static quiz render sinks the question, both
+    // option texts, the whys, the check-reveal lines and the explanation, so
+    // the same formula in five places yields five warnings. An earlier draft of
+    // this test asserted 4 and failed with "expected 5 to be 4" — the fixture
+    // was miscounted, not the product. Anchoring to the string renderer's own
+    // count is what makes the parity assertion robust to that.
+    expect(fromString.length).toBe(5)
+
+    const onWarning = vi.fn()
+    renderToStaticMarkup(<Explanation ir={ir} interactive onWarning={onWarning} />)
+    // The set must MATCH, not merely be non-empty: a count-only assertion
+    // passed here before, when React reported 1 where the string renderer
+    // reported 4 (the 2026-10-04 math cycle).
+    expect(onWarning.mock.calls[0][0]).toHaveLength(fromString.length)
+  })
+
+  it("failOnWarning throws for a quiz, which it previously did not", () => {
+    // The policy is worthless if it silently passes, so this asserts the
+    // THROW rather than inferring it from the warning count. A component that
+    // reported in an effect would satisfy a count assertion and still not throw.
+    const ir = {
+      version: 1,
+      title: "T",
+      blocks: [
+        { type: "quiz", id: "q1", question: `Bad ${BAD}`, answer: 0, options: [{ text: "a", why: "x" }, { text: "b", why: "n" }] },
+      ],
+    }
+    expect(() => renderToStaticMarkup(<Explanation ir={ir} interactive failOnWarning />)).toThrow(
+      /Degradation policy/,
+    )
+  })
+
+  it("reports a figure's title and caption degradations", () => {
+    const ir = {
+      version: 1,
+      title: "T",
+      blocks: [
+        {
+          type: "figure",
+          title: `Cap ${BAD}`,
+          caption: `Also ${BAD}`,
+          params: [],
+          elements: [{ kind: "label", x: 10, y: 10, text: "hi" }],
+        },
+      ],
+    }
+    expect(renderExplanation(ir).warnings).toHaveLength(2)
+
+    const onWarning = vi.fn()
+    renderToStaticMarkup(<Explanation ir={ir} interactive onWarning={onWarning} />)
+    expect(onWarning.mock.calls[0][0]).toHaveLength(2)
+  })
+
+  it("does not double-report when the block is NOT delegated", () => {
+    // The pre-pass must fire only for the delegated types. Without `interactive`
+    // a quiz goes through the ordinary renderBlock path, which already reports;
+    // a pre-pass there would report everything twice.
+    const ir = {
+      version: 1,
+      title: "T",
+      blocks: [
+        { type: "quiz", id: "q1", question: `Bad ${BAD}`, answer: 0, options: [{ text: "a", why: "x" }, { text: "b", why: "n" }] },
+      ],
+    }
+    const onWarning = vi.fn()
+    renderToStaticMarkup(<Explanation ir={ir} onWarning={onWarning} />)
+    expect(onWarning.mock.calls[0][0]).toHaveLength(1)
+  })
 })

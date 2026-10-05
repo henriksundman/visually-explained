@@ -102,6 +102,12 @@ export function Explanation({
   // Built BEFORE the policy check: renderBlock populates `warnings` as a
   // side effect of this map, so checking first would always see an empty
   // array and never throw.
+  //
+  // Note the pre-passes inside the delegated branches below cover a DIFFERENT
+  // gap from this one. This comment is about renderBlock mutating the array
+  // during the map; the pre-pass is about a CHILD component's mutations landing
+  // after the map has finished, which no amount of ordering within this body
+  // can fix.
   const body = salvaged.blocks.map(b => {
     if (b.kind === "invalid") return null
     const Custom = components?.[b.type]
@@ -109,9 +115,28 @@ export function Explanation({
       return <Custom key={b.index} block={b.data as Block} />
     }
     if (interactive && b.kind === "valid" && b.type === "figure") {
+      // PRE-PASS. A child component's side effects land AFTER this component's
+      // body has finished, so a warning pushed from inside <InteractiveFigure>
+      // or <Quiz> would arrive after the policy check below has already read the
+      // array -- and it would find it empty. Measured: the parent's own read
+      // sees [] while the child's push lands afterwards.
+      //
+      // So the warnings are collected HERE, synchronously, by running the same
+      // renderBlock the static path would run. It populates `warnings` as it
+      // goes; the HTML it returns is discarded, because the interactive child
+      // re-renders the same content as JSX. ~0.13ms per block, once, on the SSR
+      // path -- and no effect, which matters because effects do not run under
+      // renderToStaticMarkup and reporting from one would stop onWarning firing
+      // in SSR entirely.
+      //
+      // Only for the types actually delegated below: the other branches call
+      // renderBlock with blockOpts themselves, and a pre-pass there would
+      // report everything twice (test-locked).
+      renderBlock(b.type, b.data, 1, blockOpts)
       return <InteractiveFigure key={b.index} block={b.data} sketch={sketch} />
     }
     if (interactive && b.kind === "valid" && b.type === "quiz") {
+      renderBlock(b.type, b.data, 1, blockOpts)
       return <Quiz key={b.index} block={b.data} />
     }
     if (onElementEvent && b.kind === "valid" && (b.type === "figure" || b.type === "diagram" || b.type === "chart" || b.type === "mind-map")) {
