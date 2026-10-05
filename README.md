@@ -126,6 +126,11 @@ import { Explanation, Document } from "explanations/react"
 - `<Explanation ir={ir} onElementEvent={fn}>` enables hover/click on
   identified figure elements, with a built-in popover
   (`useElementPopover`, `FigureElementEvent` are exported for custom hosts).
+  The popover is the per-element hover surface and needs this prop: it is not
+  mounted otherwise. It opens on pointer hover and on keyboard focus (focusable
+  elements are the ones carrying a `tip`), but reports only `hover` and `click`
+  events — there is no `"focus"` kind in `FigureElementEvent`. Demonstrated on
+  the demo's `/interactive` route.
 - `<Explanation ir={ir} components={{ callout: MyCallout }}>` swaps a custom
   renderer for any registered block type.
 - `<Document ir={doc}>` accepts the same `strict` / `toc` / `tocSticky` /
@@ -304,6 +309,12 @@ the interactive runtime is the React opt-in above.
 Leaf elements accept `id` and `tip` (hover text); the SVG carries
 `data-el-id` / `data-tip`. In React, pass `onElementEvent` to receive
 hover/click events with the built-in popover.
+
+A figure's accessible name is carried once, in `aria-label`. There is no
+`<title>` element, so the browser shows no native tooltip over a figure — the
+whole-figure summary is an accessible name, not something to hover for, and on
+a dense figure it was long enough to be worse than nothing. Per-element detail
+is the popover's job.
 
 A `diagram` block names nodes and edges and lets the renderer place them. Set
 `direction: "tb"` to flow top-to-bottom instead of the default `"lr"`. If

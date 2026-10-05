@@ -34,17 +34,49 @@
 <h2>Drag to vary</h2>
 <p>Direct manipulation: grab the weight on the spring. It writes the same value the <code>stretch</code> slider does, so the slider thumb follows your hand.</p>
 <div id="drag-root"></div>
+<h2>Per-element popover</h2>
+<p>
+  The <code>.exp-popover</code> mounts <strong>only</strong> when a host passes <code>onElementEvent</code>, so it is
+  reachable from here and from nowhere else in the demo. Hover any node in the tree below and watch the console:
+  every node reports, because every node carries a <code>data-el-id</code>. Only <strong>CDN edge</strong> is
+  keyboard-reachable — it is the one node with a <code>tip</code>, and <code>tip</code> is what earns a node
+  <code>tabindex="0"</code>. Hovering an untipped node opens no popover, by design.
+</p>
+<p>
+  Tab to the tipped node and the popover opens from the keyboard path too. Worth knowing if you write your own
+  probe: it will <em>not</em> open from a scripted <code>el.focus()</code>, because that fires no
+  <code>focusin</code> on an injected SVG element — use a real Tab keypress. Note too that focus opens the popover
+  without reporting an event: <code>onElementEvent</code> carries <code>hover</code> and <code>click</code> only.
+</p>
+<p>
+  The figure no longer carries a native <code>&lt;title&gt;</code> tooltip: it used to show one summary per
+  <em>figure</em>, identical over every node, which on a tree meant the whole tree linearised into one sentence. The
+  accessible name is unchanged — it lives in <code>aria-label</code>, which is what a screen reader uses.
+</p>
+<div id="mindmap-root"></div>
 <script type="module">
   import { createElement } from "react"
   import { createRoot } from "react-dom/client"
   import { Explanation } from "explanations/react"
-  import { figuresIr, quizIr, dragIr } from "/examples.js"
-  createRoot(document.getElementById("root")).render(createElement(Explanation, { ir: figuresIr, interactive: true }))
+  import { figuresIr, quizIr, dragIr, mindMapIr } from "/examples.js"
+  // `onElementEvent` is what makes the per-element popover appear at all: it
+  // mounts only when a host passes it, so before this the popover existed in
+  // the library and was reachable from NO demo route. Console-logging the
+  // event rather than rendering it into the page keeps the demo's job narrow —
+  // the popover itself is the visible thing, the event is the evidence that
+  // EVERY node reports hover while only a TIPPED node is focusable.
+  const onElementEvent = (e) => console.log("[element]", e.kind, e.elId)
+  createRoot(document.getElementById("root")).render(
+    createElement(Explanation, { ir: figuresIr, interactive: true, onElementEvent }),
+  )
   createRoot(document.getElementById("quiz-root")).render(
-    createElement(Explanation, { ir: quizIr, interactive: true }),
+    createElement(Explanation, { ir: quizIr, interactive: true, onElementEvent }),
   )
   createRoot(document.getElementById("drag-root")).render(
-    createElement(Explanation, { ir: dragIr, interactive: true }),
+    createElement(Explanation, { ir: dragIr, interactive: true, onElementEvent }),
+  )
+  createRoot(document.getElementById("mindmap-root")).render(
+    createElement(Explanation, { ir: mindMapIr, interactive: true, onElementEvent }),
   )
 </script>
 </body>

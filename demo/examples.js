@@ -658,3 +658,54 @@ export const dragIr = {
     },
   ],
 }
+
+// A DELIBERATE near-copy of the `mind-map` block inside `educationIr` above.
+//
+// Why it is duplicated rather than imported: `/interactive` is the only demo
+// route that mounts a React host, and the popover — the per-element hover
+// surface — mounts ONLY when that host passes `onElementEvent`. The mind map
+// is the figure whose two-hover-surface problem motivated that work, so the
+// popover has to be inspectable there. But `educationIr` is not rendered by
+// `/interactive`, and pulling all nine of its block types through the React
+// runtime to reach one of them would widen the route's scope for no benefit.
+//
+// This copy carries the same single tipped node, for the same reason: it is
+// the only node that reaches `tabindex="0"`, so it is the only one that opens
+// a popover by keyboard. If you change the tree in `educationIr`, change it
+// here too — a demo fixture that silently drifts is how the `tb` orientation
+// bugs stayed hidden for a whole cycle.
+export const mindMapIr = {
+  version: 1,
+  title: "Mind map — hover and keyboard",
+  summary:
+    "The per-element popover, which mounts only when a host passes onElementEvent. Every node reports hover; only the tipped one is focusable.",
+  blocks: [
+    {
+      // Shaped and commented as in `educationIr`: four children, depth 3, well
+      // inside all three degradation guards, so this renders as the figure.
+      type: "mind-map",
+      root: {
+        label: "Cache",
+        children: [
+          { label: "Browser cache", children: [{ label: "Per-origin" }, { label: "Shared per-user" }] },
+          { label: "CDN edge", tip: "Nodes you never reach the origin for.", children: [{ label: "PoP" }, { label: "Anycast" }] },
+          {
+            label: "Shared cache",
+            children: [
+              { label: "In-memory", children: [{ label: "LRU" }, { label: "LFU" }] },
+              { label: "On-disk" },
+            ],
+          },
+          { label: "Eviction", children: [{ label: "TTL" }, { label: "Size cap" }] },
+        ],
+      },
+    },
+    {
+      // Prose beside the figure, which is where detail beyond the tip's
+      // 200-character cap belongs. The popover is deliberately not a place to
+      // put a paragraph: it is a hover affordance, not a layout surface.
+      type: "text",
+      body: "Hover any node to see the event fire. Only **CDN edge** carries a `tip`, so only that node is keyboard-reachable — press Tab until the figure, then Enter or just focus it, and the popover opens from the keyboard path too.",
+    },
+  ],
+}
