@@ -280,4 +280,46 @@ describe("degradation policy — React", () => {
     )
     expect(onWarning).toHaveBeenCalledWith([])
   })
+  it("Explanation reports the SAME set as the string renderer across every block type", () => {
+    // The single assertion that would have caught all of thread 13. One IR
+    // touching a delegated quiz, a delegated figure, a plain text block and a
+    // document-level title/summary — so the pre-pass path, the ordinary
+    // renderBlock path and Explanation's own renderInline calls all contribute.
+    //
+    // Compares the SORTED SETS, not the counts and not the order. A count-only
+    // comparison passed in the 2026-10-04 math cycle while React reported 1
+    // where the string renderer reported 4; a set comparison cannot pass that
+    // way, because a missing member is a missing member however it is counted.
+    const ir = {
+      version: 1,
+      title: `Title ${BAD}`,
+      summary: `Summary ${BAD}`,
+      blocks: [
+        { type: "text", body: `plain ${BAD}` },
+        {
+          type: "quiz",
+          id: "q1",
+          question: `q ${BAD}`,
+          answer: 0,
+          options: [{ text: `a ${BAD}`, why: `w ${BAD}` }, { text: "b", why: "n" }],
+        },
+        {
+          type: "figure",
+          title: `Cap ${BAD}`,
+          caption: `Also ${BAD}`,
+          params: [],
+          elements: [{ kind: "label", x: 10, y: 10, text: "hi" }],
+        },
+      ],
+    }
+
+    const fromString = renderExplanation(ir).warnings
+    expect(fromString.length).toBeGreaterThan(0)
+
+    const onWarning = vi.fn()
+    renderToStaticMarkup(<Explanation ir={ir} interactive onWarning={onWarning} />)
+    const fromReact = onWarning.mock.calls[0][0]
+
+    expect([...fromReact].sort()).toEqual([...fromString].sort())
+  })
 })
