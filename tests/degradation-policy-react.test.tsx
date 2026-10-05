@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Explanation } from "../src/react/Explanation"
+import { PopoverDiv } from "../src/react/ElementPopover"
 import { Document } from "../src/react/Document"
 import { renderDocument } from "../src/core/renderDocument"
 import { renderExplanation } from "../src/core/render"
@@ -243,5 +244,40 @@ describe("degradation policy — React", () => {
     const onWarning = vi.fn()
     renderToStaticMarkup(<Explanation ir={ir} onWarning={onWarning} />)
     expect(onWarning.mock.calls[0][0]).toHaveLength(1)
+  })
+  it("reports a degraded popover tip when the popover opens", () => {
+    // A tip has NO static render pass: it appears at hover time, long after any
+    // parent rendered, so the pre-pass cannot collect it (spec §3b). This is a
+    // different lifecycle and is reported as one — onWarning fires at the moment
+    // the popover renders, with no parent reading the array afterwards.
+    //
+    // The closer must be ESCAPED: "\\(x^)" with no closing \\) never enters
+    // extractMath at all and yields zero warnings, which reads as "the sink is
+    // broken" rather than "the fixture never contained math". Measured both.
+    //
+    // There is deliberately NO failOnWarning here: the popover mounts from a
+    // hover or a focus, so throwing during its render would tear down a figure
+    // the reader is currently looking at. That is recorded, not silently
+    // omitted.
+    const onWarning = vi.fn()
+    renderToStaticMarkup(
+      <PopoverDiv
+        pop={{ elId: "n1", tip: "Costs \\(x^\\) here", top: 0, left: 0, placement: "below" }}
+        onWarning={onWarning}
+      />,
+    )
+    expect(onWarning).toHaveBeenCalledTimes(1)
+    expect(onWarning.mock.calls[0][0].length).toBe(1)
+    expect(onWarning.mock.calls[0][0][0]).toContain("[math]")
+  })
+
+  it("does not report for a clean tip", () => {
+    // The negative case must be genuinely clean, or it passes vacuously: a
+    // component that reported unconditionally would satisfy the test above too.
+    const onWarning = vi.fn()
+    renderToStaticMarkup(
+      <PopoverDiv pop={{ elId: "n1", tip: "Just **bold** text", top: 0, left: 0, placement: "below" }} onWarning={onWarning} />,
+    )
+    expect(onWarning).toHaveBeenCalledWith([])
   })
 })

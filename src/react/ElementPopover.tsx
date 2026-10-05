@@ -90,27 +90,47 @@ export function useElementPopover(onEvent?: (e: FigureElementEvent) => void): {
   }
 }
 
-export const PopoverDiv: FC<{ pop: PopoverState }> = ({ pop }) => (
-  <div
-    className={`exp-popover exp-popover-${pop.placement}`}
-    role="tooltip"
-    style={{ top: pop.top, left: pop.left }}
-    dangerouslySetInnerHTML={{ __html: renderInline(pop.tip) }}
-  />
-)
+export const PopoverDiv: FC<{ pop: PopoverState; onWarning?: (warnings: string[]) => void }> = ({
+  pop,
+  onWarning,
+}) => {
+  // A tip is NOT part of any block's static render, so no pre-pass can collect
+  // it: it appears at hover or focus time, long after every parent has
+  // rendered. It therefore reports through its own sink, called at the moment
+  // of the render below — which is safe precisely because nobody reads the
+  // array afterwards. (The delegated quiz/figure case is the opposite: a parent
+  // DOES read it later, which is why those needed a pre-pass instead.)
+  const warnings: string[] = []
+  const html = renderInline(pop.tip, { addWarning: (m: string) => warnings.push(m) })
+  onWarning?.([...warnings])
+  // Deliberately no `failOnWarning` counterpart, unlike the render entry
+  // points. This component mounts from a hover or a focus, so throwing during
+  // its render would tear down the figure the reader is looking at — a worse
+  // failure than an unreported tip, and not the trade a policy switch should
+  // silently make. Recorded in the spec rather than left implicit.
+  return (
+    <div
+      className={`exp-popover exp-popover-${pop.placement}`}
+      role="tooltip"
+      style={{ top: pop.top, left: pop.left }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+}
 
 /** Static-path wrapper: same delegation around a rendered block's HTML.
  *  Only mounted when the host passed onElementEvent (opt-in, keeps
  *  <Explanation> RSC-safe by default). */
-export const FigureEvents: FC<{ html: string; onEvent?: (e: FigureElementEvent) => void }> = ({
-  html,
-  onEvent,
-}) => {
+export const FigureEvents: FC<{
+  html: string
+  onEvent?: (e: FigureElementEvent) => void
+  onWarning?: (warnings: string[]) => void
+}> = ({ html, onEvent, onWarning }) => {
   const { stageRef, pop, bind } = useElementPopover(onEvent)
   return (
     <div ref={stageRef} className="exp-fig-events" {...bind}>
       <div dangerouslySetInnerHTML={{ __html: html }} />
-      {pop && <PopoverDiv pop={pop} />}
+      {pop && <PopoverDiv pop={pop} onWarning={onWarning} />}
     </div>
   )
 }
