@@ -366,6 +366,72 @@ sub-projects, each its own spec → plan → build:
 The arc is complete; new work starts here. Candidate threads (recorded
 2026-09-30, re-surveyed 2026-10-02 — each needs its own spec → plan → build
 cycle):
+
+### Integration: a "visual explanation mode" in a learning app (Luma)
+
+Recorded 2026-10-05. **All Luma-side facts below are second-hand**, read off
+that repo by its own agent; none is verified from here, so treat the file
+references as leads rather than as confirmed measurements. The library-side
+facts marked "measured" were checked in this repo.
+
+**Intent, as clarified after the first analysis was written:** this is for a
+**new mode built from scratch**, not a replacement of the existing lesson
+viewer. That distinction changes the conclusion, and the earlier version of
+this entry — written for a viewer-replacement integration — was wrong about the
+one thing it called the blocker.
+
+**What Luma is, per its agent.** Its own in-repo IR (`LessonBlock`, 9 types:
+heading | paragraph | example | practice | project_step | recap | code |
+math | diagram), its own renderer described as "a dumb full-width flow" of
+per-block `<section>` elements. Its LLM returns the whole `blocks` array in one
+JSON response against an app-controlled type enum, then the app re-validates
+and rewrites every block (`normalizeBlock`), with a structural-rejection retry
+round-trip. Its diagram pipeline is fenced **mermaid**, auto-promoted to
+diagram blocks. Blocks carry **no ids**, and its server-side whitelist
+explicitly *rejects* unknown keys, `id` included.
+
+**The reframe.** For a greenfield mode the integration cost is near zero — no
+IR mapping, no rewrite, no 9-to-19 vocabulary translation. Two consequences:
+
+- **`heading` drops from blocker to nice-to-have.** It was blocking only
+  because a heading cannot be expressed inside a linear block flow, which
+  matters when mapping into an *existing* linear IR. Greenfield can use
+  `sections[].title`, which renders as `<h2>` (`renderDocument.ts:168`).
+  Still worth having for breaking up a long explanation — measured: this
+  library emits no heading element of its own; the only ones are that `<h2>`
+  and a figure's `<h4>`.
+- **`compileDocument` comes back into scope.** Under a viewer replacement the
+  advice was "adopt the renderer, keep Luma's generator" — its generation
+  pipeline was working and tuned. For a new mode there is no such pipeline to
+  keep, and authoring figures, diagrams, quizzes and timelines is precisely
+  what Luma's generator cannot do. Both pipelines are usable.
+
+**Gaps that survive the reframe, measured here:** no mermaid support anywhere
+(zero hits in `src/`, README, ROADMAP — and it should stay that way; parsing a
+text DSL at render time would break the pure-function-of-IR property). Luma
+already owns a mermaid→structured-blocks converter, so the question to ask it
+is whether its output shape matches `diagram`'s
+`{nodes:[{id,label,shape?}], edges:[{from,to,label?,kind?}]}` — which is what
+that kind of conversion naturally produces, so they may already be close. And
+`renderText` emits a **single** `<p>`, so a body containing blank lines renders
+as one run-on paragraph; fine if their paragraphs are single-paragraph, worth
+confirming.
+
+**The load-bearing unknown, and it is not a gap.** Nobody has run this
+compiler on real course topics and looked at what comes out. Every
+recommendation above is about what Luma *can* express; none of it says whether
+`compileDocument` produces an explanation anyone would want to read. For a mode
+whose entire premise is "type a topic, get a good visual explanation," that is
+the question worth answering before more cycles are spent — and it is
+answerable without writing any code.
+
+**Also recorded, since it becomes live on adoption:** mapping a `math` block
+onto `derivation` puts LLM-authored content in a TeX field, which is exactly
+open thread 2's trap — prose is valid TeX, so an English sentence renders as
+one `<mi>` per letter with **zero warnings**.
+
+### Candidates
+
 - **Drag-to-vary simulations** — SHIPPED (see above). Remaining: groups carry no
   identity so they cannot be grabbed, and there is no multi-touch, snapping or
   undo. Any of those is its own cycle.
