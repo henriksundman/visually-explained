@@ -5,7 +5,8 @@ before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
 Last updated: 2026-10-05, after the figure-hover-surfaces,
-react-warning-surface, and image-body cycles. Thread 13 is CLOSED.
+react-warning-surface, and image-body cycles. Thread 13 is CLOSED. Thread 18
+records the image/prose split as human-judged rather than guessed.
 
 ---
 
@@ -490,6 +491,36 @@ the node count, which is often the information the reader came for, and it buys
 depth on trees that already degrade to an accessible nested list. So the
 question is whether the degradation target is the right design for deep trees
 at all — which is a spec, not a patch.
+
+## 18. The image/prose split is 38/62 because a human looked at it
+
+`.exp-image-body` lays a picture and its `body` prose out as a flex row with
+`flex: 1 1 14rem` on the image and `3 1 18rem` on the prose. The nominal bases
+are 43.75/56.25; the **measured** result in Chrome is a **0.376 image share**
+(37.6/62.4) once flex-grow distributes the leftover, against a 736px block
+column. Wrap point: the two bases plus the 12px gap sum to 524px, so a column
+wider than that gets two columns and a narrower one stacks — measured at 1280
+and 900 (side by side) and 700 and 420 (stacked).
+
+**As of 2026-10-05 a human has judged this and it reads correctly**, closing the
+risk the image-body spec recorded as unvalidated. Same status as thread 3 (math
+size at 1.2em) and the mirror of thread 8 (the timeline's 825px budget, which
+nobody has looked at).
+
+Both numbers are host-overridable without touching the library —
+`.exp-image-prose { flex-basis: 100% }` stacks it permanently, and the bases
+are two literals in `tokens.css`.
+
+One behaviour worth not re-deriving: `.exp-image-body { flex-direction:
+row-reverse }` puts the image on the right, and it is a **no-op below the wrap
+point**. Reversing the direction reverses the *main axis* only, so once each
+item owns its own line, line order still follows DOM order and the image stays
+on top. That is the right default — the picture precedes the prose that
+explains it — but it means "image right" is a wide-column statement, not a
+global one. Measured in Chrome at both widths. A reversal also leaves DOM order
+(`img` → `prose` → `caption`) disagreeing with visual order, which is the
+WCAG 1.3.2 shape; benign for an image-and-caption pair, worth a thought before
+reversing a prose-heavy row.
 
 ## Conventions worth knowing before the next session
 

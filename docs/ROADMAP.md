@@ -172,7 +172,10 @@ decisions that survive across sessions.
   border wrapped around the reader's own legitimate prose is noise — the
   `[image]` warning is the channel a degradation is supposed to be loud on, and
   the prose now survives the failure as an ordinary paragraph. Browser-measured
-  at four widths: two columns above ~524px of column, stacked below. Spec:
+  at four widths: two columns above ~524px of column, stacked below, and
+  **human-judged 2026-10-05** — the 38/62 split reads correctly, so it is
+  settled by eye like the math size (thread 3) rather than left a guess
+  (open thread 18). Spec:
   `docs/superpowers/specs/2026-10-05-image-body-design.md`.
 
 - **Math typesetting** (2026-10-03) — `derivation.expression` and
