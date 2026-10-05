@@ -251,3 +251,35 @@ describe("intrinsic figure size", () => {
     expect(sceneToSvg(s, { ariaLabel: "f", sketch: true })).toContain('width="460" height="220"')
   })
 })
+
+describe("accessible name", () => {
+  // The name used to be emitted TWICE — as `aria-label` and as a `<title>`
+  // element from the same variable, on consecutive lines with no conditional
+  // between them. `<title>` is a user-agent tooltip, so every figure showed one
+  // per FIGURE, identical for every element; on a mind map that string is the
+  // whole tree linearised. Suppressing it costs nothing for screen readers:
+  // for `role="img"` the accessible name comes from `aria-label`, and `<title>`
+  // is only a fallback for when there is no `aria-label`.
+  //
+  // Both halves are asserted. Asserting only the absence would still pass if
+  // `aria-label` regressed; asserting only the presence would pass if
+  // `<title>` came back. And the absence is asserted as the ELEMENT, not as
+  // the `[title]` attribute — a `[title]` selector matches the attribute, which
+  // is how the 2026-10-04 probe concluded no tooltip existed when one did.
+  it("carries the name in aria-label and emits no <title> element", () => {
+    const s: Scene = { width: 200, height: 100, elements: [] }
+    const svg = sceneToSvg(s, { ariaLabel: "Cache hierarchy" })
+    expect(svg).toContain('role="img"')
+    expect(svg).toContain('aria-label="Cache hierarchy"')
+    expect(svg).not.toContain("<title>")
+  })
+
+  // Same in the sketch pass: sceneToSvg emits the wrapper from one code path,
+  // so this pins that the suppression is not clean-mode-only.
+  it("emits no <title> in the sketch pass either", () => {
+    const s: Scene = { width: 200, height: 100, elements: [] }
+    const svg = sceneToSvg(s, { ariaLabel: "Cache hierarchy", sketch: true })
+    expect(svg).toContain('aria-label="Cache hierarchy"')
+    expect(svg).not.toContain("<title>")
+  })
+})

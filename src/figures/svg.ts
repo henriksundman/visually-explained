@@ -331,7 +331,13 @@ export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
     `<svg class="exp-figure" width="${n2(scene.width)}" height="${n2(scene.height)}" ` +
     `viewBox="0 0 ${n2(scene.width)} ${n2(scene.height)}" role="img" ` +
     `aria-label="${escapeHtml(opts.ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +
-    `<title>${escapeHtml(opts.ariaLabel)}</title>` +
+    // No <title> element: it was the same string as `aria-label`, so every
+    // figure carried its accessible name twice and showed a user-agent tooltip
+    // — one per FIGURE, identical for every element, which on a mind map is the
+    // whole tree linearised. For `role="img"` the accessible name is computed
+    // from `aria-label` and `<title>` is only a fallback, so dropping it removes
+    // a visual surface and nothing else. Per-element detail is the popover's
+    // job (`onElementEvent`), not a tooltip's.
     body +
     `</svg>`
   )
