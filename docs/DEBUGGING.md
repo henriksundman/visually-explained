@@ -164,8 +164,23 @@ Before deep-diving, test the failure against these recurring patterns:
   `javascript:`" is wrong when the payload legitimately survives as escaped
   *text*. Assert against real attributes and real tags, never the raw string —
   the raw string contains exactly the residue that is safe.
+- **Three screenshots the same size are one screenshot.** Rendering "variants"
+  of a layout and eyeballing the PNGs is not a comparison. Check the bytes (or
+  the measured geometry) before showing anything: a variant whose injected CSS
+  computes to `margin-left: 0px` produces a file identical to the original, and
+  three of those read as "here are three designs". Measuring the element after
+  injecting found the real answer in one line where the images said nothing.
+- **A backlog item nobody reported is a hypothesis, not a task.** Before
+  building one, check that someone actually saw the problem, and measure the
+  element rather than rendering a picture of it.
 
 ## Part 2 — Entries
+
+### 2026-10-05 — A backlog item nobody had ever seen, kept alive by being written down
+- **Symptom:** asked what a long-standing ROADMAP item ("display-mode centering for a formula on its own paragraph") actually involved, and found it could not be explained without guessing — because it was one line written while surveying gaps after Temml replaced a hand-rolled subset, never discussed, never seen on a page.
+- **Root cause:** the item was a note-to-self promoted into the backlog by the act of recording it. Nobody had reported it, and nothing in the demo disliked it. Attempts to illustrate it made this worse: three "variant" screenshots came out **byte-identical**, because the injected `margin: 0 auto` computed to `0px` and the element never moved.
+- **Fix:** measured instead of screenshotting — the formula is 43px inside a 702px step, and a step's formula and note share a left edge at 92px by design. There is no display-mode path in this library, so there was nothing to centre. Item dropped, with the measurement recorded so it is not re-added from memory.
+- **Rule:** a backlog item that nobody has reported is a hypothesis, not a task. Before building one, check whether anyone actually saw the problem — and measure the element rather than rendering a picture of it. **Compare the bytes**: three identical PNGs looked like three designs and would have been presented as evidence.
 
 ### 2026-10-05 — A correct-looking fix that reported nothing, because children render after parents read
 - **Symptom:** three React surfaces reported no degradations at all, so `failOnWarning` did not throw for a quiz containing an unparseable formula — the output was byte-identical with and without a sink, so nothing observable had changed. Threading the parent's `warnings` array into `Quiz` as a prop compiled, type-checked, and **still** reported nothing; `Quiz` given an array directly reported perfectly.

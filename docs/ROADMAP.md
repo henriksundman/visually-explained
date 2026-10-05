@@ -386,8 +386,16 @@ cycle):
     rest, so a `derivation` step of `x^` **crashed the whole render pass** —
     a shipped bug, now degrading.
 - **Next up** — the queue is empty. Candidates, none committed:
-  - **Display-mode centering** for a formula on its own paragraph — the last
-    gap the math cycle named.
+  - ~~Display-mode centering~~ — **DROPPED 2026-10-05.** It was one line written
+    while surveying gaps after Temml replaced the hand-rolled subset
+    (`7b4ca17`), never discussed and never seen by anyone. Measured before
+    dropping: **there is no display-mode path in this library.** A `derivation`
+    step is a formula chip plus its note sharing one left edge
+    (both at `left: 92px`, which is deliberate), and the formula measures
+    **43px inside a 702px step** — so `margin: 0 auto` computes to `0px` and
+    nothing moves. Centring would maroon a 43px chip mid-row with its note
+    stranded left beneath it. Nothing in the demo dislikes the current layout;
+    the item survived only because it was written down.
   - **A host switch to disable inline math.** `renderInline` is public and
     deliberately un-decorated; a host whose prose is full of `$` may want the
     old behaviour. Not added without being asked for.
