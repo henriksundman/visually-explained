@@ -571,6 +571,16 @@ system prompt for **every** host on upgrade, catalog or not, which is already
 recorded in the README's image `> **Upgrade note:**` but is a *behavioural*
 break that no version number governs.
 
+**A third row, measured after the first draft of the policy table.** *A required
+field added to a known block* is worse than the table originally claimed. The
+first version said such IR "fails validation", which is true but undersells it:
+measured, the block is **dropped from the page entirely** — no placeholder, no
+partial render. Under `failOnWarning` that throws, which is recoverable; under
+the **default lenient options** it is a silent hole in the rendered document,
+with the only signal a warning array a host may not be reading. That is the
+worst failure mode in the whole table, and it is the one row where the README
+now spells out both halves rather than just the throwing half.
+
 ## 20. The package root re-exports internals, and the package is unpublished
 
 Recorded 2026-10-05, same session as thread 19. Two facts about distribution,

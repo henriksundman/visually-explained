@@ -112,3 +112,29 @@ describe("compatibility: garbage entries never fail a render", () => {
     expect(html).toContain("kept")
   })
 })
+
+describe("compatibility: a future version adds a REQUIRED field", () => {
+  // `heading.text` is required today, so omitting it is exactly the shape of
+  // "IR written before this field existed". Measured 2026-10-05: the block is
+  // DROPPED, not rendered with the field missing.
+  const ir = doc([{ type: "heading" }])
+
+  it("drops the block rather than rendering it partially", () => {
+    const { html, warnings } = renderDocument(ir)
+    expect(warnings.some((w) => w.startsWith("[invalid-block]"))).toBe(true)
+    expect(html).not.toContain("exp-heading")
+  })
+
+  it("is BREAKING for a failOnWarning host", () => {
+    expect(() => renderDocument(ir, { failOnWarning: true })).toThrow(/invalid-block/)
+  })
+
+  it("is a SILENT loss for a lenient host — the reader just sees it missing", () => {
+    // The dangerous half of this row, and why it is called out separately in
+    // the README table: no throw, no placeholder, just a hole in the page.
+    const { html, warnings } = renderDocument(ir)
+    expect(warnings.length).toBeGreaterThan(0)
+    expect(html).toContain("<section") // the document still renders
+    expect(html).not.toContain("exp-heading")
+  })
+})

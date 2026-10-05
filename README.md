@@ -161,7 +161,7 @@ pinned by `tests/compat.test.ts`:
 | **Optional field added** to a known block | **Safe.** Unknown keys are stripped silently — no warning, and `strict` and `failOnWarning` are both unaffected |
 | **New block type added** | **Breaking.** Older renders degrade it to a labelled fallback chip and emit `[unknown-type]` — so any host running `failOnWarning: true` will **throw**. Lenient hosts keep rendering, minus that block's content |
 | **IR `version` bumped** | **Breaking.** Emits `[wrong-version]`; `failOnWarning: true` throws |
-| **Required field added** to a known block | **Breaking.** Existing IR that omits it now fails validation |
+| **Required field added** to a known block | **Breaking, and silently lossy.** Existing IR that omits it fails validation: the block is **dropped from the page** with an `[invalid-block]` warning, so `failOnWarning` throws — but under the default lenient options the reader simply sees the block missing |
 | **Rendered markup of an existing block changed** | **Cosmetic.** No warning fires, so `failOnWarning` will *not* catch it |
 
 The row that matters most: **adding a block type is a breaking change**, and
