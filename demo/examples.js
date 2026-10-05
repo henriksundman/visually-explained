@@ -577,6 +577,8 @@ export const demoDocIr = {
       id: "fig-real-data",
       title: "Real data",
       blocks: [
+        { type: "heading", id: "host-vs-model", text: "Host truth vs model guess" },
+        { type: "text", body: "A `heading` block is an h3 — the one level this library had empty between a section's h2 and a figure's h4. It carries an optional `id`, which becomes the anchor `h-host-vs-model`, so you can deep-link into the middle of a long explanation. The level is fixed: there is deliberately no `level` field, because one would make a *skipped* heading level expressible." },
         { type: "text", body: "The same chart block twice: the first one carries a `dataset` key, so its numbers come from the host — not from the model. The second is the literal IR, model-guessed." },
         { type: "chart", id: "deploys-true", kind: "bar", points: [{ label: "Mon", value: 120 }], dataset: "weekly-deploys" },
         { type: "chart", id: "deploys-guessed", kind: "bar", points: [{ label: "Mon", value: 120 }] },
@@ -590,6 +592,7 @@ export const demoDocIr = {
         { type: "text", body: "Both image blocks name a key in the **host** catalog, so the browser fetches nothing the library invented. The first resolves; the second names a key the catalog does not have, so it degrades to its caption — and never leaks the key it missed." },
         { type: "image", id: "img-signal", image: "signal-station", caption: "The gantry signal is the subject, lit against dusk haze — light and depth the figure layer doesn't attempt.", body: "The `body` field is prose that belongs to *this* picture, and it renders in a column beside the image rather than as a separate full-width paragraph after it. That is the whole point of the field: the picture and the thing it is explaining become one object on the page, and the column collapses on its own when the page is too narrow for two." },
         { type: "image", id: "img-gates", image: "release-gates", caption: "A second host image, so the series case is visible.", body: "A second one, immediately after the first. A run of images with their own prose needs no block type of its own — it is just consecutive `image` blocks, which is what a generated course produces when the text model suggests a picture, the image model makes it, and the two are stitched back together in order." },
+        { type: "heading", text: "When an image never arrives" },
         { type: "image", id: "img-missing", image: "not-in-catalog", caption: "This caption survives the miss; the image never renders.", body: "This block names a key the catalog does not have. The image is gone, but the `body` is still readable prose and the caption still sits beneath it — so the failure costs the reader a picture and nothing else. Note there is no dashed placeholder box: the host hears about this through the `[image]` warning, not through chrome wrapped around the reader's own text." },
       ],
     },

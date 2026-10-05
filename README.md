@@ -148,10 +148,11 @@ import { Explanation, Document } from "explanations/react"
 
 ## Block types
 
-19 primitives; each block is `{ type, ...payload }`:
+20 primitives; each block is `{ type, ...payload }`:
 
 - **Content:** `text`, `code` (verbatim snippet, never markdown/HTML)
-- **Structure:** `stack` (group of blocks, one nesting level), `step-list`
+- **Structure:** `heading` (a subheading inside a section), `stack` (group of
+  blocks, one nesting level), `step-list`
 - **Pedagogy:** `concept`, `worked-example`, `derivation`, `comparison`,
   `cause-effect`, `callout`, `data-callout`, `sources`, `quiz` (multiple
   choice with per-option `why` feedback; static `<details>` check reveal, or

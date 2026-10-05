@@ -367,6 +367,26 @@ The arc is complete; new work starts here. Candidate threads (recorded
 2026-09-30, re-surveyed 2026-10-02 — each needs its own spec → plan → build
 cycle):
 
+- **Heading block** (2026-10-05) — `heading` takes `{ text }` and renders a
+  fixed `<h3 class="exp-heading">`, filling the one level this library had
+  empty: measured across the whole render surface it emitted four headings
+  (document h1, section h2, standalone-fragment h3, figure h4), so a document
+  outline ran **h1 → h2 → nothing → h4** with no way to put a subheading inside
+  a section's block flow. The level is **fixed**, with no `level` field: that
+  field would let a model drop an h1 into the middle of a document and break
+  its title, and it makes a *skipped* level expressible, which is the actual
+  accessibility failure. The anchor is the block's own `id` as `id="h-<id>"`,
+  emitted only when one is given — this is the **first consumer of the block
+  `id` field**, which every schema already accepted and nothing rendered. Text
+  is not auto-slugged: duplicate headings are normal in generated content,
+  duplicate DOM ids are invalid HTML, and a primitive has no per-document
+  `taken` set to deduplicate with (`collectAnchors` threads one for sections,
+  but `renderSalvagedBlock` is stateless per block). Headings stay out of the
+  TOC, which is section-only by construction — a nested TOC is its own feature.
+  Reuses `.exp-title`'s existing 1.15em/650, because that is what an h3 already
+  is here. Spec:
+  `docs/superpowers/specs/2026-10-05-heading-block-design.md`.
+
 ### Integration: a "visual explanation mode" in a learning app (Luma)
 
 Recorded 2026-10-05. **All Luma-side facts below are second-hand**, read off
@@ -393,13 +413,12 @@ explicitly *rejects* unknown keys, `id` included.
 **The reframe.** For a greenfield mode the integration cost is near zero — no
 IR mapping, no rewrite, no 9-to-19 vocabulary translation. Two consequences:
 
-- **`heading` drops from blocker to nice-to-have.** It was blocking only
-  because a heading cannot be expressed inside a linear block flow, which
-  matters when mapping into an *existing* linear IR. Greenfield can use
-  `sections[].title`, which renders as `<h2>` (`renderDocument.ts:168`).
-  Still worth having for breaking up a long explanation — measured: this
-  library emits no heading element of its own; the only ones are that `<h2>`
-  and a figure's `<h4>`.
+- **`heading` drops from blocker to nice-to-have — and has since SHIPPED**
+  (2026-10-05, see above). It was blocking only because a heading cannot be
+  expressed inside a linear block flow, which matters when mapping into an
+  *existing* linear IR. Greenfield can use `sections[].title`, which renders as
+  `<h2>` (`renderDocument.ts:168`); the shipped `heading` block closes the gap
+  properly anyway.
 - **`compileDocument` comes back into scope.** Under a viewer replacement the
   advice was "adopt the renderer, keep Luma's generator" — its generation
   pipeline was working and tuned. For a new mode there is no such pipeline to

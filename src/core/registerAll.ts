@@ -1,5 +1,6 @@
 // Side-effect imports: each primitive file self-registers.
 import "../primitives/text"
+import "../primitives/heading"
 import "../primitives/code"
 import "../primitives/stack"
 import "../primitives/step-list"

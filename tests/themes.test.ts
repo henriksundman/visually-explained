@@ -26,6 +26,19 @@ describe("themes", () => {
     expect(css).toMatch(/\.exp-doc-toc-inline\s*{[^}]*float: none/)
   })
 
+  it("keeps the block heading on the same type scale as the fragment title", () => {
+    const css = readFileSync("src/themes/tokens.css", "utf8")
+    // Both are h3 in this library, so they must not drift apart. Pinned by
+    // value rather than by selector so a rename cannot silently break it.
+    const scale = (sel: string) =>
+      css.match(new RegExp(`\\${sel}\\s*{[^}]*font-size: ([0-9.]+em)`))?.[1]
+    expect(scale(".exp-heading")).toBe("1.15em")
+    expect(scale(".exp-title")).toBe(scale(".exp-heading"))
+    // And it must not grow a section's bottom rule: an in-flow heading is not a
+    // structural break.
+    expect(css).not.toMatch(/\.exp-heading\s*{[^}]*border-bottom/)
+  })
+
   it("renders inline math at body size in compact style, not display size", () => {
     const css = readFileSync("src/themes/tokens.css", "utf8")
     // .exp math is 1.2em + math-style: normal, which is right for a derivation

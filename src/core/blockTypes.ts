@@ -3,6 +3,7 @@
  *  contracts stay in lockstep (spec §6); the explanation snippet's rendered
  *  text is regression-guarded by tests/llm.test.ts. */
 export const BLOCK_TYPE_DOCS = `
+- heading: { text } — a subheading inside a section. Use it to break a long explanation into parts; use sections for a document's top-level split. Keep it to a few words, never repeat one, and never use it to label a single following sentence.
 - step-list: { steps: [{ title, detail? }] } — numbered steps.
 - worked-example: { problem, steps: [{ title, detail? }], result } — a full worked problem.
 - derivation: { steps: [{ expression, note? }], conclusion? } — equation/argument steps. expression and conclusion are TeX and span the whole field — no $ delimiters, no wrapping; note is prose. Keep each expression on one line.

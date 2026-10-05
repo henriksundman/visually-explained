@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest"
-import type { Block, ImageBlock, SourcesBlock } from "../src/core/schema"
+import type { Block, HeadingBlock, ImageBlock, SourcesBlock } from "../src/core/schema"
 
 /** Runtime no-op; pins the type surface. The Block union previously omitted
  *  SourcesBlock — masked by the `as unknown as` cast in blockUnionSchema, so
@@ -8,5 +8,6 @@ describe("Block union type pin", () => {
   it("includes every payload type, SourcesBlock included", () => {
     expectTypeOf<SourcesBlock>().toExtend<Block>()
     expectTypeOf<ImageBlock>().toExtend<Block>()
+    expectTypeOf<HeadingBlock>().toExtend<Block>()
   })
 })

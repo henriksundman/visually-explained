@@ -121,6 +121,15 @@ export const textBlockSchema = z.object({
 })
 export type TextBlock = z.infer<typeof textBlockSchema>
 
+export const headingBlockSchema = z.object({
+  id: idSchema,
+  type: z.literal("heading"),
+  // Bounded at 200 because a heading longer than that is an authoring error,
+  // not a long heading — matches sources.items.title.
+  text: z.string().min(1).max(200),
+})
+export type HeadingBlock = z.infer<typeof headingBlockSchema>
+
 export const codeBlockSchema = z.object({
   id: idSchema,
   type: z.literal("code"),
@@ -150,6 +159,7 @@ export type Block =
   | TimelineBlock
   | CalloutBlock
   | TextBlock
+  | HeadingBlock
   | CodeBlock
   | StackBlock
   | DiagramBlock
@@ -230,6 +240,7 @@ export const blockUnionSchema: z.ZodType<Block> = z.lazy(() =>
     timelineBlockSchema,
     calloutBlockSchema,
     textBlockSchema,
+    headingBlockSchema,
     codeBlockSchema,
     stackBlockSchema,
     diagramBlockSchema,

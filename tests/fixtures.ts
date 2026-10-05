@@ -3,6 +3,10 @@ export const allPrimitivesIr = {
   title: "All primitives",
   summary: "One of each",
   blocks: [
+    // First because it is structural, and because it is the only thing that puts
+    // exp-heading into rendered output -- the class-coverage gate in
+    // themes.test.ts fails if the CSS rule goes away.
+    { type: "heading", id: "fixture-heading", text: "A **section** of the explanation" },
     { type: "text", body: "Plain text" },
     // Inline math in prose, so the class-coverage gate in themes.test.ts sees
     // exp-math-inline in rendered output and fails if the CSS rule goes away.

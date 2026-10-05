@@ -72,6 +72,17 @@
   font-weight: 650;
 }
 
+/* A block-level subheading. Fixed at h3, so it takes the SAME type scale as
+   .exp-title above -- that is what an h3 already is in this library -- rather
+   than a size invented for it. No bottom rule: that belongs to
+   .exp-doc-section-title, which marks a real structural break, and an in-flow
+   heading is not one. */
+.exp-heading {
+  margin: var(--exp-gap) 0 6px;
+  font-size: 1.15em;
+  font-weight: 650;
+}
+
 .exp-summary {
   margin: 0 0 var(--exp-gap);
   color: var(--exp-text-muted);
