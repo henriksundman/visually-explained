@@ -5,8 +5,11 @@ before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
 Last updated: 2026-10-05, after the figure-hover-surfaces,
-react-warning-surface, and image-body cycles. Thread 13 is CLOSED. Thread 18
-records the image/prose split as human-judged rather than guessed.
+react-warning-surface, and image-body cycles, and again after the
+external-adoption assessment. Thread 13 is CLOSED. Thread 18 records the
+image/prose split as human-judged rather than guessed. **Threads 19 and 20 are
+the ones to read before answering "can another app depend on this yet"** — they
+record what is and is not guaranteed about upgrades.
 
 ---
 
@@ -521,6 +524,81 @@ global one. Measured in Chrome at both widths. A reversal also leaves DOM order
 (`img` → `prose` → `caption`) disagreeing with visual order, which is the
 WCAG 1.3.2 shape; benign for an image-and-caption pair, worth a thought before
 reversing a prose-heavy row.
+
+## 19. Adding a block TYPE is a breaking change, and nothing in the repo said so
+
+Recorded 2026-10-05, after someone asked whether the library was stable enough
+to build other apps on. The honest answer was "yes for field additions, no for
+type additions, and there is no mechanism that would tell a consumer either
+way" — and none of that was written down anywhere. It is now, in the README's
+`## Compatibility` section and pinned by `tests/compat.test.ts`.
+
+**What was measured** (probes against the built `dist/`, not the schemas):
+
+| Change | Result |
+|---|---|
+| Optional field added to a known block | OK, 0 warnings — **even under `failOnWarning` and `strict`** |
+| New block type | `[unknown-type]` warning, fallback chip, no throw — **throws under `failOnWarning`** |
+| IR `version: 2` | `[wrong-version]` + `[invalid-document]` — **throws under `failOnWarning`** |
+
+The first row is the good news and it is structural, not lucky: non-strict zod
+object schemas **strip** unknown keys, so a future field never even reaches the
+renderer. The second row is the bad news and it is also structural: the same
+leniency that makes unknown *fields* harmless makes unknown *types* produce a
+warning, and a warning is exactly what `failOnWarning` converts into an
+exception.
+
+**The judgement call, which is not visible in the code.** A new block type could
+be made non-breaking by having the fallback be silent, or by excluding
+`[unknown-type]` from `failOnWarning`. Neither was done, deliberately. An
+unrecognised block rendering as a plausible-looking wrong thing is the failure
+mode the warning system exists to prevent — silently dropping a block the host
+believed it rendered would be worse than throwing. So the cost is pushed onto
+the version bump, where it belongs.
+
+**Consequence for the next session:** adding a primitive is not a minor
+release. It needs a version bump or an explicit host-side allowlist, and the
+`## Compatibility` table plus `tests/compat.test.ts` must be updated in the same
+commit. If a future change makes any row in that table stop being true, fix the
+table deliberately — do not relax the test to match new behaviour.
+
+**Two rows the policy does not cover, and cannot.** *Rendered markup of an
+existing block changed* fires no warning at all, so `failOnWarning` will not
+catch a purely visual break — a host that pins markup expectations (snapshot
+tests, CSS relying on an exact structure) has no signal. And the prompt
+contract moves whenever the block-type list does: adding a type changes the
+system prompt for **every** host on upgrade, catalog or not, which is already
+recorded in the README's image `> **Upgrade note:**` but is a *behavioural*
+break that no version number governs.
+
+## 20. The package root re-exports internals, and the package is unpublished
+
+Recorded 2026-10-05, same session as thread 19. Two facts about distribution,
+neither of which is a bug in the code — but both of which change what a
+consumer can rely on, and neither of which was discoverable without asking npm.
+
+- **Not published.** `npm view explanations` is a 404; `package.json` is
+  `0.1.0`, and there is **no CHANGELOG and no git tag**. There is no published
+  artifact to diff a breaking change against, so "which upgrade broke me" is
+  not answerable from the registry. `0.1.0` + no changelog + no tags is
+  self-consistent only for a package nothing depends on yet.
+- **`src/index.ts` re-exports 18 internal modules** via `export * from` —
+  including `./core/inline`, `./core/schema`, `./compiler/prompts` and
+  `./core/registry`. Everything in those modules is reachable public surface by
+  accident rather than by decision.
+
+**The judgement call.** `export *` was not narrowed as part of documenting the
+policy, and that is a decision rather than an oversight. Narrowing it is
+behaviour-preserving for every documented entry point and **breaking for
+anyone already deep-importing** — a change to make deliberately, with a version
+bump, not as a drive-by. The README now warns hosts off the deep paths.
+
+**Consequence for the next session:** before publishing, decide whether
+`explanations` should take the unscoped name or a scope (`@…/explanations`) —
+the unscoped name is very likely taken by an unrelated package — and treat the
+`exports` map as the place to make the public surface explicit. Adding a
+CHANGELOG and cutting `0.x` tags is what gives thread 19's policy any teeth;
+without them it is prose a consumer has no way to check.
 
 ## Conventions worth knowing before the next session
 

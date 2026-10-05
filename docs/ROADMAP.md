@@ -367,7 +367,38 @@ The arc is complete; new work starts here. Candidate threads (recorded
 2026-09-30, re-surveyed 2026-10-02 — each needs its own spec → plan → build
 cycle):
 
-- **Heading block** (2026-10-05) — `heading` takes `{ text }` and renders a
+- **Backward-compatibility policy** (2026-10-05) — SHIPPED as docs plus a
+  test, not as code. Asked whether the library was stable enough to build other
+  apps on, and the answer turned out to be asymmetric in a way nobody had
+  written down: an **optional field** added to a known block is safe (unknown
+  keys are stripped silently, and survive even `strict` and `failOnWarning`),
+  while a new **block type** is **breaking** — it degrades to a labelled
+  fallback chip and emits `[unknown-type]`, which `failOnWarning` converts into
+  a thrown error. An IR `version` bump breaks the same way. All six cases were
+  measured against the built `dist/` rather than reasoned from the schemas, and
+  the reason they matter is that neither result is predictable by reading the
+  code: the *same* leniency that makes unknown fields harmless makes unknown
+  types fatal. The README now states the policy as a table and
+  `tests/compat.test.ts` pins all six, so a future change cannot silently
+  alter it. Consequence: **adding a primitive is not a minor release.** Open
+  threads 19 and 20 record the judgement call (keep the loud warning, push the
+  cost onto the version bump) and the distribution gaps that leave the policy
+  unenforceable today — unpublished `0.1.0`, no CHANGELOG, no tags.
+- **Publish under a scope** (2026-10-05) — the package is not on npm
+  (`npm view explanations` is a 404) and the unscoped name is very likely
+  someone else's. Publishing needs a scope decision, an explicit `exports` map
+  to stop `src/index.ts`'s 18 `export *` re-exports making internals public
+  surface, and a CHANGELOG so a consumer can diff a breaking change at all.
+  This is what gives the compatibility policy teeth; see open thread 20.
+- **Compile a real document and read it** (2026-10-05) — the one untested
+  load-bearing claim. Every recommendation on this roadmap, including the whole
+  Luma integration thread, is about what the IR *can* express. None of it says
+  whether `compileDocument` produces an explanation anyone would want to read,
+  and nobody has run it on a real course topic and read the output. For a
+  library whose premise is "type a topic, get a good visual explanation," this
+  is the question worth answering before more cycles are spent — and it needs
+  no new code, only an `LlmClient` and some topics.
+- **Heading block** (2026-10-05) — SHIPPED. `heading` takes `{ text }` and renders a
   fixed `<h3 class="exp-heading">`, filling the one level this library had
   empty: measured across the whole render surface it emitted four headings
   (document h1, section h2, standalone-fragment h3, figure h4), so a document

@@ -146,6 +146,49 @@ import { Explanation, Document } from "explanations/react"
 - Both components accept `onWarning` / `failOnWarning` as described above, and
   report the same warning set as the string renderers for the same IR.
 
+## Compatibility
+
+**Pre-1.0.** This package is `0.1.0`, **not published**, and has no CHANGELOG.
+Treat the version number as a signal to *pin exactly*, not as a compatibility
+guarantee: there is no published artifact to diff against, so an upgrade is
+something you verify, not something you can assume.
+
+What upgrading can and cannot break, measured against the built package and
+pinned by `tests/compat.test.ts`:
+
+| Change | Effect on an existing host |
+| --- | --- |
+| **Optional field added** to a known block | **Safe.** Unknown keys are stripped silently — no warning, and `strict` and `failOnWarning` are both unaffected |
+| **New block type added** | **Breaking.** Older renders degrade it to a labelled fallback chip and emit `[unknown-type]` — so any host running `failOnWarning: true` will **throw**. Lenient hosts keep rendering, minus that block's content |
+| **IR `version` bumped** | **Breaking.** Emits `[wrong-version]`; `failOnWarning: true` throws |
+| **Required field added** to a known block | **Breaking.** Existing IR that omits it now fails validation |
+| **Rendered markup of an existing block changed** | **Cosmetic.** No warning fires, so `failOnWarning` will *not* catch it |
+
+The row that matters most: **adding a block type is a breaking change**, and
+the failure is a thrown error rather than a visual difference. That is the
+intended design — an unknown type must not render as a plausible-looking wrong
+thing — but it means a type addition needs a major bump, or a host-side
+allowlist.
+
+Two consequences for hosts:
+
+- **Pin the exact version.** Do not float on `^0.1.0` if you run
+  `failOnWarning`.
+- **Read the version's block-type list before upgrading.** `BLOCK_TYPE_DOCS` is
+  the canonical list, so the diff of that string *is* the breaking-change diff:
+
+  ```ts
+  import { BLOCK_TYPE_DOCS } from "explanations"
+  ```
+
+> **The package root re-exports internals.** `src/index.ts` does
+> `export * from "./core/schema"`, `./core/inline`, `./compiler/prompts` and 15
+> more, so those modules are reachable public surface: an internal refactor is
+> a silent breaking change with nothing signalling it. Import from
+> `explanations` (the documented entry points) rather than reaching for a deep
+> path. Making the surface explicit in `exports` is the intended fix — see
+> `docs/OPEN_THREADS.md` thread 20.
+
 ## Block types
 
 20 primitives; each block is `{ type, ...payload }`:
