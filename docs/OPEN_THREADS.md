@@ -407,6 +407,33 @@ Both concern probing this path, and both cost real time:
 The popover is now reachable from a demo route (`/interactive` passes
 `onElementEvent`), so neither claim has to be taken on trust any more.
 
+**Escape now closes a hover-opened popover, and the note that recorded this
+was wrong.** The ROADMAP entry claimed Escape failed "when focus is outside the
+stage", which reads as a broken keyboard path. Measured, it is one narrow case:
+
+| case | before | after |
+|---|---|---|
+| hover, nothing focused | Escape did **nothing** | closes |
+| focus via Tab | closed | closed |
+| focus then Tab away | closed via blur | closed via blur |
+
+The cause is that a hover leaves focus on `<body>`, so a keydown bound to the
+stage `div` never fires. A keyboard user could always dismiss it by tabbing,
+which is exactly why this read as a working feature — and it only became visible
+once the hover-surfaces cycle made the popover reachable from a demo route.
+
+The listener now lives on the **document**, bound to `pop` rather than mounted
+once. That binding is the load-bearing part: a permanent document listener would
+swallow every Escape on the page, including the host's own dialogs and the quiz.
+Verified both directions in a browser — Escape closes the popover when open, and
+still reaches a host listener when none is open.
+
+**This behaviour is browser-verified only, and deliberately so.** The whole React
+suite is SSR (`renderToStaticMarkup`) with no DOM test environment, and hover,
+focus and keydown have no SSR analogue; adding jsdom for one assertion would cost
+more than it pins. The corpus diff is byte-identical, so this change is
+client-side by construction.
+
 **How a figure's hover surfaces are split, settled 2026-10-05.** A figure
 `<svg>` used to carry its accessible name twice — `aria-label` and a `<title>`
 element from the same variable on the adjacent line. `<title>` is a user-agent

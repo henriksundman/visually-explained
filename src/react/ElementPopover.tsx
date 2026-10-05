@@ -73,15 +73,25 @@ export function useElementPopover(onEvent?: (e: FigureElementEvent) => void): {
   const onFocusCapture = useCallback((e: React.FocusEvent) => show(e.target), [show])
   const onBlurCapture = useCallback(() => setPop(null), [])
 
+  // Escape closes the popover. The listener is on the DOCUMENT, not the stage,
+  // because a HOVER leaves focus on <body> — so a stage-bound keydown never
+  // fires and a mouse user had no way to dismiss the popover at all. A keyboard
+  // user could always tab away (blur closes it), which is why this looked like
+  // a working feature and was only visible once the popover became reachable
+  // from a demo route.
+  //
+  // Bound to `pop` rather than mounted once: a permanent document listener
+  // would swallow every Escape on the page, including the host's own dialogs
+  // and the quiz. It exists only while there is something to dismiss, and it
+  // is removed the moment the popover closes.
   useEffect(() => {
-    const stage = stageRef.current
-    if (!stage) return
+    if (!pop) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setPop(null)
     }
-    stage.addEventListener("keydown", onKey)
-    return () => stage.removeEventListener("keydown", onKey)
-  }, [])
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [pop])
 
   return {
     stageRef,

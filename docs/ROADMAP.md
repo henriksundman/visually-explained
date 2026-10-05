@@ -391,21 +391,6 @@ cycle):
   - **A host switch to disable inline math.** `renderInline` is public and
     deliberately un-decorated; a host whose prose is full of `$` may want the
     old behaviour. Not added without being asked for.
-  - **Escape does not close a HOVER-opened popover.** Corrected 2026-10-05 by
-    measurement — the earlier version of this note was wrong, and worth
-    recording why. It claimed Escape failed "when focus is outside the stage",
-    implying the keyboard path was broken. Measured on `/interactive`, all three
-    cases: **hover with nothing focused → Escape does NOT close it** (the real
-    bug); **focus via Tab → Escape closes it** (works); **focus then Tab away →
-    blur closes it** (works). So it is one narrow case, not a broken keyboard
-    path: the keydown listener is native and bound to the stage `div`, and a
-    hover leaves focus on `<body>`, so no keydown ever reaches the stage. A
-    keyboard user can always dismiss it by tabbing; a mouse user cannot dismiss
-    it at all. The fix is to listen on the document while the popover is open.
-    Note the case-B/C measurements only came out right after switching from a
-    scripted `.focus()` to real Tab keypresses — `.focus()` fires no `focusin`
-    on an injected SVG element, so it reported a working path as closed (see
-    `DEBUGGING.md`).
 - **Diagram orientation** — recorded 2026-10-04 from a user question; split
   because the two halves have very different costs.
   - **Show `tb`** — **SHIPPED** 2026-10-04. `direction: "lr" | "tb"` was
