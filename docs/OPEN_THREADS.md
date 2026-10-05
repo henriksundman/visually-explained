@@ -4,8 +4,8 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-05, after the figure-hover-surfaces and
-react-warning-surface cycles. Thread 13 is CLOSED.
+Last updated: 2026-10-05, after the figure-hover-surfaces,
+react-warning-surface, and image-body cycles. Thread 13 is CLOSED.
 
 ---
 
@@ -143,8 +143,33 @@ Nothing in the library can check this: the host ran the image model and knows
 what the picture shows, but it may equally have guessed. Nothing in the render
 path can detect a mismatch.
 
-**Revisit if** an image-captioning check ever becomes affordable. Until then
-this is a host-side quality bar, documented in the README rather than enforced.
+**Update 2026-10-05 — the original wording assumed a host that had seen the
+image, and that assumption is false for a whole class of hosts.** A host whose
+images are generated (an LLM suggests a prompt, an image model renders it) holds
+the **prompt**, never the picture. Nobody in that pipeline has seen the output,
+so `alt` becomes a restatement of the prompt: "A diagram of the Krebs cycle
+showing…", describing an image that may not match what came back.
+
+**The schema deliberately does not change.** It cannot: the library has no way
+to know whether a catalog entry came from a human who looked at the image or a
+prompt it never saw, and an `imageRefSchema.generated: true` flag would let the
+library assert something it cannot verify while giving a host a way to *claim*
+provenance. So the requirement stands and the honest position is documented in
+the README instead. A prompt-derived `alt` is a legitimate host choice, with an
+accuracy risk the library cannot see.
+
+**Revisit if** an image-captioning check ever becomes affordable — that would
+help both cases, and is the only thing that would actually close this. Until
+then this is a host-side quality bar, documented in the README rather than
+enforced.
+
+**Related, from the same cycle:** rendering has no lifecycle, so there is no
+"pending" state (see the image-body spec §6). A host generating images
+asynchronously must withhold the block until its key resolves; rendering
+mid-flight produces an `[image]` warning and trips `failOnWarning` for what is
+an expected transient rather than a defect. A placeholder box was rejected —
+it would need a re-render when the image lands, and `renderExplanation` is a
+synchronous function returning a string.
 
 ## 6. `src` deliberately has no scheme allowlist
 

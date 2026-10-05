@@ -12,7 +12,7 @@ function imageMenuBlock(images: Record<string, ImageRef>): string {
     "Images available (place by key where one earns its place):",
     ...Object.entries(images).map(([key, r]) => `- ${key}: ${r.subject}`),
     "",
-    "Place an image only to anchor an analogy or set a scene. Images never illustrate a derivation — a drawn figure does that better. Put no text in the image itself: labels belong in the caption.",
+    "Place an image only to anchor an analogy or set a scene. Images never illustrate a derivation — a drawn figure does that better. Put no text in the image itself: labels belong in the caption. The explanation a picture carries goes in that same image block's body, not in a separate text block beside it.",
   ].join("\n")
 }
 

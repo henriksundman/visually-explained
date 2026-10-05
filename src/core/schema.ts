@@ -211,6 +211,10 @@ export const imageBlockSchema = z.object({
   // Host catalog key, resolved at render time (image spec §4.1).
   image: z.string().min(1),
   caption: z.string().min(1).max(300).optional(),
+  // Prose that belongs to this picture, rendered beside it. Capped below
+  // text.body's uncapped bound deliberately: `body` here means the paragraph
+  // or two that explains THIS image, not an article (image-body spec §3.3).
+  body: z.string().min(1).max(1200).optional(),
 })
 export type ImageBlock = z.infer<typeof imageBlockSchema>
 

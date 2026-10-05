@@ -188,6 +188,13 @@ const server = createServer(async (req, res) => {
           height: 600,
           subject: "a train platform under a signal gantry",
         },
+        "release-gates": {
+          src: "/assets/release-gates.svg",
+          alt: "Three boxes connected left to right by arrows, reading build, test, and deploy",
+          width: 800,
+          height: 600,
+          subject: "three release gates a change passes through",
+        },
       },
     })
     const docPage = `<!doctype html>

@@ -210,14 +210,56 @@ accessible image and a layout-shift-free document unrepresentable rather than
 merely discouraged. `subject` is a word-for-the-prompt-menu description and is
 never rendered.
 
+**`body` puts the explanation beside the picture.** Give an image a `body` and
+the prose that belongs to it renders in its own column next to the image,
+collapsing to a full-width stack when the column is too narrow for two:
+
+```ts
+{ type: "image", image: "release-gates", body: "A change crosses three gates…" }
+```
+
+This is what makes a *series* of generated images work — a step-by-step with a
+picture per step is just consecutive `image` blocks, each with its own `body`.
+No sequence or group type is needed, because there is nothing to group: the
+blocks are already in order in the `blocks` array.
+
+`body` is capped at 1200 characters, because it means *the paragraph or two
+that explains this picture*, not an article. Reach for a `text` block for more.
+Override the layout in your own CSS (`.exp-image-prose { flex-basis: 100% }`
+stacks it permanently); `tokens.css` sets it as a flex row whose bases are the
+breakpoint, so it responds to the width of the block rather than the viewport.
+
 **The host owns `alt`, not the model.** The compiler's `LlmClient` is
 text-in/text-out, so a model-authored alt would be a description of a picture
-it never saw. The model may write `caption`, which is prose about the concept.
+it never saw. The model may write `caption` and `body`, which are prose about
+the concept.
+
+If your images are generated, note that **nobody has seen the picture** — your
+host holds the prompt, not the output — so a prompt-derived `alt` describes an
+image that may not match what came back. That is a legitimate host choice and
+the only one available, but a confidently wrong alt is worse for a screen
+reader than a generic one, and nothing in the library can detect the mismatch.
 
 A miss or invalid entry degrades to the caption with a warning: never a broken
 `<img>`, and never the catalog key — that identifier is host-internal. With no
 caption either, nothing renders and the warning still fires. `imageRefSchema`
 is exported for pre-validation.
+
+**With a `body`, a miss costs the reader only the picture.** The prose still
+renders as an ordinary paragraph and the caption still sits beneath it — and the
+dashed "missing image" box is deliberately *not* drawn, because it would wrap
+the reader's own legitimate text. The host hears about it through the `[image]`
+warning, which is the channel a degradation is supposed to be loud on. Before
+`body` existed, the same failure left an orphan caption marooned between two
+paragraphs.
+
+**Withhold the block until the image exists.** Rendering is a pure function of
+IR plus catalog, with no lifecycle — there is no "pending" state to render and
+nothing to re-render when a generation lands. So if you generate images
+asynchronously, hold the `image` block back until its key resolves. Rendering
+mid-flight is not an error, but it *is* a degradation from the renderer's point
+of view: you get an `[image]` warning, and `failOnWarning: true` will throw on
+an expected transient.
 
 Pass the same object as `compileDocument({ images })` to let the compiler place
 images: the outline sees the key and subject of each and may mark a section,
@@ -229,6 +271,9 @@ set scenes; they never illustrate a derivation.
 > catalog or not. No flag can prevent this — the contract is interpolated
 > unconditionally, and a test pins every registered type into it. The *user*
 > prompts stay byte-identical when no catalog is passed.
+>
+> Adding `body` widens that same line, so it is a prompt diff for every host
+> too — one block-type line, no more. Compiles with no catalog are unaffected.
 
 ### Math
 

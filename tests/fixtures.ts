@@ -47,7 +47,17 @@ export const allPrimitivesIr = {
         { kind: "label", x: "10 + 40 * k", y: 50, text: "peak", anchor: "middle" },
       ],
     },
-    { type: "image", id: "fixture-image", image: "fixture-platform", caption: "A **host** image." },
+    // The body is what puts exp-image-body / exp-image-prose in rendered
+    // output, so the class-coverage gate in themes.test.ts fails if either CSS
+    // rule goes away. An unstyled two-column row degrades to a stacked mess,
+    // which is the worst kind of degradation.
+    {
+      type: "image",
+      id: "fixture-image",
+      image: "fixture-platform",
+      caption: "A **host** image.",
+      body: "With prose beside it, the picture and its explanation read as one unit.",
+    },
     {
       type: "mind-map",
       id: "fixture-mind-map",

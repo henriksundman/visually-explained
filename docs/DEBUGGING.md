@@ -176,6 +176,12 @@ Before deep-diving, test the failure against these recurring patterns:
 
 ## Part 2 — Entries
 
+### 2026-10-05 — A regression gate that would have failed for the wrong reason
+- **Symptom:** the image-`body` spec made "the corpus diff must be byte-identical" its load-bearing check, on the reasoning that a `body`-less block must render exactly as before. Running it produced a large diff across the `demoDocIr` fixture — and every hunk was an *intended* change.
+- **Root cause:** `.superpowers/render-fixtures.mjs` calls `renderDocument(ir)` with **no options**, so the corpus has no `images` catalog and every image block in the demo *degrades*. The gate was therefore comparing two things that both moved: the build **and** the fixtures. Two fixture changes were in play (bodies added to the image blocks, plus a second demo image), and the diff said nothing about whether the renderer had changed.
+- **Fix:** hold the fixtures constant and vary only the build — `git show main:demo/examples.js` over the new `dist`, diffed against the baseline. That came out **byte-identical**, which is the actual invariant: for every pre-existing input, the new renderer emits the same bytes. The demo diff was then confirmed separately to be confined to the three image figures in one section, with the warnings count moving 5 → 6 for exactly one added block.
+- **Rule:** a diff gate is only evidence for the claim it isolates. When one side of the comparison is also being edited, the gate measures the sum. **Vary one variable.** Also worth noting from the same run: the corpus render *is* the degradation path for images, which makes it a free end-to-end check that a miss still warns — 5 → 6 warnings with all three image warnings intact.
+
 ### 2026-10-05 — A backlog item nobody had ever seen, kept alive by being written down
 - **Symptom:** asked what a long-standing ROADMAP item ("display-mode centering for a formula on its own paragraph") actually involved, and found it could not be explained without guessing — because it was one line written while surveying gaps after Temml replaced a hand-rolled subset, never discussed, never seen on a page.
 - **Root cause:** the item was a note-to-self promoted into the backlog by the act of recording it. Nobody had reported it, and nothing in the demo disliked it. Attempts to illustrate it made this worse: three "variant" screenshots came out **byte-identical**, because the injected `margin: 0 auto` computed to `0px` and the element never moved.

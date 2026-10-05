@@ -48,6 +48,20 @@ describe("themes", () => {
     expect(css).toMatch(/\.exp-mind-map-list \.exp-mind-map-list\s*{[^}]*margin-left/)
   })
 
+  it("lays an image with prose out as two columns that self-collapse", () => {
+    const css = readFileSync("src/themes/tokens.css", "utf8")
+    // flex-wrap IS the responsive mechanism here — the bases are the
+    // breakpoint. If this ever becomes a media query, this assertion is the
+    // thing that noticed, and it should be rewritten rather than deleted.
+    expect(css).toMatch(/\.exp-image-body\s*{[^}]*flex-wrap: wrap/)
+    // min-width: 0 stops a long word in the prose forcing the row wider than
+    // its column; without it the collapse silently stops working.
+    expect(css).toMatch(/\.exp-image-body \.exp-image-prose\s*{[^}]*min-width: 0/)
+    // The caption is a direct child of <figure>, so it cannot join the prose
+    // column and must claim a full-width line beneath both.
+    expect(css).toMatch(/\.exp-image-body \.exp-fig-caption\s*{[^}]*flex: 1 1 100%/)
+  })
+
   it("dark theme overrides surface tokens under .exp-theme-dark", () => {
     const dark = readFileSync("src/themes/dark.css", "utf8")
     expect(dark).toContain(".exp-theme-dark")

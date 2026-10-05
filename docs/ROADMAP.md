@@ -157,6 +157,24 @@ decisions that survive across sessions.
   renderer looks up. The compiler sees only keys and subjects. Spec:
   `docs/superpowers/specs/2026-10-03-image-block-design.md`.
 
+- **Prose that belongs to a picture** (2026-10-05) — the `image` block's
+  optional `body`, capped at 1200 chars, rendered in a column beside the image.
+  The measured gap: `caption` was the block's *only* text field and capped at
+  300 chars, so any longer explanation had to be a sibling `text` block, and
+  the picture and its explanation landed as two separate full-width objects.
+  One optional field fixes that without a new block type, so the primitive count
+  stays at 19 and a `body`-less block renders **byte-identically to `main`**
+  (pinned by a unit-level twin of the corpus diff). Two decisions worth keeping:
+  the layout is a **flex row whose bases are the breakpoint**, so it responds to
+  the width of the *block* rather than the viewport and `tokens.css` gains no
+  layout `@media` convention; and a missed image **drops the dashed
+  `exp-image-missing` box** when a body is present, because a "this is broken"
+  border wrapped around the reader's own legitimate prose is noise — the
+  `[image]` warning is the channel a degradation is supposed to be loud on, and
+  the prose now survives the failure as an ordinary paragraph. Browser-measured
+  at four widths: two columns above ~524px of column, stacked below. Spec:
+  `docs/superpowers/specs/2026-10-05-image-body-design.md`.
+
 - **Math typesetting** (2026-10-03) — `derivation.expression` and
   `derivation.conclusion` are TeX and compile to MathML through
   [temml](https://github.com/temml-org/temml): no fonts ship, formulas inherit
@@ -460,14 +478,31 @@ cycle):
   contract (labels are captions); editorial role rules in `BLOCK_TYPE_DOCS`
   (images anchor analogies and set scenes, they don't illustrate derivations).
   Still open, each its own cycle:
-  - **(c) `analogy` composite block** — image + `[{ imagePart, conceptPart }]`
-    rendered as a caption-side table. The novel differentiator, and it
-    composes on the shipped single-image contract.
+  - ~~**(c) `analogy` composite block**~~ — **RETIRED 2026-10-05**, measured, not
+    deferred. It was proposed as image + `[{ imagePart, conceptPart }]` in a
+    caption-side table, and described here as "the novel differentiator". Two
+    measurements dissolve it. First, a part-mapping table is *one presentation
+    of prose that belongs to an image*; a procedure with three pictures and a
+    concept explained by one want the same thing under other names, so naming
+    one of them produced a type the other two could not use. Second, and
+    decisively, its central field had **no honest author**: `imagePart` asks
+    the model to name parts of an image it has never seen — the same failure
+    the "host owns `alt`" rule exists to prevent — and a host running an image
+    model holds the *prompt*, not the picture. The general need behind it
+    shipped instead as the `image` block's optional `body` (Shipped, above),
+    which is the layout version of the same idea and needs no new type.
   - **(b) compiler-driven briefs** — the outline gains image briefs and a
     host-injected image client materializes them mid-compile. What would
-    make the library request images rather than only place them.
-  - **Step-by-step sequences** — currently N consecutive `image` blocks.
-    Revisit only if a host proves N-blocks inadequate.
+    make the library request images rather than only place them. Distinct from
+    everything above: it moves *generation* into the compile loop, where (a)
+    and `body` only ever place images the host already has.
+  - ~~**Step-by-step sequences**~~ — **ANSWERED 2026-10-05.** The open question
+    was whether "currently N consecutive `image` blocks" is good enough for a
+    generated step-by-step. It is: a run of images with their own prose is just
+    consecutive blocks each carrying a `body`, already in order in `blocks`, and
+    the demo shows two side by side. There was never anything to group, so no
+    sequence type was needed. Revisit only if a host proves consecutive blocks
+    inadequate for something other than ordering.
   - **`imageStyle` hint** — deliberately deferred: the roadmap's own analysis
     says cross-image consistency stays host-side via style templates, which
     leaves the library's hint with little to influence.

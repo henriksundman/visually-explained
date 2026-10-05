@@ -618,6 +618,41 @@
   background: var(--exp-surface-muted);
 }
 
+/* Picture + its prose as one unit. The flex-basis values ARE the breakpoint:
+   when the two no longer fit, flex-wrap sends the prose to its own full-width
+   line. This responds to the width of the BLOCK, not the viewport — which is
+   what a block that may sit in a sidebar or a wide page needs, and it keeps
+   tokens.css free of a layout @media convention (its only media query is
+   prefers-reduced-motion). Bases sum to 32rem, so a narrower column stacks.
+
+   min-width: 0 on both children is load-bearing, not hygiene: a flex item's
+   automatic minimum size otherwise refuses to shrink below its content, so one
+   long unbroken word in the prose would push the row wider than its column. */
+.exp-image-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--exp-gap);
+}
+
+.exp-image-body .exp-image-img {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.exp-image-body .exp-image-prose {
+  flex: 3 1 18rem;
+  min-width: 0;
+}
+
+/* <figcaption> is a direct child of <figure> (HTML requires first-or-last), so
+   it cannot live inside the prose column. It takes a full-width line under
+   both columns instead, which reads as a caption for the whole unit. */
+.exp-image-body .exp-fig-caption {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
 .exp-fig-empty {
   margin: 0;
   color: var(--exp-text-muted);

@@ -69,3 +69,43 @@ describe("images entry-point parity", () => {
     expect(html).toContain(`width="800"`)
   })
 })
+
+// The image block is not delegated to a child component, so `body` reaches
+// React through the same string renderer as everything else. That is worth
+// pinning rather than assuming: thread 13 is a record of three React surfaces
+// that compiled, type-checked, and reported nothing.
+describe("images with a body, across surfaces", () => {
+  const bodyBlock = { type: "image", id: "im2", image: "platform", caption: "Rush hour.", body: "The **head** is red." }
+  const bodyDoc = { version: 1, title: "Doc", sections: [{ title: "S", blocks: [bodyBlock] }] }
+
+  it("renders the prose column identically from the html renderer and React", () => {
+    const fromHtml = renderDocument(bodyDoc, { images }).html
+    const fromReact = renderToStaticMarkup(<Document ir={bodyDoc} images={images} />)
+    const figure = (s: string) => s.slice(s.indexOf("<figure"), s.indexOf("</figure>") + 9)
+    expect(figure(fromReact)).toBe(figure(fromHtml))
+    expect(figure(fromHtml)).toContain(`exp-image-body`)
+    expect(figure(fromHtml)).toContain(`exp-image-prose`)
+    expect(figure(fromHtml)).toContain(`<strong>head</strong>`)
+  })
+
+  it("keeps the prose readable on a miss, identically on both surfaces", () => {
+    const fromDoc = renderDocument(bodyDoc, { images: {} })
+    const fromReact = renderToStaticMarkup(<Document ir={bodyDoc} images={{}} />)
+    const figure = (s: string) => s.slice(s.indexOf("<figure"), s.indexOf("</figure>") + 9)
+    expect(figure(fromDoc.html)).toBe(figure(fromReact))
+    expect(fromDoc.warnings).toEqual([`[image] image im2: no image named "platform"`])
+    expect(fromDoc.html).not.toContain("<img")
+    expect(fromDoc.html).not.toContain("exp-image-missing")
+    expect(fromDoc.html).toContain(`<strong>head</strong>`)
+  })
+
+  it("threads a body through <Explanation> and a nested stack", () => {
+    const direct = renderToStaticMarkup(<Explanation ir={{ version: 1, blocks: [bodyBlock] }} images={images} />)
+    expect(direct).toContain(`exp-image-prose`)
+    const nested = renderExplanation(
+      { version: 1, blocks: [{ type: "stack", blocks: [bodyBlock] }] },
+      { images },
+    )
+    expect(nested.html).toContain(`exp-image-prose`)
+  })
+})

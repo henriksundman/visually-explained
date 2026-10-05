@@ -35,6 +35,20 @@ describe("image schema", () => {
     expect(imageBlockSchema.safeParse({ type: "image", image: "p", caption: "x".repeat(301) }).success).toBe(false)
   })
 
+  it("bounds the body field independently of the caption", () => {
+    // 1200 is reasoned from the 300-char caption and the "a paragraph or two"
+    // intent, not measured against real course content (image-body spec §8).
+    expect(imageBlockSchema.safeParse({ type: "image", image: "p", body: "x".repeat(1200) }).success).toBe(true)
+    expect(imageBlockSchema.safeParse({ type: "image", image: "p", body: "x".repeat(1201) }).success).toBe(false)
+    expect(imageBlockSchema.safeParse({ type: "image", image: "p", body: "" }).success).toBe(false)
+    // Omitted is the shipped shape and must keep parsing.
+    expect(imageBlockSchema.safeParse({ type: "image", image: "p" }).success).toBe(true)
+    // The two caps are independent: a long body does not excuse a long caption.
+    expect(
+      imageBlockSchema.safeParse({ type: "image", image: "p", body: "b", caption: "x".repeat(301) }).success,
+    ).toBe(false)
+  })
+
   it("requires alt and both dimensions on a catalog entry", () => {
     expect(imageRefSchema.safeParse(ref).success).toBe(true)
     expect(imageRefSchema.safeParse({ ...ref, alt: "" }).success).toBe(false)
@@ -160,5 +174,115 @@ describe("image render", () => {
   it("is taught in the block-type contract", () => {
     expect(BLOCK_TYPE_DOCS).toContain("image:")
     expect(BLOCK_TYPE_DOCS).toContain("caption?")
+    expect(BLOCK_TYPE_DOCS).toContain("body?")
+  })
+})
+
+describe("image body", () => {
+  const withBody = {
+    type: "image",
+    id: "im2",
+    image: "platform",
+    caption: "Rush hour.",
+    body: "The **head** is red, so the train is stopped.",
+  }
+  const images = { platform: ref }
+
+  it("renders the prose in its own column beside the picture", () => {
+    const { html, warnings: w } = renderExplanation({ version: 1, blocks: [withBody] }, { images })
+    expect(html).toContain(`<figure class="exp-block exp-image exp-image-body">`)
+    expect(html).toContain(`<div class="exp-image-prose">`)
+    expect(html).toContain(`<strong>head</strong>`) // body via renderInline
+    expect(html).toContain(`alt="A crowded train platform at rush hour"`)
+    expect(w).toEqual([])
+  })
+
+  it("keeps the caption as the LAST child of the figure", () => {
+    // HTML permits <figcaption> only as the first or last child of its <figure>.
+    // Nesting it inside .exp-image-prose would style better and be invalid, so
+    // the ordering is pinned rather than assumed.
+    const { html } = renderExplanation({ version: 1, blocks: [withBody] }, { images })
+    expect(html.indexOf(`class="exp-fig-caption"`)).toBeGreaterThan(html.indexOf(`class="exp-image-prose"`))
+    // Immediately closed by its figure = last child, which is what the HTML
+    // content model requires. (The whole document also ends in </figure>, but
+    // that proves nothing: it would hold with the caption nested in the prose.)
+    expect(html).toContain("</figcaption></figure>")
+  })
+
+  it("renders prose with no caption at all", () => {
+    const { html, warnings: w } = renderExplanation(
+      { version: 1, blocks: [{ type: "image", image: "platform", body: "Just prose." }] },
+      { images },
+    )
+    expect(html).toContain(`Just prose.`)
+    expect(html).not.toContain("exp-fig-caption")
+    expect(w).toEqual([])
+  })
+
+  it("escapes the body rather than emitting it as markup", () => {
+    const { html } = renderExplanation(
+      { version: 1, blocks: [{ type: "image", image: "platform", body: "<script>alert(1)</script>" }] },
+      { images },
+    )
+    expect(html).not.toContain("<script>")
+    expect(html).toContain("&lt;script&gt;")
+  })
+
+  it("keeps the prose readable when the image misses, without the dashed box", () => {
+    // The improvement this field buys: before it, the same failure left an
+    // orphan caption marooned between paragraphs. The dashed border is dropped
+    // because it would wrap the reader's own legitimate prose -- and the
+    // warning, not the chrome, is how a host learns (image-body spec §3.6).
+    const { html, warnings: w } = renderExplanation({ version: 1, blocks: [withBody] }, { images: {} })
+    expect(html).not.toContain("<img")
+    expect(html).toContain(`<strong>head</strong>`)
+    expect(html).toContain("Rush hour.")
+    expect(html).not.toContain("exp-image-missing")
+    expect(w).toEqual([`[image] image im2: no image named "platform"`])
+  })
+
+  it("still renders prose on a miss when there is no caption", () => {
+    const { html, warnings: w } = renderExplanation(
+      { version: 1, blocks: [{ type: "image", image: "gone", body: "Kept anyway." }] },
+      { images: {} },
+    )
+    expect(html).toContain("Kept anyway.")
+    expect(w).toHaveLength(1)
+  })
+
+  it("does not throw on a miss under strict", () => {
+    expect(() =>
+      renderExplanation({ version: 1, blocks: [withBody] }, { strict: true, images: {} }),
+    ).not.toThrow()
+  })
+
+  it("still never leaks the catalog key when degraded", () => {
+    const { html } = renderExplanation(
+      { version: 1, blocks: [{ type: "image", image: "secret-internal-key", body: "b", caption: "c" }] },
+      { images: {} },
+    )
+    expect(html).not.toContain("secret-internal-key")
+  })
+
+  it("leaves a body-less block byte-identical to the shipped output", () => {
+    // The unit-level twin of the corpus diff. A `toContain` family of asserts
+    // would still pass if a wrapper div appeared around the caption, which is
+    // exactly the kind of drift the corpus gate exists to catch.
+    const { html, warnings: w } = renderExplanation(
+      { version: 1, blocks: [{ type: "image", id: "im1", image: "platform", caption: "Rush **hour**." }] },
+      { images },
+    )
+    expect(html).toBe(
+      `<div class="exp">` +
+        `<figure class="exp-block exp-image">` +
+        `<img class="exp-image-img" src="${ref.src}" alt="${ref.alt}"` +
+        ` width="${ref.width}" height="${ref.height}" loading="lazy" decoding="async">` +
+        `<figcaption class="exp-fig-caption">Rush <strong>hour</strong>.</figcaption>` +
+        `</figure>` +
+        `</div>`,
+    )
+    expect(html).not.toContain("exp-image-body")
+    expect(html).not.toContain("exp-image-prose")
+    expect(w).toEqual([])
   })
 })
