@@ -398,6 +398,53 @@ cycle):
   library whose premise is "type a topic, get a good visual explanation," this
   is the question worth answering before more cycles are spent — and it needs
   no new code, only an `LlmClient` and some topics.
+
+  **Where to run it: in THIS repo, not in a Luma branch.** Decided 2026-10-05.
+  The question is a library question, answerable without a consumer — Luma would
+  add a second IR whose 9-type enum and server-side whitelist (which actively
+  rejects unknown keys, `id` included) would mask the answer behind a
+  compatibility problem. Compile here, read the IR, judge the prose.
+
+  **What exists already, and why it does not answer this.** `demo/compileClient.js`
+  ships a `stubClient` that replays canned JSON and deliberately fails one
+  section so the repair loop is exercised. It proves the *orchestration*
+  end-to-end and says nothing about output quality — which is the thing in
+  question. So the only gap is a real `LlmClient` in place of the stub.
+
+  **The script to write** (scratch, gitignored — a measurement, not a feature;
+  it should not ship):
+
+  ```js
+  // .superpowers/real-compile.mjs
+  import { compileDocument } from "<repo>/dist/index.js"
+
+  const client = async ({ system, user }) => {
+    const r = await fetch(process.env.LLM_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json",
+                 authorization: `Bearer ${process.env.LLM_KEY}` },
+      body: JSON.stringify({ model: "…", messages: [
+        { role: "system", content: system }, { role: "user", content: user }] }),
+    })
+    return (await r.json()).choices[0].message.content
+  }
+
+  for (const topic of TOPICS) {
+    const { document, warnings } = await compileDocument(topic, { client, checks: true })
+    // render through the demo and read it
+  }
+  ```
+
+  **Choosing the topics is half the experiment.** Pick 3–4, mixed difficulty, and
+  **start with one the reader knows cold** — you can only judge whether an
+  explanation is good if you already know the material, and a topic you know well
+  is the only control. Then one you don't. The API key never has to enter this
+  repo: it stays in the environment, and the user supplies it.
+
+  **The question to answer afterwards is one sentence:** *would you show this to a
+  learner?* Not "is the IR valid" — that the suite already proves — but whether
+  the prose is worth a person's attention. Record the answer here, whatever it
+  is, including a negative one.
 - **Heading block** (2026-10-05) — SHIPPED. `heading` takes `{ text }` and renders a
   fixed `<h3 class="exp-heading">`, filling the one level this library had
   empty: measured across the whole render surface it emitted four headings

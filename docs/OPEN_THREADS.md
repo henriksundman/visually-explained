@@ -581,6 +581,13 @@ with the only signal a warning array a host may not be reading. That is the
 worst failure mode in the whole table, and it is the one row where the README
 now spells out both halves rather than just the throwing half.
 
+**The lesson, which is the reusable part of this thread.** Four of the five
+rows came straight out of the probe and needed no correction. The one that did
+was the row filled in by **inference** — reasoned from the schema rather than
+run. That is now the standing expectation for any stability claim: measure every
+row, because the row that sounds obviously true is the row that understates its
+own severity.
+
 ## 20. The package root re-exports internals, and the package is unpublished
 
 Recorded 2026-10-05, same session as thread 19. Two facts about distribution,
