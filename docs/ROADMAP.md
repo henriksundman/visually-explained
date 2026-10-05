@@ -253,6 +253,27 @@ decisions that survive across sessions.
     alone is how a long-label timeline once overlapped its own labels.
   - **Interactivity deferred**: the design chose static output, so a collapsing
     node is future work rather than a half-built control.
+- **One hover surface per figure** (2026-10-05) — a figure `<svg>` carried its
+  accessible name **twice**, as `aria-label` and as a `<title>` element emitted
+  from the same variable on the adjacent line. `<title>` is a user-agent
+  tooltip, so every figure showed one per *figure*, identical over every node;
+  on a mind map it was the whole tree linearised into a single sentence, which
+  is the mess that prompted the change. Suppressed, and it is **free**: for
+  `role="img"` the accessible name is computed from `aria-label`, with
+  `<title>` only a fallback, and `ariaLabel` is a *required* `SceneSvgOptions`
+  field emitted with no conditional between the two — so no input reaches the
+  `<title>` without the `aria-label` beside it. No opt-in flag was added to
+  restore it; a switch for reinstating what was just removed is speculative,
+  and a host that wants a tooltip can add one in host CSS.
+  The complementary surface is now **reachable**: `.exp-popover` mounts only
+  when a host passes `onElementEvent`, and no demo route did, so the per-node
+  detail was inspectable only by writing a host app. `/interactive` now passes
+  it and carries a `mindMapIr` section. The two surfaces were never redundant —
+  whole-figure summary vs per-element detail — so this was a choice of which
+  one the *pointer* shows, not a merge. Verified by rendered-output diff (15
+  `<title>` elements removed, 0 remaining, no other change, and stripping them
+  restores the baseline byte-for-byte) and in Chrome on the real route.
+  Spec: `docs/superpowers/specs/2026-10-05-figure-hover-surfaces-design.md`.
 
 ## Open threads
 
@@ -345,6 +366,13 @@ cycle):
     deliberately un-decorated; a host whose prose is full of `$` may want the
     old behaviour. Not added without being asked for.
   - **Widening the React warning surface** — see open thread 13.
+  - **Escape does not close the popover when focus is outside the stage.** The
+    keydown listener is native and bound to the stage `div`, so the event must
+    originate inside; tab past the figure and Escape does nothing. Pre-existing,
+    surfaced (not introduced) by the hover-surfaces cycle, which made the
+    popover reachable from a demo route and so made this reachable by hand. A
+    real fix means listening at the document level, which is a wider blast
+    radius than one figure — hence recorded, not fixed.
 - **Diagram orientation** — recorded 2026-10-04 from a user question; split
   because the two halves have very different costs.
   - **Show `tb`** — **SHIPPED** 2026-10-04. `direction: "lr" | "tb"` was

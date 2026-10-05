@@ -38,6 +38,14 @@ Before deep-diving, test the failure against these recurring patterns:
 - **A stylesheet test proves the CSS parses, never that it applies.** Assert
   the class is in the emitted markup too, at every level of a recursive
   structure — the outermost element always looks right.
+- **`.focus()` is not a keyboard test.** A scripted `el.focus()` fires **no**
+  `focusin` on an injected SVG element, so a focus-driven popover never opens
+  and the keyboard path looks dead when it is not. Dispatch a real Tab
+  keypress (`Input.dispatchKeyEvent`) instead. See the 2026-10-05 entry.
+- **Never remove React-rendered DOM by hand to reset probe state.** Calling
+  `popover.remove()` leaves React's virtual DOM believing the node is still
+  mounted, so the next state update patches the *detached* node and the
+  element appears to vanish. Reload the page between cases.
 - **Salvage is all-or-nothing per block.** A block failing its own schema is
   skipped whole (`[invalid-block]`, empty render). There is no partial payload
   for a field to "survive" on.
@@ -147,6 +155,12 @@ Before deep-diving, test the failure against these recurring patterns:
   the raw string contains exactly the residue that is safe.
 
 ## Part 2 — Entries
+
+### 2026-10-05 — A scripted `.focus()` reported a working keyboard path as dead
+- **Symptom:** the element popover opened on hover but never on focus. `document.activeElement` was the node and its `tabindex` was `0`, yet no popover and no element event — twice, on two independently written probes.
+- **Root cause:** the probes were at fault, not the product. Programmatic `.focus()` fires **no** `focusin` on an injected SVG element — confirmed with a *native* listener on the stage div, which recorded zero events — so `onFocusCapture` had nothing to receive. A dispatched Tab keypress reached the node, fired `focusin`, and opened the popover. A second, separate probe error compounded it: it cleared state between cases with `popover.remove()`, which rips a React-managed node out of the tree, so React patched the detached node and nothing appeared even on the working path.
+- **Fix:** probe with `Input.dispatchKeyEvent` Tab presses, and reload between cases instead of removing nodes. Both are recorded in Part 1.
+- **Rule:** a probe that reports "the accessibility path is broken" is making a claim about the *product* from a measurement of the *harness*. Before believing it, instrument with a native listener and confirm the event exists at all — if the native listener sees nothing, the harness is the thing that is wrong. Two of my three conclusions this session were wrong for exactly this reason, and in both cases I had a working story that explained the symptom without checking it.
 
 ### 2026-10-04 — A `$…$` scanner that rendered prices as formulas
 

@@ -346,6 +346,40 @@ re-focusing after a subtree swap, but "React never sees focus here" is not a
 general truth. Worth revisiting if anyone relies on that comment as a reason
 not to use a synthetic focus handler.
 
+**Two corrections to the record, from the 2026-10-05 hover-surfaces cycle.**
+Both concern probing this path, and both cost real time:
+
+- **A scripted `el.focus()` cannot test the keyboard path.** It fires **no**
+  `focusin` at all on an injected SVG element — measured with a *native*
+  listener on the stage div, which recorded zero events — so the popover never
+  opens and it looks exactly like a dead keyboard path. Two probe runs
+  concluded "focus is broken" before a real dispatched Tab keypress reached the
+  node and opened the popover. Use a keypress, not `.focus()`.
+- **Focus opens the popover but reports no event.** `onFocusCapture` calls
+  `show()` only; it never calls `onEvent`, and `FigureElementEvent` has no
+  `"focus"` kind (`figureEvents.ts:5-7` — `hover` and `click` only). So a host
+  that logs element events sees nothing on focus even though the popover
+  appears. That is the type's shape rather than an oversight, but it is easy to
+  misread as "focus does nothing".
+
+The popover is now reachable from a demo route (`/interactive` passes
+`onElementEvent`), so neither claim has to be taken on trust any more.
+
+**How a figure's hover surfaces are split, settled 2026-10-05.** A figure
+`<svg>` used to carry its accessible name twice — `aria-label` and a `<title>`
+element from the same variable on the adjacent line. `<title>` is a user-agent
+tooltip, so it fired once per *figure* and identically over every node, which on
+a mind map meant the whole tree linearised into one sentence. It is suppressed
+now. **Suppression is free, and the argument is structural rather than
+sampled**: `ariaLabel` is a required `SceneSvgOptions` field and the two
+attributes were emitted with no conditional between them, so no input reached
+the `<title>` without the `aria-label` beside it; and for `role="img"` the
+accessible name is computed from `aria-label`, with `<title>` only a fallback.
+The two surfaces are **complementary, not redundant** — whole-figure summary
+vs per-element detail — so this was a decision about which one the *pointer*
+shows, and never a candidate for merging. See the shipped ROADMAP entry and
+`docs/superpowers/specs/2026-10-05-figure-hover-surfaces-design.md`.
+
 **Why collapse is still deferred.** `layoutTree` assigns ids by **pre-order
 position** (`n0`, `n1`, …), measured: collapsing a node renumbers every
 subsequent sibling, so `In-memory` moved from `n5` to `n3` in a probe. Since
