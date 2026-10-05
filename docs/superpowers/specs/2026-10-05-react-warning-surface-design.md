@@ -38,7 +38,7 @@ That is a different kind of defect from a missing feature. The policy shipped
 two days ago says "a degraded output is a content problem, and a host can make
 it fatal"; on these three surfaces it is not.
 
-## 2. The three sites, and why they are not one bug
+## 2. The three sites (the site list stands; the FIX in (b) does not — see §3a)
 
 They look like one list in thread 13 and are two distinct defects. Bundling them
 would hide the older one inside a math-shaped diff, so **the plan splits them**.
@@ -76,42 +76,116 @@ exist yet**. `Explanation` already computes `warnCtx` at line 127 and already
 owns the policy check at lines 130-133, so it is the natural place to pass it
 down. This is why the change is a cycle rather than a patch.
 
-## 3. The pattern to copy
+## 3. Why the obvious fix does not work — child effects land too late
 
-`Document.tsx` is the reference implementation and is already test-locked:
+The first implementation threaded the shared array into `Quiz` and passed it
+from `Explanation`, exactly as this section originally read. **It did not
+work**, and the reason is structural.
 
-- a plain **local per-render array** (not a hook — `Document` is a server
-  component and a hook would make it a client component);
-- `warnCtx = { addWarning: (m) => warnings.push(m) }`;
-- passed to every `renderInline` React itself calls, and to `renderBlock` via
-  `blockOpts`;
-- **`onWarning([...warnings])` then `failOnWarning` AFTER all the JSX is
-  built** — because `renderBlock` and `renderInline` populate the array as a
-  side effect of that construction. Checking first would always see an empty
-  array. This ordering is the whole subtlety, and it is why the JSX is built
-  before the check rather than returned directly.
+**A child component's side effects land after the parent's body has finished.**
+Measured with a minimal repro (`.superpowers/probe-nesting.mjs`):
 
-`InteractiveFigure` is a **client** component (it has `useState`/`useEffect`),
-so it can use a `useMemo`/`useRef` — but it must still populate during render,
-not in an effect, or `failOnWarning` cannot throw during the render pass.
+```
+<div>parent-read:[]</div>
+warnings after full render: ["from-child"]
+```
+
+The parent's own read sees an empty array; the child's push arrives afterwards.
+`Explanation` calls `onWarning([...warnings])` **during its own render**, but
+`<Quiz>`'s body has not run yet — it runs when React descends into the returned
+tree. So passing the array down is **necessary but not sufficient**: the child
+pushes into it too late for the parent to read.
+
+Three consequences, each of which closed off an option:
+
+1. **This affects every site, not just `Quiz`.** `InteractiveFigure` and
+   `PopoverDiv` are also child components, so no amount of prop-threading fixes
+   any of the three.
+2. **`Document` does not have this bug**, and the reason is the key to the fix:
+   `Document` calls `renderInline` / `renderBlock` **directly** as plain function
+   calls inside its own body. Its ordering comment ("build the JSX before the
+   policy check") is about `renderBlock` mutating the array as a side effect —
+   a *different* hazard, not this one. The original spec copied `Document`'s
+   shape without noticing that `Document` never delegates.
+3. **Deferring the report to an effect is not available.** `onWarning` and
+   `failOnWarning` are server-component features — every existing test drives
+   them through `renderToStaticMarkup`, where **effects do not run**. Reporting
+   from an effect would mean `onWarning` never fires under SSR, which is a
+   regression of a shipped guarantee, not a trade-off.
+
+## 3a. The fix: a synchronous pre-pass in the parent's own body
+
+Since the parent's read happens during its own render, the array must be
+populated during its own render too. `renderBlock` is a plain synchronous
+function, so calling it **for the block types that get delegated to a child
+component** populates the array at exactly the right moment:
+
+```ts
+// Inside Explanation's body, before the policy check.
+// renderBlock mutates `warnings` as it runs, so this is synchronous and
+// SSR-safe — no effect, no second pass, no reliance on child render order.
+if (b.kind === "valid" && (b.type === "quiz" || b.type === "figure")) {
+  renderBlock(b.type, b.data, 1, blockOpts) // html discarded; warnings kept
+}
+```
+
+The delegated block is then rendered twice — once discarded for its warnings,
+once as JSX for its interactivity. That is the cost, and it is small.
+
+**Measured** (`.superpowers/probe-prepass.mjs`, on merged `main`):
+
+| block | string renderer | pre-pass | identical set |
+|---|---|---|---|
+| quiz (3 prose math + out-of-range answer) | 3 | 3 | **yes** |
+| figure (title + caption math) | 2 | 2 | **yes** |
+
+Cost: ~0.13ms per block, once per delegated block on the SSR path.
+
+Note the pre-pass captures the **whole** surface in one call, including prose
+the child component would otherwise have to sink field by field — the quiz's
+question, option texts, whys and explanation come from `renderQuiz`'s single
+`renderInline(…, ctx)` chain.
+
+**This also retires the original §2(b) diagnosis.** `renderFigure` — the string
+path — already renders title and caption through `renderInline(block.title, ctx)`
+with the sink attached, and reports both. `InteractiveFigure` duplicates that
+same prose in JSX purely to make it interactive, and the duplication is where
+the sink is lost. The pre-pass reports it without touching `InteractiveFigure`
+at all.
+
+## 3b. What still needs its own sink
+
+`PopoverDiv` renders a **tip**, which is not part of any block's static render —
+it appears at hover time, long after the parent's render. No pre-pass can
+collect it. It keeps a sink: `useElementPopover` gains an `onWarning`-style
+prop, and a degraded tip is reported when the popover opens. That is a
+genuinely different lifecycle from a render pass, and it is honest to treat it
+as one.
 
 ## 4. Scope
 
 ### In
 
-1. `src/react/Quiz.tsx` — accept and thread a sink; pass it to `renderBlock`
-   and to all four `renderInline` calls. **Own task.**
-2. `src/react/InteractiveFigure.tsx` — lift `warnings` out of the `useMemo`;
-   **add `onWarning` / `failOnWarning` props** (neither exists today); pass a
-   sink to the title and caption.
-3. `src/react/ElementPopover.tsx` — thread a sink through `useElementPopover` to
-   `PopoverDiv`.
-4. `Explanation.tsx` — pass `warnCtx` (already built at line 127) and the
-   existing policy props down to `Quiz` and `InteractiveFigure`, so a quiz or an
-   interactive figure inside an `<Explanation>` reports into the array the host
-   already receives rather than into a component-local one.
-5. Tests, in the shape §5 describes.
-6. README + ROADMAP + thread 13.
+1. `src/react/Explanation.tsx` — the **pre-pass** (§3a): call `renderBlock` for
+   `quiz` and `figure` blocks during its own body, into the existing
+   `blockOpts`, before the policy check. This is the load-bearing change and it
+   covers both `Quiz` and `InteractiveFigure`.
+2. `src/react/ElementPopover.tsx` — a sink for the **tip** (§3b), reported when
+   the popover opens. `PopoverDiv` cannot be covered by a pre-pass: a tip has no
+   static render pass to collect it from.
+3. `src/react/Quiz.tsx` / `InteractiveFigure.tsx` — **only** if a test proves the
+   pre-pass insufficient. The pre-pass is expected to make them correct without
+   modification, which is the preferable outcome: less code, and no second place
+   where the same prose is rendered.
+4. Tests, in the shape §5 describes.
+5. README + ROADMAP + thread 13.
+
+### Explicitly NOT the approach
+
+- **Do not** report from an effect: SSR never runs it (§3, consequence 3).
+- **Do not** pass the shared array down to the child components and call it
+  done: measured not to work (§3).
+- **Do not** weaken `failOnWarning` into a "warn only" mode to accommodate this.
 
 ### Out
 
@@ -181,6 +255,17 @@ warnings for the wrong reason. This cost one probe run — see §7.
   literal symbols. Only genuinely malformed input (the dangling `x^`) triggers
   the `[math]` path. A probe that measures zero warnings may be measuring valid
   input.
-- **`.focus()` cannot test a focus-driven surface** — see `DEBUGGING.md`
-  2026-10-05. Not directly load-bearing here, but the same file warns against
-  concluding "the path is dead" from a harness artefact.
+- **A component with a sink can still be silent**, because the sink was on the
+  wrong side of the render boundary. Threading `warnings` into `<Quiz>` looked
+  correct, compiled, type-checked — and reported nothing. The array was right;
+  the *timing* was not.
+- **A green test here can be vacuous for a routing reason.** The first version
+  of the Task 1 test omitted `interactive`, so `Explanation.tsx:115` never
+  reached `<Quiz>` and the block went through the plain `renderBlock` path —
+  which *does* have a sink and *does* report. The test passed green against the
+  very component carrying the bug. Any test of a delegated component must
+  assert it is actually reached.
+- **Write probes as files, not `node -e`.** The inline version lost backslashes
+  through two layers of shell quoting and reported 0 warnings for a figure the
+  string renderer reports 2 for. A measurement of **zero** is the result most
+  worth re-verifying, because it is the one an escaping bug produces.
