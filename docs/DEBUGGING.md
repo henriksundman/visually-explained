@@ -46,6 +46,17 @@ Before deep-diving, test the failure against these recurring patterns:
   `popover.remove()` leaves React's virtual DOM believing the node is still
   mounted, so the next state update patches the *detached* node and the
   element appears to vanish. Reload the page between cases.
+- **A child component's effects land AFTER the parent's body has run.** If a
+  parent collects state during render and reads it back in the same body, a
+  child that mutates that state is always too late — the parent's read sees the
+  pre-child value. Symptom: the child behaves correctly when rendered alone,
+  and reports nothing through the parent. See the 2026-10-05 entry.
+- **A prop with a sink attached can still be silent** if the sink is on the
+  wrong side of the render boundary. Before assuming the fix failed, check
+  whether the parent's read happens before or after the child's body.
+- **An effect is not available for reporting under SSR.** `renderToStaticMarkup`
+  never runs effects, so a component that reports from `useEffect` reports
+  nothing in the server-rendering path these components exist for.
 - **Salvage is all-or-nothing per block.** A block failing its own schema is
   skipped whole (`[invalid-block]`, empty render). There is no partial payload
   for a field to "survive" on.
@@ -155,6 +166,12 @@ Before deep-diving, test the failure against these recurring patterns:
   the raw string contains exactly the residue that is safe.
 
 ## Part 2 — Entries
+
+### 2026-10-05 — A correct-looking fix that reported nothing, because children render after parents read
+- **Symptom:** three React surfaces reported no degradations at all, so `failOnWarning` did not throw for a quiz containing an unparseable formula — the output was byte-identical with and without a sink, so nothing observable had changed. Threading the parent's `warnings` array into `Quiz` as a prop compiled, type-checked, and **still** reported nothing; `Quiz` given an array directly reported perfectly.
+- **Root cause:** a child component's side effects land after the parent's body has finished. Minimal repro: a parent that reads a shared array during its own render and renders a child that pushes to it reports `[]`, while the array holds `["from-child"]` after the render completes. The array was correct; the timing was not. This is also why `Document` never had the bug — it calls `renderBlock`/`renderInline` directly and never delegates.
+- **Fix:** a synchronous pre-pass in the parent's own body, keeping the warnings and discarding the HTML. An effect was considered and rejected: effects do not run under `renderToStaticMarkup`, so reporting from one would have stopped `onWarning` firing under SSR entirely.
+- **Rule:** when a parent collects diagnostics during render, **collect them by calling the renderer itself, not by delegating to a child.** And before believing "the fix did not work," reproduce the child's behaviour in isolation — if it works alone and not through the parent, the problem is the render boundary, not the child. Three of my four wrong conclusions this session came from probes that were wrong rather than code that was; the tell in every case was a measurement of zero.
 
 ### 2026-10-05 — A scripted `.focus()` reported a working keyboard path as dead
 - **Symptom:** the element popover opened on hover but never on focus. `document.activeElement` was the node and its `tabindex` was `0`, yet no popover and no element event — twice, on two independently written probes.

@@ -107,9 +107,17 @@ The thrown message is bounded (120 chars per warning, 10 shown); the array you
 receive is always complete.
 
 **In React**, warnings reach `onWarning` too — previously they were discarded
-entirely, so a degradation was invisible. Note that StrictMode double-invokes
+entirely, so a degradation was invisible. Every surface now reports: a `quiz`,
+an interactive `figure`'s title and caption, and a popover tip all reach the
+same array the host already receives, and the reported set **equals** what the
+string renderers produce for the same IR. Note that StrictMode double-invokes
 renders in development, so the same set may arrive twice; dedupe by set
 membership or rely on `failOnWarning`.
+
+`PopoverDiv` (the `.exp-popover` element) takes its own `onWarning` and has no
+`failOnWarning` counterpart: a tip is rendered at hover time rather than during
+a render pass, and throwing there would tear down the figure the reader is
+looking at. It reports when the popover opens.
 
 ### React
 

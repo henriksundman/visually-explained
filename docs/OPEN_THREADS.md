@@ -4,8 +4,8 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-04, after the degradation-policy, /editorial-fix,
-flow-cycle, and mind-map cycles.
+Last updated: 2026-10-05, after the figure-hover-surfaces and
+react-warning-surface cycles. Thread 13 is CLOSED.
 
 ---
 
@@ -238,25 +238,67 @@ model-authored graph again, break cycles for ranking purposes explicitly —
 
 ## 13. Three React sites render prose with no warnings sink
 
-`renderInline` takes an optional warnings sink so a degradation in prose
-reaches the host. Every string-renderer call site passes one, and React's
-`Document` and `Explanation` do too. Three components do not:
+**CLOSED 2026-10-05.** All three now report, and the thread is worth keeping
+because the fix is **not** the obvious one — the first implementation was
+correct, type-checked, and did nothing.
 
-- `src/react/Quiz.tsx` — no `warnings` array exists; `renderBlock("quiz", …)`
-  is called without `opts.warnings`, so block warnings are **already**
-  discarded wholesale. This predates inline math.
-- `src/react/InteractiveFigure.tsx` — a `warnings` array exists but is scoped
-  inside a `useMemo`, while the title and caption render outside it.
-- `src/react/ElementPopover.tsx` — `PopoverDiv` is purely presentational.
+What the gap cost, measured: an unparseable formula in a quiz question
+rendered **byte-identical** HTML with and without a warnings sink. So the
+degradation was invisible in the DOM, invisible to diffing, and invisible to
+`onWarning` — and `failOnWarning: true` did **not** throw. The enforceable
+no-degradation policy was silently defeated on these surfaces.
 
-So an unparseable inline formula in a quiz question, a figure caption or a
-popover tip degrades to literal text with **no warning**, even under
-`failOnWarning`. Accepted for now: widening the React warning surface is a
-separate change from adding inline math, and `Quiz`'s pre-existing discard is
-its own bug.
+**Why threading the array did not work, which is the part to remember.** The
+obvious fix is to pass `Explanation`'s shared `warnings` array into `Quiz` as a
+prop. Measured: a child component's side effects land **after** the parent's
+body has run. The parent's own read sees `[]`; the child's push arrives
+afterwards. So the array was right and the *timing* was wrong, and the
+component reported correctly in isolation while the host still received
+nothing.
 
-Revisit if a host reports silent degradations in those three surfaces. The
-fix is mechanical once the sinks exist — thread it the way `Document` does.
+This is why `Document` never had the bug: it calls `renderInline` and
+`renderBlock` **directly**, as plain function calls inside its own body, and
+never delegates to a child. Its "build the JSX before the policy check"
+comment is about a *different* hazard — `renderBlock` mutating the array
+mid-map — not this one.
+
+**The fix is a synchronous pre-pass**, not a prop and not an effect:
+
+```ts
+if (interactive && b.kind === "valid" && (b.type === "figure" || b.type === "quiz")) {
+  renderBlock(b.type, b.data, 1, blockOpts) // HTML discarded, warnings kept
+  return <InteractiveFigure … /> // or <Quiz … />
+}
+```
+
+`renderBlock` populates the array as it runs, so the ordering is right by
+construction. Measured: identical warning sets against the string renderer for
+quiz (3) and figure (2), ~0.13ms per block, once, on the SSR path. **No effect
+is involved**, which is what makes it SSR-safe — effects do not run under
+`renderToStaticMarkup`, so reporting from one would have stopped `onWarning`
+firing under SSR altogether. That option was considered and rejected on those
+grounds, not on taste.
+
+Two consequences worth recording:
+
+- **`InteractiveFigure` needed no change at all.** `renderFigure` — the string
+  path — already sinks the title and caption through `renderInline(…, ctx)`. The
+  React component was duplicating that prose purely to make it interactive, and
+  the duplication is exactly where the sink was lost. Neither `Quiz` nor
+  `InteractiveFigure` was modified; the fix is in `Explanation`.
+- **`PopoverDiv` keeps its own sink**, via an `onWarning` prop on
+  `PopoverDiv`/`FigureEvents`. A tip has no static render pass — it appears at
+  hover time — so no pre-pass can reach it. It reports at the moment of its own
+  render, which is safe precisely because nobody reads the array afterwards.
+  It deliberately has **no `failOnWarning` counterpart**: it mounts from a
+  hover or a focus, so throwing during its render would tear down the figure
+  the reader is looking at.
+
+A test now asserts React's reported set **equals** the string renderer's across
+a delegated quiz, a delegated figure, a plain block and the document
+title/summary — comparing sorted sets, not counts. Count-only comparison is
+what passed in the 2026-10-04 math cycle while React reported 1 where the
+string renderer reported 4.
 
 ---
 

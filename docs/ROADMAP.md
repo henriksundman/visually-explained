@@ -274,6 +274,32 @@ decisions that survive across sessions.
   `<title>` elements removed, 0 remaining, no other change, and stripping them
   restores the baseline byte-for-byte) and in Chrome on the real route.
   Spec: `docs/superpowers/specs/2026-10-05-figure-hover-surfaces-design.md`.
+- **The React warning surface closed** (2026-10-05) — `Quiz`, `InteractiveFigure`
+  and `ElementPopover` reported **no** degradations, so the enforceable
+  no-degradation policy shipped the day before was silently defeated on all
+  three. Measured: an unparseable formula in a quiz question rendered
+  **byte-identical** HTML with and without a sink, so the degradation was
+  invisible in the DOM, to diffing and to `onWarning`, and `failOnWarning` did
+  **not** throw. The fix is neither a prop nor an effect but a **synchronous
+  pre-pass**: `Explanation` runs the same `renderBlock` the static path runs,
+  inside its own body, keeping the warnings and discarding the HTML. That is
+  forced by a measured fact — **a child component's side effects land after the
+  parent's body has run**, so threading the shared array into `Quiz` reported
+  nothing while `Quiz` given that array directly reported perfectly. An effect
+  was rejected on measurement too: effects do not run under
+  `renderToStaticMarkup`, so `onWarning` would stop firing under SSR.
+  `InteractiveFigure` and `Quiz` needed **no changes at all** — `renderFigure`
+  already sinks the title and caption, and the React component was duplicating
+  that prose solely to make it interactive. `PopoverDiv` keeps its own `onWarning`
+  (a tip has no static render pass) and deliberately has **no** `failOnWarning`,
+  because it mounts from a hover and throwing would tear down the figure the
+  reader is looking at. One test now asserts React's reported set **equals** the
+  string renderer's across every surface, comparing sorted sets rather than
+  counts — count-only comparison is what passed in the math cycle while React
+  reported 1 where the string renderer reported 4. Rendered output is
+  **byte-identical** to before: this cycle changes what is reported, never what
+  is rendered. Spec:
+  `docs/superpowers/specs/2026-10-05-react-warning-surface-design.md`.
 
 ## Open threads
 
@@ -365,7 +391,6 @@ cycle):
   - **A host switch to disable inline math.** `renderInline` is public and
     deliberately un-decorated; a host whose prose is full of `$` may want the
     old behaviour. Not added without being asked for.
-  - **Widening the React warning surface** — see open thread 13.
   - **Escape does not close the popover when focus is outside the stage.** The
     keydown listener is native and bound to the stage `div`, so the event must
     originate inside; tab past the figure and Escape does nothing. Pre-existing,
