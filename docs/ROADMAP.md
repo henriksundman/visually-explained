@@ -685,9 +685,11 @@ one `<mi>` per letter with **zero warnings**.
       edge. The demo fixture is shaped to avoid both (all edges
       rank-adjacent, one labelled edge per source) and says so in a comment —
       a demo that silently dodged these would have hidden them again. A
-      real-model compile hit both defects on 2026-10-07 (dc→tcell skip edge
-      through the MHC node, label on the node) — the fix now has a live
-      instance.
+      real-model compile hit both defects on 2026-10-07 — twice: run 2
+      (dc→tcell skip edge through the MHC node, label on the node) and run 3
+      of the scene-quality cycle (cytotoxic_t_cell→target_cell routed
+      straight through the Granzymes node for 92px, its label overlapping the
+      node by ~1232px²) — the fix now has live instances.
   - **`rl` (parked, gated on RTL text).** Right-to-left is **not** a mirror of
     `lr`, for two reasons. (1) The label gutter is `b.x - (a.x + a.w)`, which
     the 2026-10-04 cycle made *structurally* non-negative — forward edges always
