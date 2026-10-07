@@ -279,14 +279,15 @@ export const figuresIr = {
       // between them is the declared orientation.
       //
       // Every edge here is rank-adjacent and no source has two labelled
-      // edges. Those are not arbitrary: `tb` routes a skip-rank edge down the
-      // SOURCE column, where it overprints an adjacent edge (see
-      // `demo/editorial.css`-independent note in docs/ROADMAP.md), and it puts
-      // an edge label at the source column centre, where it can land on a
-      // SIBLING edge leaving the same node -- so `api`'s two outgoing edges
-      // carry no label, and `db` explains itself with a tip instead. All of
-      // this is recorded in docs/ROADMAP.md rather than hidden: the point of
-      // the demo is to show what `tb` does well.
+      // edges — a fixture comment that used to be load-bearing: `tb` routed
+      // a skip-rank edge down the SOURCE column (overprinting an adjacent
+      // edge) and put an edge label at the source column centre, where two
+      // labelled edges out of one node landed on the SAME point. The
+      // 2026-10-07 skip-rank cycle fixed both in the renderer (clear-corridor
+      // serpentine + collision nudging, see docs/ROADMAP.md), so the shaping
+      // is now historical — the lr diagram above even carries a labelled
+      // skip edge (dep->err "risk") that routes through the clear band
+      // between the ranks instead of through a node.
       type: "diagram",
       nodes: [
         { id: "req", label: "Request arrives", shape: "pill", tip: "The browser opens the connection" },

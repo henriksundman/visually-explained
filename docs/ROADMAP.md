@@ -678,18 +678,31 @@ one `<mi>` per letter with **zero warnings**.
       of vertical space. The SVG now emits `width`/`height` and the rule is
       `max-width: 100%`, so scaling responds to overflow instead of applying
       in both directions at once.
-    - **Still rough, recorded not hidden.** A skip-rank edge routes down the
-      **source column**, where it overprints an adjacent edge; and an edge
-      label is placed at the source column centre, so two labelled edges out
-      of one node land on the **same point** and a label can sit on a sibling
-      edge. The demo fixture is shaped to avoid both (all edges
-      rank-adjacent, one labelled edge per source) and says so in a comment —
-      a demo that silently dodged these would have hidden them again. A
-      real-model compile hit both defects on 2026-10-07 — twice: run 2
-      (dc→tcell skip edge through the MHC node, label on the node) and run 3
-      of the scene-quality cycle (cytotoxic_t_cell→target_cell routed
-      straight through the Granzymes node for 92px, its label overlapping the
-      node by ~1232px²) — the fix now has live instances.
+    - **Fixed — skip-rank routing (2026-10-07).** A skip-rank edge used to
+      route down the **source column** (overprinting an adjacent edge) or
+      through the **arithmetic midpoint** of its span — which is exactly
+      where an intermediate node sits — with its label at that same midpoint;
+      z-order painted nodes OVER the line, so the crossing shipped invisible
+      and only the label-on-node text made it visible. A real-model compile
+      hit it twice on 2026-10-07 (run 2: dc→tcell through the MHC node; run 3:
+      cytotoxic_t_cell→target_cell through Granzymes for 92px, label on the
+      node at ~1232px² — the figure the user reported), and the shipped demo
+      fixture's `dep→err` "risk" edge had been doing the same all along
+      (through "p95 latency spikes", label at y=32 riding the node band) while
+      the fixture comment claimed "every edge is rank-adjacent". The renderer
+      now routes skip edges through a **clear-corridor serpentine**: gutter
+      corridors verified against crossed columns' boxes, a node-free bypass
+      band between the crossed ranks (which widens by 18px where a labelled
+      skip crosses, the same principle as label-aware gutters), the label
+      anchored INSIDE that band so node overlap is structurally impossible, a
+      dip-below lane as the tiled fallback, stacked skips steer onto separate
+      bands, and remaining label-label collisions resolve by nudging the
+      later label in fixed steps (first label keeps its anchor;
+      non-colliding labels never move). `tb` is fixed by the same code
+      (transposed): no source-column overprint, no same-point labels. The
+      demo fixture keeps its shape but the comment now says the shaping is
+      historical, and the lr diagram shows off the fixed skip edge. Spec:
+      `docs/superpowers/specs/2026-10-07-skiprank-routing-design.md`.
   - **`rl` (parked, gated on RTL text).** Right-to-left is **not** a mirror of
     `lr`, for two reasons. (1) The label gutter is `b.x - (a.x + a.w)`, which
     the 2026-10-04 cycle made *structurally* non-negative — forward edges always
