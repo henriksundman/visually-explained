@@ -250,9 +250,12 @@ export function routeSerpentine(
   // INTERIOR bands first (between crossed boxes) — hopping above or below the
   // whole figure is clear but reads as leaving the graph. The band must fit
   // the label block plus the line below it. Ties resolve to the later (lower)
-  // band; bands already used by earlier skips of this source are excluded.
+  // band; bands already used by earlier skips of this source are excluded —
+  // callers pass the earlier skip's LINE y (bypassY), the thing two skips
+  // must not share, and comparison is against the candidate's line position
+  // so a re-selection cannot land both lines on one band.
   const fits = (c: [number, number]): boolean =>
-    c[1] - c[0] >= blockH + 6 && !excludeY.some(y => Math.abs((c[0] + c[1]) / 2 - y) < 8)
+    c[1] - c[0] >= blockH + 6 && !excludeY.some(y => Math.abs(c[0] + blockH + 3 - y) < 8)
   const pick = (candidates: [number, number][]): [number, number] | undefined =>
     candidates
       .filter(fits)
@@ -617,6 +620,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   // same source steers to another band instead of sharing the first one's.
   let skipLane = 0
   const skipYs: number[] = []
+  const planIsSkip = new Map<string, boolean>()
   const elements: Scene["elements"] = []
   for (const p of plans) {
     const { e, a, b, isBack, lane, adjacent, lines } = p
@@ -694,6 +698,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         }).filter((b): b is [number, number] => b !== null)
         const blockH = e.label ? (p.lines.length - 1) * EDGE_LABEL_PITCH + 14 : 6
         let gutterW = 0
+        planIsSkip.set(edgeKey(e), true)
         const route = routeSerpentine(a, b, colBands, crossed, skipLane, height, blockH, skipYs)
         if (route.dipped) {
           height = Math.max(height, route.bypassY + PAD)
@@ -741,6 +746,50 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       labelY,
       id: edgeKey(e),
     })
+  }
+
+  // 7c. Label-label collision nudge (skiprank spec §3.2): the FIRST label in
+  //  spec order keeps its anchor; a LATER label whose estimated text block
+  //  overlaps an earlier one steps along its clear axis (NUDGE_STEP) until
+  //  clear or MAX_NUDGE_STEPS are exhausted (best position kept — never a
+  //  loop, never a re-layout). Skip labels are excluded: they are band-
+  //  constrained and lane-steered already. `lr` nudges vertically (the label
+  //  sits in a horizontal gutter, free vertically), `tb` horizontally.
+  const labelRects = elements
+    .filter((el): el is Extract<Scene["elements"][number], { kind: "arrow" }> => el.kind === "arrow" && el.label !== undefined)
+  for (let i = 0; i < labelRects.length; i++) {
+    const cur = labelRects[i]
+    const isSkip = cur.id !== undefined && backEdges.has(cur.id) === false && planIsSkip.get(cur.id) === true
+    if (isSkip) continue
+    const w = Math.max(...(cur.lines ?? [cur.label!]).map(l => l.length * EDGE_CHAR_W))
+    const n = cur.lines?.length ?? 1
+    const h = (n - 1) * EDGE_LABEL_PITCH + 14
+    const rectOf = (el: typeof cur) => ({ x: el.labelX! - w / 2, y: el.labelY! - h / 2, w, h })
+    for (let j = 0; j < i; j++) {
+      const prev = labelRects[j]
+      const pw = Math.max(...(prev.lines ?? [prev.label!]).map(l => l.length * EDGE_CHAR_W))
+      const pn = prev.lines?.length ?? 1
+      const ph = (pn - 1) * EDGE_LABEL_PITCH + 14
+      const A = rectOf(cur)
+      const B = { x: prev.labelX! - pw / 2, y: prev.labelY! - ph / 2, w: pw, h: ph }
+      const ox = Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x)
+      const oy = Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y)
+      if (ox <= 0 || oy <= 0) continue
+      // collide: step away from the earlier label along the clear axis
+      const dir = cur.labelY! >= prev.labelY! ? 1 : -1
+      for (let step = 1; step <= MAX_NUDGE_STEPS; step++) {
+        const cand = direction === "lr" ? { ...cur, labelY: cur.labelY! + dir * step * NUDGE_STEP } : { ...cur, labelX: cur.labelX! + dir * step * NUDGE_STEP }
+        const CA = { x: cand.labelX! - w / 2, y: cand.labelY! - h / 2, w, h }
+        const cx2 = Math.min(CA.x + CA.w, B.x + B.w) - Math.max(CA.x, B.x)
+        const cy2 = Math.min(CA.y + CA.h, B.y + B.h) - Math.max(CA.y, B.y)
+        if (cx2 <= 0 || cy2 <= 0) {
+          cur.labelY = cand.labelY
+          cur.labelX = cand.labelX
+          break
+        }
+      }
+      break // one resolver per label per pass
+    }
   }
 
   // 8. Nodes AFTER edges: their opaque fill covers crossings. Their y comes

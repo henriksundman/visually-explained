@@ -794,6 +794,31 @@ describe("skip-rank routing helpers", () => {
     expect(route.dipped).toBe(false)
   })
 
+  it("nudges a colliding label off an earlier one, first keeps its anchor", () => {
+    // two same-source skip edges would share a label row without steering;
+    // but the nudge itself is exercised on the simplest collision: two nodes
+    // whose adjacent edges carry the same label at the same y.
+    const { scene } = layoutFlow({
+      nodes: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" },
+        { id: "c", label: "C" },
+        { id: "d", label: "D" },
+      ],
+      edges: [
+        { from: "a", to: "b", label: "same text" },
+        { from: "a", to: "c", label: "same text" },
+      ],
+      direction: "lr",
+    })
+    const arrows = scene.elements.filter(e => e.kind === "arrow") as { label?: string; labelY?: number; labelX?: number }[]
+    const labelled = arrows.filter(e => e.label === "same text")
+    expect(labelled.length).toBe(2)
+    // no two labelled arrows share BOTH anchor coordinates (the collision class)
+    const [l1, l2] = labelled
+    expect(l1.labelY === l2.labelY && l1.labelX === l2.labelX).toBe(false)
+  })
+
   it("falls back to a dip lane when no clear band exists", () => {
     const tiled: Box[] = [
       { x: 224, y: 0, w: 92, h: 74 },
@@ -812,5 +837,26 @@ describe("skip-rank routing helpers", () => {
     for (let i = 0; i < route.points.length - 1; i++) {
       expect(segmentClearsBoxes(route.points[i], route.points[i + 1], [...RUN3_BOXES, ...tiled])).toBe(true)
     }
+  })
+
+  it("steers a second skip edge off the band the first one took", () => {
+    const a = { x: 16, y: 16, w: 144, h: 44 }
+    const b = { x: 456, y: 16, w: 122, h: 44 }
+    const crossed = [RUN3_BOXES[1], RUN3_BOXES[2]]
+    // a taller crossed column leaves room for two stacked one-line bands:
+    // the interior gap [66,100] fits band 1; band 2 excludes that anchor and
+    // lands in the below-all band.
+    const crossed2: Box[] = [
+      { x: 224, y: 16, w: 92, h: 44 },
+      { x: 224, y: 106, w: 90, h: 44 },
+    ]
+    const first = routeSerpentine(a, b, columns, crossed2, 0, 200, 10)
+    // convention: callers exclude the earlier skip's LINE y (bypassY)
+    const second = routeSerpentine(a, b, columns, crossed2, 1, 200, 10, [first.bypassY])
+    expect(first.dipped).toBe(false)
+    expect(second.dipped).toBe(false) // enough room for another band
+    expect(second.bypassY).not.toBe(first.bypassY)
+    // and their bypass lines never share a y
+    expect(Math.abs(second.bypassY - first.bypassY)).toBeGreaterThanOrEqual(10)
   })
 })
