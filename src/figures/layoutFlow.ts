@@ -786,46 +786,70 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
 
   // 7c. Label-label collision nudge (skiprank spec §3.2): the FIRST label in
   //  spec order keeps its anchor; a LATER label whose estimated text block
-  //  overlaps an earlier one steps along its clear axis (NUDGE_STEP) until
-  //  clear or MAX_NUDGE_STEPS are exhausted (best position kept — never a
-  //  loop, never a re-layout). Skip labels are excluded: they are band-
-  //  constrained and lane-steered already. `lr` nudges vertically (the label
-  //  sits in a horizontal gutter, free vertically), `tb` horizontally.
+  //  overlaps ANY earlier one steps along its clear axis (NUDGE_STEP) until
+  //  clear of ALL earlier labels or MAX_NUDGE_STEPS are exhausted. Skip
+  //  labels participate too — in a fan-out (five labelled edges out of one
+  //  source) their band rows can sit in the same gutter as adjacent labels —
+  //  but they nudge along the axis with room: the bypass segment's axis.
+  //  Runs to a fixed point over spec order (a later nudge can create a new
+  //  collision with an even later label; re-scan until no move happens, hard
+  //  cap on sweeps). `lr` nudges vertically, `tb` horizontally.
   const labelRects = elements
     .filter((el): el is Extract<Scene["elements"][number], { kind: "arrow" }> => el.kind === "arrow" && el.label !== undefined)
-  for (let i = 0; i < labelRects.length; i++) {
-    const cur = labelRects[i]
-    const isSkip = cur.id !== undefined && backEdges.has(cur.id) === false && planIsSkip.get(cur.id) === true
-    if (isSkip) continue
-    const w = Math.max(...(cur.lines ?? [cur.label!]).map(l => l.length * EDGE_CHAR_W))
-    const n = cur.lines?.length ?? 1
+  const rectOfLabel = (el: (typeof labelRects)[number]) => {
+    const w = Math.max(...(el.lines ?? [el.label!]).map(l => l.length * EDGE_CHAR_W))
+    const n = el.lines?.length ?? 1
     const h = (n - 1) * EDGE_LABEL_PITCH + 14
-    const rectOf = (el: typeof cur) => ({ x: el.labelX! - w / 2, y: el.labelY! - h / 2, w, h })
-    for (let j = 0; j < i; j++) {
-      const prev = labelRects[j]
-      const pw = Math.max(...(prev.lines ?? [prev.label!]).map(l => l.length * EDGE_CHAR_W))
-      const pn = prev.lines?.length ?? 1
-      const ph = (pn - 1) * EDGE_LABEL_PITCH + 14
-      const A = rectOf(cur)
-      const B = { x: prev.labelX! - pw / 2, y: prev.labelY! - ph / 2, w: pw, h: ph }
-      const ox = Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x)
-      const oy = Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y)
-      if (ox <= 0 || oy <= 0) continue
-      // collide: step away from the earlier label along the clear axis
-      const dir = cur.labelY! >= prev.labelY! ? 1 : -1
-      for (let step = 1; step <= MAX_NUDGE_STEPS; step++) {
-        const cand = direction === "lr" ? { ...cur, labelY: cur.labelY! + dir * step * NUDGE_STEP } : { ...cur, labelX: cur.labelX! + dir * step * NUDGE_STEP }
-        const CA = { x: cand.labelX! - w / 2, y: cand.labelY! - h / 2, w, h }
-        const cx2 = Math.min(CA.x + CA.w, B.x + B.w) - Math.max(CA.x, B.x)
-        const cy2 = Math.min(CA.y + CA.h, B.y + B.h) - Math.max(CA.y, B.y)
-        if (cx2 <= 0 || cy2 <= 0) {
-          cur.labelY = cand.labelY
-          cur.labelX = cand.labelX
-          break
+    return { x: el.labelX! - w / 2, y: el.labelY! - h / 2, w, h }
+  }
+  const overlaps = (A: { x: number; y: number; w: number; h: number }, B: { x: number; y: number; w: number; h: number }): boolean =>
+    Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x) > 2 && Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y) > 2
+  for (let sweep = 0; sweep < 3; sweep++) {
+    let moved = false
+    for (let i = 0; i < labelRects.length; i++) {
+      const cur = labelRects[i]
+      const isSkip = cur.id !== undefined && planIsSkip.get(cur.id) === true
+      const axis = isSkip ? (direction === "lr" ? "x" : "y") : direction === "lr" ? "y" : "x"
+      for (let j = 0; j < labelRects.length; j++) {
+        if (j === i) continue
+        const A = rectOfLabel(cur)
+        const B = rectOfLabel(labelRects[j])
+        if (!overlaps(A, B)) continue
+        // The escape distance is ANALYTIC, not stepped: two same-anchor
+        // 120px labels need ~124px of separation and a fixed 4×14px walk
+        // never gets there (the run-4 fan-out case). Jump past B's rect
+        // plus a 4px margin along the clear axis — trying BOTH directions
+        // and a widening ladder of distances, because the analytic jump can
+        // itself land on a third label (the run-4 fan-out with a labelled
+        // edge right of the stack). First candidate that clears ALL other
+        // labels wins; if none does, keep the original anchor (never make
+        // it worse).
+        const escape = axis === "y" ? A.h / 2 + B.h / 2 + 4 : A.w / 2 + B.w / 2 + 4
+        const base = axis === "y" ? cur.labelY! : cur.labelX!
+        const tryOrder: Array<[number, number]> = [
+          [1, escape],
+          [-1, escape],
+          [1, escape / 2],
+          [-1, escape / 2],
+          [1, escape * 1.75],
+          [-1, escape * 1.75],
+        ]
+        for (const [sign, dist] of tryOrder) {
+          const candY = axis === "y" ? base + sign * dist : cur.labelY!
+          const candX = axis === "x" ? base + sign * dist : cur.labelX!
+          const CA = { x: candX - A.w / 2, y: candY - A.h / 2, w: A.w, h: A.h }
+          const clearOfAll = labelRects.every((other, k) => k === i || !overlaps(CA, rectOfLabel(other)))
+          if (clearOfAll) {
+            cur.labelY = candY
+            cur.labelX = candX
+            moved = true
+            break
+          }
         }
+        break // one resolver per pair per sweep
       }
-      break // one resolver per label per pass
     }
+    if (!moved) break
   }
 
   // 8. Nodes AFTER edges: their opaque fill covers crossings. Their y comes
