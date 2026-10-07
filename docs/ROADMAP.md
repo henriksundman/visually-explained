@@ -243,10 +243,10 @@ decisions that survive across sessions.
   figures overflow**. Rendered-output diff against b1a1f39: the only change
   anywhere is two attributes per `<svg>` plus the two new demo blocks — proven
   by stripping exactly those and re-comparing byte-for-byte. Three `tb` rough
-  edges remain (skip-rank edges route down the source column and overprint;
+  edges remained (skip-rank edges route down the source column and overprint;
   edge labels sit at the source column centre so two labelled edges from one
-  node collide) and are recorded in the Backlog with the demo fixture shaped
-  to avoid them — noted in a comment so the demo cannot hide them again.
+  node collide) — all three fixed 2026-10-07, see the tb edge-labels item in
+  Shipped; the demo fixture shaping that dodged them is now historical.
 
 - **Mind map** — **SHIPPED** 2026-10-04. `mind-map` block: what nests inside
   what, drawn as a horizontal dendrogram. Spec:
@@ -703,6 +703,32 @@ one `<mi>` per letter with **zero warnings**.
       demo fixture keeps its shape but the comment now says the shaping is
       historical, and the lr diagram shows off the fixed skip edge. Spec:
       `docs/superpowers/specs/2026-10-07-skiprank-routing-design.md`.
+    - **Fixed — tb edge labels (2026-10-07).** The skip-rank cycle fixed
+      `lr`'s label path; `tb` still had three defects of its own, and the
+      reharmonization page's fig 1 hit all of them: fan-out labels anchored at
+      the SOURCE column centre (every label of one source on ONE point, up to
+      194px from wide-span curves), skip edges still routed the arithmetic
+      midpoint, and the collision nudge was blind — its estimated label rects
+      (flat 6px/char) sat 4–6px APART where real text (measured 6.3–7.3px/char)
+      overlapped 90–286px², so it never fired; and when it did fire, escapes
+      landed outside the canvas ("Borrowed Supertonic" at x=−112). Now ONE
+      measured 99-char advance-width table (Chrome, real stylesheet) backs
+      label rects, wrap decisions, gutter sizing and the grow gate; tb
+      adjacent labels anchor on the span midpoint like `lr`; tb skips get the
+      transposed serpentine (`clearBandsX`/`clearCorridorsY`,
+      `routeSerpentineTb`) with the label beside its bypass line; escapes are
+      bounds-checked with a clamped last resort (in-bounds clear > in-bounds
+      clamped > original anchor — visible beats invisible); and edge labels
+      carry a `paint-order: stroke` background halo so a label still crossed
+      by a line stays readable. Acceptance on re-rendered saved IRs: both real
+      pages 0 label-label overlaps (fig 1: 4→0), every label on-canvas but the
+      pre-existing layoutChart "Bar 4" placement (the model's non-numeric
+      chart; recorded for a chart cycle — the corpus-safety guard forbids the
+      grow gate fixing it), and all but 3 labels within 36.7px of their own
+      edge (2 reharm at 45.9/39.8 are the deliberate collision-freedom
+      tradeoff). The `fits`-label density (one label crossed by up to 15
+      paths) is model behavior, assigned to the compile prompt. Spec:
+      `docs/superpowers/specs/2026-10-07-tb-edge-labels-design.md`.
   - **`rl` (parked, gated on RTL text).** Right-to-left is **not** a mirror of
     `lr`, for two reasons. (1) The label gutter is `b.x - (a.x + a.w)`, which
     the 2026-10-04 cycle made *structurally* non-negative — forward edges always
