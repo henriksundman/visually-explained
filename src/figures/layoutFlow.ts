@@ -415,6 +415,22 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     }
     return Math.min(MAX_LABEL_GUTTER, need)
   })
+  // Skip-rank band widening (skiprank spec §3.1) — on the CROSS axis: the
+  // bypass band runs between the stacked boxes of a crossed rank, so the gap
+  // following that rank's boxes widens to fit a one-line label block with the
+  // bypass line 3px below it and BAND_PAD margins either side (14+3+12 = 29,
+  // 1px more than GAP_CROSS — a small, bounded growth). Multi-line labels
+  // re-check against the real block at route time and dip if they don't fit.
+  const skipCrossRank = new Set<number>()
+  for (const e of edges) {
+    if (!e.label || backEdges.has(edgeKey(e))) continue
+    const lo = Math.min(layer.get(e.from)!, layer.get(e.to)!)
+    const hi = Math.max(layer.get(e.from)!, layer.get(e.to)!)
+    if (hi - lo < 2) continue
+    for (let r = lo + 1; r < hi; r++) skipCrossRank.add(r)
+  }
+  const crossGapFor = (r: number): number =>
+    skipCrossRank.has(r) ? Math.max(GAP_CROSS, 14 + 6 + 2 * BAND_PAD) : GAP_CROSS
   let lastGutter = GAP_MAIN
   ranks.forEach((rankIds, r) => {
     let cross = PAD
@@ -440,7 +456,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       // scene width (derived from it) tracked a sum of heights rather than
       // the rightmost node edge and clipped a 227px box inside a 240px
       // viewBox. Fixing the step fixes both.
-      cross += (direction === "lr" ? h : w) + GAP_CROSS
+      cross += (direction === "lr" ? h : w) + crossGapFor(r)
     })
     crossExtent = Math.max(crossExtent, cross - GAP_CROSS)
     lastGutter = gutters[r] ?? GAP_MAIN
@@ -596,6 +612,11 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   for (const p of placed.values()) {
     laneBase = Math.max(laneBase, direction === "lr" ? p.y + p.h : p.x + p.w)
   }
+  // Skip-rank routing state: a per-edge lane counter (stacks multiple skips)
+  // and the bypass-band anchors already taken, so a second skip edge off the
+  // same source steers to another band instead of sharing the first one's.
+  let skipLane = 0
+  const skipYs: number[] = []
   const elements: Scene["elements"] = []
   for (const p of plans) {
     const { e, a, b, isBack, lane, adjacent, lines } = p
@@ -652,9 +673,46 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         d = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
         head = `M ${tx} ${ty} L ${tx - 9} ${ty - 4.5} L ${tx - 9} ${ty + 4.5} Z`
       } else {
-        const gutterX = a.x + a.w + (b.x - (a.x + a.w)) / 2
-        d = `M ${sx} ${sy} L ${gutterX} ${sy} L ${gutterX} ${ty} L ${tx} ${ty}`
+        // Skip-rank serpentine (skiprank spec §3.1): clear-corridor route.
+        // Crossed boxes come from the ranks strictly between the endpoints';
+        // bands [top, bottom] are their exact extents. laneIndex stacks skips
+        // of the same source onto different lanes; excludeY steers later
+        // skips off bands earlier ones took.
+        const lo = Math.min(layer.get(e.from)!, layer.get(e.to)!)
+        const hi = Math.max(layer.get(e.from)!, layer.get(e.to)!)
+        const crossed = [] as Placed[]
+        for (let r = lo + 1; r < hi; r++) {
+          for (const id of ranks[r]) crossed.push(placed.get(id)!)
+        }
+        const top = crossed.length > 0 ? Math.min(...crossed.map(p => p.y)) : Math.min(sy, ty)
+        const bottom = crossed.length > 0 ? Math.max(...crossed.map(p => p.y + p.h)) : Math.max(sy, ty)
+        const colBands = ranks.map((rankIds, r) => {
+          if (rankIds.length === 0) return null
+          const xs = rankIds.map(id => placed.get(id)!.x)
+          const xe = rankIds.map(id => placed.get(id)!.x + placed.get(id)!.w)
+          return [Math.min(...xs), Math.max(...xe)] as [number, number]
+        }).filter((b): b is [number, number] => b !== null)
+        const blockH = e.label ? (p.lines.length - 1) * EDGE_LABEL_PITCH + 14 : 6
+        let gutterW = 0
+        const route = routeSerpentine(a, b, colBands, crossed, skipLane, height, blockH, skipYs)
+        if (route.dipped) {
+          height = Math.max(height, route.bypassY + PAD)
+        }
+        if (!route.dipped && route.labelY !== undefined) {
+          skipYs.push(route.labelY)
+        }
+        skipLane++
+        d = `M ${route.points.map(pt => `${String(Math.round(pt[0] * 100) / 100)} ${String(Math.round(pt[1] * 100) / 100)}`).join(" L ")}`
         head = `M ${tx} ${ty} L ${tx - 9} ${ty - 4.5} L ${tx - 9} ${ty + 4.5} Z`
+        if (e.label && route.labelY !== undefined) {
+          // Label anchored to the bypass segment — inside the band (banded)
+          // or inside the dip strip (dipped): node overlap is structurally
+          // impossible because the anchor lives on a segment the route just
+          // proved clear. Wrap width is the bypass segment's real length.
+          labelX = (route.points[2][0] + route.points[3][0]) / 2
+          labelY = route.labelY
+          gutterW = route.points[3][0] - route.points[2][0]
+        }
       }
     } else {
       const sx = a.x + a.w / 2
