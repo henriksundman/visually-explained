@@ -9,7 +9,7 @@ import {
   segmentClearsBoxes,
 } from "../../src/figures/layoutFlow"
 import * as demoExamples from "../../demo/examples"
-import type { NodeBoxEl, Scene } from "../../src/figures/scene"
+import type { ArrowEl, NodeBoxEl, Scene } from "../../src/figures/scene"
 
 function mustNode(scene: Scene, id: string): NodeBoxEl {
   const el = scene.elements.find((e): e is NodeBoxEl => e.kind === "node-box" && e.id === id)
@@ -894,5 +894,199 @@ describe("edge label rect superset invariant (tb edge-label cycle)", () => {
     const two = edgeLabelRect({ label: "Diatonic Subdominant", lines: ["Diatonic", "Subdominant"], labelX: 100, labelY: 100 })
     expect(two.h).toBeGreaterThanOrEqual(31)
     expect(two.w).toBeGreaterThanOrEqual(81) // widest real line, not the string
+  })
+})
+
+function distToSeg(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len2 = dx * dx + dy * dy
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2))
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+}
+
+/** Distance from a label anchor to its own edge's path — polyline segments
+ *  directly, cubics by sampling (adjacent tb edges route as cubics). */
+function ownDistance(arrow: ArrowEl): number {
+  const parts = arrow.d.replace(/^M /, "").split(/ (?=[LC])/)
+  const start = parts[0].replace(/,/g, "").trim().split(/\s+/).map(Number)
+  let min = Infinity
+  let prev: [number, number] = [start[0], start[1]]
+  const seg = (p1: [number, number], p2: [number, number]) => {
+    min = Math.min(min, distToSeg(arrow.labelX!, arrow.labelY!, p1[0], p1[1], p2[0], p2[1]))
+  }
+  for (const part of parts) {
+    const isCubic = part.startsWith("C")
+    const nums = part
+      .replace(/^[LC]\s*/, "")
+      .replace(/,/g, "")
+      .trim()
+      .split(/\s+/)
+      .map(Number)
+    if (isCubic) {
+      const [x1, y1, x2, y2, x, y] = nums
+      let cp: [number, number] = prev
+      for (let k = 1; k <= 16; k++) {
+        const t = k / 16
+        const mt = 1 - t
+        const px = mt * mt * mt * prev[0] + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x
+        const py = mt * mt * mt * prev[1] + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y
+        seg(cp, [px, py])
+        cp = [px, py]
+      }
+      prev = [x, y]
+    } else {
+      const p: [number, number] = [nums[0], nums[1]]
+      seg(prev, p)
+      prev = p
+    }
+  }
+  return min
+}
+
+const arrowsOf = (scene: Scene): ArrowEl[] =>
+  scene.elements.filter((e): e is ArrowEl => e.kind === "arrow" && e.label !== undefined)
+
+const pairOverlapArea = (A: { x: number; y: number; w: number; h: number }, B: { x: number; y: number; w: number; h: number }): number => {
+  const ix = Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x)
+  const iy = Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y)
+  return Math.max(0, ix) * Math.max(0, iy)
+}
+
+describe("tb edge-label routing (tb edge-label cycle T2)", () => {
+  // The run-4 reharmonization fig 1 shape: one source fanning THREE labelled
+  // adjacent edges into the next rank, two more out of a rank-1 node — every
+  // defect measured there (same-anchor fan-out, orphaned labels, out-of-canvas
+  // escapes) reproduces from this shape.
+  const FIG1 = {
+    nodes: [
+      { id: "I", label: "C Major (I)" },
+      { id: "iv", label: "F Minor (iv)" },
+      { id: "ii7", label: "D Half-Diminished (iiø7)" },
+      { id: "VI", label: "Ab Major (VI)" },
+      { id: "IV", label: "F Major (IV)" },
+      { id: "V", label: "G Major (V)" },
+      { id: "ii", label: "D Minor (ii)" },
+    ],
+    edges: [
+      { from: "I", to: "iv", label: "Borrowed Subdominant" },
+      { from: "I", to: "ii7", label: "Borrowed Submediant" },
+      { from: "I", to: "VI", label: "Borrowed Supertonic" },
+      { from: "iv", to: "IV", label: "Diatonic Subdominant" },
+      { from: "ii7", to: "ii", label: "Diatonic Supertonic" },
+      { from: "VI", to: "V", label: "Common Progression" },
+      { from: "VI", to: "ii", label: "Common Progression" },
+    ],
+    direction: "tb" as const,
+  }
+
+  it("separates a same-anchor fan-out without covering nodes", () => {
+    const { scene } = layoutFlow(FIG1)
+    const arrows = arrowsOf(scene)
+    const rects = arrows.map(a => edgeLabelRect(a))
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        const ix = Math.min(rects[i].x + rects[i].w, rects[j].x + rects[j].w) - Math.max(rects[i].x, rects[j].x)
+        const iy = Math.min(rects[i].y + rects[i].h, rects[j].y + rects[j].h) - Math.max(rects[i].y, rects[j].y)
+        expect(ix > 2 && iy > 2, `labels ${i} and ${j} overlap (${Math.round(ix * iy)}px2)`).toBe(false)
+      }
+    }
+    // the fig-1 killer: a fan-out label sitting ON a node it does not belong to
+    const nodes = scene.elements.filter(e => e.kind === "node-box") as Array<{ x: number; y: number; w: number; h: number; label?: string }>
+    for (const r of rects) {
+      for (const n of nodes) {
+        const ix = Math.min(r.x + r.w, n.x + n.w) - Math.max(r.x, n.x)
+        const iy = Math.min(r.y + r.h, n.y + n.h) - Math.max(r.y, n.y)
+        expect(ix > 2 && iy > 2, `label overlaps node at ${n.x},${n.y}`).toBe(false)
+      }
+    }
+  })
+
+  it("keeps every label inside the canvas (T3: bounded escapes)", () => {
+    const { scene } = layoutFlow(FIG1)
+    for (const r of arrowsOf(scene).map(a => edgeLabelRect(a))) {
+      expect(r.x, "label left edge inside canvas").toBeGreaterThanOrEqual(0)
+      expect(r.x + r.w, "label right edge inside canvas").toBeLessThanOrEqual(scene.width)
+    }
+  })
+
+  it("anchors an adjacent tb label near its own curve, not the source column", () => {
+    const { scene } = layoutFlow(FIG1)
+    const a = mustNode(scene, "I")
+    const b = mustNode(scene, "VI")
+    const arrow = arrowsOf(scene).find(x => x.id === "I->VI")
+    if (!arrow) throw new Error("I->VI arrow not found")
+    const spanMid = (a.x + a.w / 2 + b.x + b.w / 2) / 2
+    // the curve's visual middle; the current source-column anchor is ~194px away
+    expect(Math.abs(arrow.labelX! - spanMid), "label x vs span midpoint").toBeLessThanOrEqual(30)
+    expect(ownDistance(arrow), "label to its own curve").toBeLessThanOrEqual(24)
+  })
+
+  it("routes a labelled tb skip through a clear bypass band, not the span midpoint", () => {
+    const { scene } = layoutFlow({
+      nodes: [
+        { id: "apc", label: "Antigen-presenting cell" },
+        { id: "ht", label: "Helper T cell" },
+        { id: "kb", label: "Killer T cell" },
+        { id: "ab", label: "B cell" },
+      ],
+      edges: [
+        { from: "apc", to: "ht" },
+        { from: "apc", to: "kb", label: "presents antigen" },
+        { from: "ht", to: "kb" },
+        { from: "kb", to: "ab" },
+      ],
+      direction: "tb",
+    })
+    // apc(rank0) -> kb(rank2) is the labelled skip; ht rides rank 1 beside it
+    const skip = arrowsOf(scene).find(x => x.id === "apc->kb")
+    if (!skip) throw new Error("apc->kb arrow not found")
+    const pts = skip.d.replace(/^M /, "").split(" L ").length
+    expect(pts, "serpentine route has 6 points (midpoint route has 4)").toBe(6)
+    const crossed = [mustNode(scene, "ht")]
+    const segs = skip.d.replace(/^M /, "").split(" L ").map(p => p.trim().split(/\s+/).map(Number) as [number, number])
+    for (let i = 0; i < segs.length - 1; i++) {
+      expect(segmentClearsBoxes(segs[i], segs[i + 1], crossed), `segment ${i} clears crossed boxes`).toBe(true)
+    }
+    // a tb label rides BESIDE its vertical bypass, so the distance scales with
+    // the label's own width: centre-to-line = blockW/2 + 3. The bound catches
+    // both the banded anchor (inside the band) and the dip anchor (outside).
+    const blockW = Math.max(...(skip.lines ?? [skip.label!]).map(l => estimateEdgeTextWidth(l)))
+    expect(ownDistance(skip), "label rides its bypass segment").toBeLessThanOrEqual(blockW / 2 + 10)
+    // and no label anywhere on a node box (the fig-1 orphan killer)
+    const nodes = scene.elements.filter(e => e.kind === "node-box") as Array<{ x: number; y: number; w: number; h: number }>
+    const r = edgeLabelRect(skip)
+    for (const n of nodes) {
+      const ix = Math.min(r.x + r.w, n.x + n.w) - Math.max(r.x, n.x)
+      const iy = Math.min(r.y + r.h, n.y + n.h) - Math.max(r.y, n.y)
+      expect(ix > 2 && iy > 2, `skip label on node at ${n.x},${n.y}`).toBe(false)
+    }
+  })
+
+  it("steers a second tb skip off the bypass band the first one took", () => {
+    const { scene } = layoutFlow({
+      nodes: [
+        { id: "s", label: "Source" },
+        { id: "m1", label: "Mid one" },
+        { id: "m2", label: "Mid two" },
+        { id: "t1", label: "Target one" },
+        { id: "t2", label: "Target two" },
+      ],
+      edges: [
+        { from: "s", to: "t1", label: "first skip" },
+        { from: "s", to: "t2", label: "second skip" },
+        { from: "s", to: "m1" },
+        { from: "s", to: "m2" },
+        { from: "m1", to: "t1" },
+        { from: "m2", to: "t2" },
+      ],
+      direction: "tb",
+    })
+    const s1 = arrowsOf(scene).find(x => x.id === "s->t1")
+    const s2 = arrowsOf(scene).find(x => x.id === "s->t2")
+    if (!s1 || !s2) throw new Error("skip arrows not found")
+    const x1 = s1.d.split(" L ")[2].trim().split(/\s+/).map(Number)[0]
+    const x2 = s2.d.split(" L ")[2].trim().split(/\s+/).map(Number)[0]
+    expect(Math.abs(x2 - x1), "bypass lines differ").toBeGreaterThanOrEqual(10)
   })
 })

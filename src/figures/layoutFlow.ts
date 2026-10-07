@@ -269,6 +269,35 @@ export function clearCorridorsX(bands: readonly [number, number][], boxes: reado
   return out
 }
 
+/** Gaps, with BAND_PAD clearance each side, between the sorted x-intervals of
+ *  `boxes` — the tb mirror of clearBandsY: a tb bypass runs VERTICALLY, so its
+ *  clear band is an x-interval between the crossed boxes' extents. */
+export function clearBandsX(boxes: readonly LaneBox[], x0: number, x1: number): [number, number][] {
+  const sorted = boxes.map(b => [b.x, b.x + b.w] as [number, number]).sort((a, b) => a[0] - b[0])
+  const bands: [number, number][] = []
+  let prev = x0
+  for (const [bx0, bx1] of sorted) {
+    if (bx1 < x0 || bx0 > x1) continue
+    if (bx0 - prev >= MIN_BAND) bands.push([prev + BAND_PAD, bx0 - BAND_PAD])
+    prev = Math.max(prev, bx1)
+  }
+  if (x1 - prev >= MIN_BAND) bands.push([prev + BAND_PAD, x1 - BAND_PAD])
+  return bands
+}
+
+/** Mid-y of every gutter between consecutive row bands that no box bleeds
+ *  into — the tb mirror of clearCorridorsX: a tb bypass's horizontal runs
+ *  ride the row gutters, so those gutters must be box-free. */
+export function clearCorridorsY(bands: readonly [number, number][], boxes: readonly LaneBox[]): number[] {
+  const out: number[] = []
+  for (let i = 0; i < bands.length - 1; i++) {
+    const mid = (bands[i][1] + bands[i + 1][0]) / 2
+    const straddles = boxes.some(b => mid > b.y && mid < b.y + b.h)
+    if (!straddles) out.push(mid)
+  }
+  return out
+}
+
 /** True when the straight segment p1→p2 clears every box (open-interval test:
  *  touching an edge is clear, matching how the renderer strokes paths). */
 export function segmentClearsBoxes(p1: [number, number], p2: [number, number], boxes: readonly LaneBox[]): boolean {
@@ -366,6 +395,95 @@ export function routeSerpentine(
     ],
     bypassY,
     labelY: band[0] + blockH / 2,
+    dipped: false,
+  }
+}
+
+export interface SerpentineRouteTb {
+  /** Polyline points, first = source exit, last = target entry. */
+  points: [number, number][]
+  /** The bypass run's x (tb) — beside the label block when banded. */
+  bypassX: number
+  /** Anchor for the label BLOCK's centre, banded and dipped alike. */
+  labelX?: number
+  /** True when no clear x-band existed and the route dips right of all boxes. */
+  dipped: boolean
+}
+
+/** Orthogonal serpentine route for a skip-rank edge (tb) — the exact transpose
+ *  of `routeSerpentine`: exit the source downward into the FIRST row gutter,
+ *  across to a clear x-band, DOWN the span inside that band, and back into
+ *  the gutter adjacent to the target. Falls back to a dip lane RIGHT of all
+ *  crossed boxes when no band fits the label block's width. The banded label
+ *  sits INSIDE its band, left of its own line (the mirror of lr's label above
+ *  its line); the dipped label sits RIGHT of the line — left of it would hang
+ *  back over the boxes at the segment's mid-y, which is exactly the room the
+ *  dip exists because there isn't.
+ *  `excludeX` steers later skip edges off bands earlier ones took. */
+export function routeSerpentineTb(
+  a: LaneBox,
+  b: LaneBox,
+  bands: readonly [number, number][],
+  crossed: readonly LaneBox[],
+  laneIndex: number,
+  extent: number,
+  blockW: number,
+  excludeX: readonly number[] = [],
+): SerpentineRouteTb {
+  const sx = a.x + a.w / 2
+  const sy = a.y + a.h
+  const tx = b.x + b.w / 2
+  const ty = b.y - 2
+  const corridors = clearCorridorsY(bands, crossed).filter(c => c > sy && c < ty)
+  const first = corridors.length > 0 ? corridors[0] : sy + 8
+  const last = corridors.length > 1 ? corridors[corridors.length - 1] : ty - 8
+  const midX = (sx + tx) / 2
+  // Interior x-bands first (between crossed boxes); the band must fit the
+  // label block plus the line beside it. Ties resolve to the later (righter)
+  // band; bands already used by earlier skips of this source are excluded —
+  // callers pass the earlier skip's LINE x (bypassX), and comparison is
+  // against the candidate's line position.
+  const fits = (c: [number, number]): boolean =>
+    c[1] - c[0] >= blockW + 6 && !excludeX.some(x => Math.abs(c[0] + blockW + 3 - x) < 8)
+  const pick = (candidates: [number, number][]): [number, number] | undefined =>
+    candidates
+      .filter(fits)
+      .map(c => ({ c, d: Math.abs((c[0] + c[1]) / 2 - midX) }))
+      .sort((x, y) => (x.d === y.d ? y.c[0] - x.c[0] : x.d - y.d))[0]?.c
+  let band: [number, number] | undefined
+  if (crossed.length > 0) {
+    const left = Math.min(...crossed.map(b => b.x))
+    const right = Math.max(...crossed.map(b => b.x + b.w))
+    band = pick(clearBandsX(crossed, left, right)) ?? pick(clearBandsX(crossed, 0, extent))
+  }
+  if (band === undefined) {
+    const dipX = extent + BAND_PAD * 2 + laneIndex * 26
+    return {
+      points: [
+        [sx, sy],
+        [sx, first],
+        [dipX, first],
+        [dipX, last],
+        [tx, last],
+        [tx, ty],
+      ],
+      bypassX: dipX,
+      labelX: dipX + 3 + blockW / 2,
+      dipped: true,
+    }
+  }
+  const bypassX = band[0] + blockW + 3
+  return {
+    points: [
+      [sx, sy],
+      [sx, first],
+      [bypassX, first],
+      [bypassX, last],
+      [tx, last],
+      [tx, ty],
+    ],
+    bypassX,
+    labelX: band[0] + blockW / 2,
     dipped: false,
   }
 }
@@ -504,7 +622,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     for (let r = lo + 1; r < hi; r++) skipCrossRank.add(r)
   }
   const crossGapFor = (r: number): number =>
-    skipCrossRank.has(r) ? Math.max(GAP_CROSS, 14 + 6 + 2 * BAND_PAD) : GAP_CROSS
+    skipCrossRank.has(r) ? Math.max(GAP_CROSS, EDGE_LABEL_H + 6 + 2 * BAND_PAD) : GAP_CROSS
   let lastGutter = GAP_MAIN
   ranks.forEach((rankIds, r) => {
     let cross = PAD
@@ -639,7 +757,15 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       const sy = a.y + a.h
       const ty = b.y - 2
       if (adjacent) {
-        labelX = a.x + a.w / 2
+        // The curve runs source-centre → target-centre, so its visual middle
+        // is the SPAN midpoint — anchoring there is what keeps a fan-out's
+        // labels apart (each targets a different column) and near its own
+        // curve. The old source-column anchor put every label of a fan-out
+        // on ONE point, ~194px from the wide-span curves (fig 1's orphan
+        // mechanism). Wrap width stays the column bound — horizontal text
+        // shredded across a cross-axis span was the old bug; the ANCHOR is
+        // what moves.
+        labelX = (a.x + a.w / 2 + b.x + b.w / 2) / 2
         labelY = (sy + ty) / 2 - 6
       } else {
         const gutterY = sy + (b.y - sy) / 2
@@ -704,6 +830,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   // same source steers to another band instead of sharing the first one's.
   let skipLane = 0
   const skipYs: number[] = []
+  const skipXs: number[] = []
   const planIsSkip = new Map<string, boolean>()
   const elements: Scene["elements"] = []
   for (const p of plans) {
@@ -758,7 +885,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
           const lanes = [0, 1, 2].map(i => laneBase + PAD + RETURN_DROP + i * RETURN_LANE)
           const hit = lanes.find(lx => {
             const w = Math.max(...lines.map(l => estimateEdgeTextWidth(l)))
-            const h = (lines.length - 1) * EDGE_LABEL_PITCH + 14
+            const h = (lines.length - 1) * EDGE_LABEL_PITCH + EDGE_LABEL_H
             const r = { x: labelX - w / 2, y: labelY - h / 2, w, h }
             const strip: { x: number; y: number; w: number; h: number } = { x: lx - 26, y: b.y - PAD, w: 44, h: b.h + 2 * PAD }
             const ox = Math.min(r.x + r.w, strip.x + strip.w) - Math.max(r.x, strip.x)
@@ -803,7 +930,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
           const xe = rankIds.map(id => placed.get(id)!.x + placed.get(id)!.w)
           return [Math.min(...xs), Math.max(...xe)] as [number, number]
         }).filter((b): b is [number, number] => b !== null)
-        const blockH = e.label ? (p.lines.length - 1) * EDGE_LABEL_PITCH + 14 : 6
+        const blockH = e.label ? (p.lines.length - 1) * EDGE_LABEL_PITCH + EDGE_LABEL_H : 6
         let gutterW = 0
         planIsSkip.set(edgeKey(e), true)
         const route = routeSerpentine(a, b, colBands, crossed, skipLane, height, blockH, skipYs)
@@ -811,7 +938,10 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
           height = Math.max(height, route.bypassY + PAD)
         }
         if (!route.dipped && route.labelY !== undefined) {
-          skipYs.push(route.labelY)
+          // the LINE y, not the label anchor — routeSerpentine's exclusion
+          // compares candidate line positions, and the run-4 stacked-skip
+          // steering unit test pins exactly this convention
+          skipYs.push(route.bypassY)
         }
         skipLane++
         d = `M ${route.points.map(pt => `${String(Math.round(pt[0] * 100) / 100)} ${String(Math.round(pt[1] * 100) / 100)}`).join(" L ")}`
@@ -836,9 +966,43 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         d = `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`
         head = `M ${tx} ${ty} L ${tx - 4.5} ${ty - 9} L ${tx + 4.5} ${ty - 9} Z`
       } else {
-        const gutterY = a.y + a.h + (b.y - (a.y + a.h)) / 2
-        d = `M ${sx} ${sy} L ${sx} ${gutterY} L ${tx} ${gutterY} L ${tx} ${ty}`
+        // Skip-rank serpentine, tb mirror of the lr route (tb edge-label spec
+        // D2): crossed boxes come from the ranks strictly between the
+        // endpoints'; bands are x-intervals between their extents. The label
+        // anchors on the bypass segment — node overlap is structurally
+        // impossible because the anchor lives on a segment the route just
+        // proved clear. The old arithmetic-midpoint route put the label at
+        // the spans' midpoint Y, where a column graph keeps its boxes.
+        const lo = Math.min(layer.get(e.from)!, layer.get(e.to)!)
+        const hi = Math.max(layer.get(e.from)!, layer.get(e.to)!)
+        const crossed = [] as Placed[]
+        for (let r = lo + 1; r < hi; r++) {
+          for (const id of ranks[r]) crossed.push(placed.get(id)!)
+        }
+        const rowBands = ranks.map((rankIds, r) => {
+          if (rankIds.length === 0) return null
+          const ys = rankIds.map(id => placed.get(id)!.y)
+          const ye = rankIds.map(id => placed.get(id)!.y + placed.get(id)!.h)
+          return [Math.min(...ys), Math.max(...ye)] as [number, number]
+        }).filter((b): b is [number, number] => b !== null)
+        const blockW = e.label ? Math.max(...p.lines.map(l => estimateEdgeTextWidth(l))) : 6
+        planIsSkip.set(edgeKey(e), true)
+        const route = routeSerpentineTb(a, b, rowBands, crossed, skipLane, width, blockW, skipXs)
+        if (route.dipped) {
+          // the dipped label rides RIGHT of the line: grow the scene for it
+          width = Math.max(width, route.bypassX + 3 + blockW + PAD)
+        }
+        if (!route.dipped && route.labelX !== undefined) {
+          // the LINE x, matching the lr convention the steering test pins
+          skipXs.push(route.bypassX)
+        }
+        skipLane++
+        d = `M ${route.points.map(pt => `${String(Math.round(pt[0] * 100) / 100)} ${String(Math.round(pt[1] * 100) / 100)}`).join(" L ")}`
         head = `M ${tx} ${ty} L ${tx - 4.5} ${ty - 9} L ${tx + 4.5} ${ty - 9} Z`
+        if (e.label && route.labelX !== undefined) {
+          labelX = route.labelX
+          labelY = (route.points[2][1] + route.points[3][1]) / 2
+        }
       }
     }
 
