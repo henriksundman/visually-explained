@@ -25,8 +25,6 @@ Rules:
 
 Block types:
 ${BLOCK_TYPE_DOCS}
-- text: { body } — plain paragraph.
-- code: { language?, code } — a verbatim source snippet for how-tos; never contains HTML or markdown (rendered exactly as written).
 `.trim()
 
 /** Tested instruction block: paste into your system prompt when asking an LLM for a document. */

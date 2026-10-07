@@ -22,4 +22,6 @@ Every block is one flat object: a "type" field naming the block type, with that 
 - quiz: { question, options: [{ text, why? }], answer, explanation? } — a multiple-choice check for the reader. 2-6 options; answer is the 0-based index of the one correct option. Write plausible distractors whose why names the misconception they encode, and give the correct option a why that completes the idea. Never reveal the answer inside the question; place the quiz after the material it checks.
 - image: { image, caption?, body? } — one image from the host catalog, referenced by key. Place it only to anchor an analogy or set a scene; never to illustrate a derivation (a drawn figure does that better). Put no text in the image itself — labels belong in the caption. The body field is prose that belongs to this picture and renders beside it; use it for the explanation the picture carries (max 1200 chars) instead of a separate text block, and omit it when the caption alone says enough.
 - stack: { blocks: Block[] } — group of blocks.
+- text: { body } — plain paragraph.
+- code: { language?, code } — a verbatim source snippet for how-tos; never contains HTML or markdown (rendered exactly as written).
 `.trim()

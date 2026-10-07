@@ -6,6 +6,8 @@ import {
   sectionUserPrompt,
 } from "../src/compiler/prompts"
 import { BLOCK_TYPE_DOCS } from "../src/core/blockTypes"
+import { registry } from "../src/core/registry"
+import "../src/core/registerAll"
 import type { SourceExcerpt } from "../src/compiler/client"
 
 describe("outline prompts", () => {
@@ -30,6 +32,18 @@ describe("section prompts", () => {
   it("system prompt shares the block-type text verbatim", () => {
     expect(sectionSystemPrompt()).toContain(BLOCK_TYPE_DOCS)
     expect(sectionSystemPrompt()).toContain("no HTML")
+  })
+
+  // Regression from the first real-LLM compile (2026-10-07): text and code
+  // were appended ONLY to systemPromptSnippet in llm.ts, so the compiler's
+  // section prompt never mentioned them. The model, wanting a plain paragraph,
+  // invented type "description" (rendered as 4 fallback chips). A weak
+  // substring check passes vacuously — "text" and "code" occur in unrelated
+  // prose — so pin the doc line each BLOCK_TYPE_DOCS entry starts with.
+  it("mentions every registered block type as a doc line", () => {
+    for (const type of Object.keys(registry)) {
+      expect(sectionSystemPrompt()).toContain(`- ${type}:`)
+    }
   })
 
   it("teaches the link inline form", () => {

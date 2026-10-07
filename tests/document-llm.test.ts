@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { documentJsonSchema, documentSystemPromptSnippet, BLOCK_TYPE_DOCS } from "../src/core/llm"
 import { documentSchema } from "../src/core/documentSchema"
+import { registry } from "../src/core/registry"
+import "../src/core/registerAll"
 
 describe("documentJsonSchema", () => {
   it("pins version to 1 and keeps optionals optional", () => {
@@ -21,6 +23,16 @@ describe("documentSystemPromptSnippet", () => {
 
   it("carries the shared block-type text verbatim", () => {
     expect(documentSystemPromptSnippet).toContain(BLOCK_TYPE_DOCS)
+  })
+
+  // Same regression as the section prompt (2026-10-07): text and code were
+  // appended only to systemPromptSnippet, so this document-facing contract
+  // never mentioned them. Pin the doc line, not the bare type name — a
+  // substring check passes on unrelated prose.
+  it("mentions every registered block type as a doc line", () => {
+    for (const type of Object.keys(registry)) {
+      expect(documentSystemPromptSnippet).toContain(`- ${type}:`)
+    }
   })
 })
 

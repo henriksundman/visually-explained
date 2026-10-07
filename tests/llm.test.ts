@@ -19,8 +19,10 @@ describe("explanationJsonSchema", () => {
 
 describe("systemPromptSnippet", () => {
   it("mentions every registered block type", () => {
+    // The doc LINE, not the bare name: "text" and "code" occur as substrings
+    // in unrelated prose, so a plain toContain passes without the entry.
     for (const type of Object.keys(registry)) {
-      expect(systemPromptSnippet).toContain(type)
+      expect(systemPromptSnippet).toContain(`- ${type}:`)
     }
   })
 
