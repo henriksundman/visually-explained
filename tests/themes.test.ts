@@ -75,6 +75,15 @@ describe("themes", () => {
     expect(css).toMatch(/\.exp-image-body \.exp-fig-caption\s*{[^}]*flex: 1 1 100%/)
   })
 
+  it("gives edge labels a background halo so a label over a line stays readable", () => {
+    const css = readFileSync("src/themes/tokens.css", "utf8")
+    // The stroke paints UNDER the fill (paint-order) in the page background
+    // colour, which dark.css overrides — the halo must follow the theme.
+    expect(css).toMatch(/\.exp-edge-label\s*{[^}]*paint-order: stroke/)
+    expect(css).toMatch(/\.exp-edge-label\s*{[^}]*stroke: var\(--exp-surface\)/)
+    expect(css).toMatch(/\.exp-edge-label\s*{[^}]*stroke-width: 3px/)
+  })
+
   it("dark theme overrides surface tokens under .exp-theme-dark", () => {
     const dark = readFileSync("src/themes/dark.css", "utf8")
     expect(dark).toContain(".exp-theme-dark")

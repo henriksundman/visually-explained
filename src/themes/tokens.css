@@ -552,6 +552,14 @@
 
 .exp-edge-label {
   font-size: 11px;
+  /* Halo: the label paints its own stroke UNDER its fill, so wherever a label
+     still crosses another edge's line the text stays readable instead of
+     dissolving into the stroke (tb edge-label spec D4). Surface is the page
+     background and is theme-overridden, so the halo disappears in dark mode. */
+  paint-order: stroke;
+  stroke: var(--exp-surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .exp-fig-label {

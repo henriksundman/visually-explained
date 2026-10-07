@@ -37,6 +37,11 @@ describe("diagram", () => {
     expect(html).toContain(`Deploy ships`)
     expect(html).not.toContain(`exp-edge-conflict`) // no conflict edge in this fixture
     expect(html).toContain(`>then</text>`)
+    // The halo rule in tokens.css selects .exp-edge-label — if the markup ever
+    // stops carrying the class the rule silently stops applying (the 2026-10-03
+    // stylesheet lesson: a CSS test proves the rule parses, never that it
+    // applies, so the markup side is pinned beside it).
+    expect(html).toContain(`class="exp-fig-label exp-edge-label"`)
     expect(warnings.some(w => w.includes("figure-edge-dangling"))).toBe(true)
   })
 
