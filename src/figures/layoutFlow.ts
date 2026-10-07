@@ -154,6 +154,138 @@ function findBackEdges(nodes: FlowNodeSpec[], edges: FlowEdgeSpec[]): Set<string
 const RETURN_DROP = 26 // how far below the last node a return path dips
 const RETURN_LANE = 18 // extra depth per back edge, so two cycles don't overlap
 
+/** Skip-rank routing (skiprank spec §3.1): clear-corridor selection constants. */
+export interface LaneBox {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+const MIN_BAND = 12 // minimum clear band height a bypass may run through
+const BAND_PAD = 6 // clearance the bypass keeps from box edges on either side
+const NUDGE_STEP = GAP_CROSS / 2 // label collision nudge pitch (skiprank spec §3.2)
+const MAX_NUDGE_STEPS = 4
+
+/** Gaps, with BAND_PAD clearance each side, between the sorted y-intervals of
+ *  `boxes`. [y0, y1] bounds the search: interior gaps come from the real box
+ *  edges; anything before the first box's top (or after the last box's bottom)
+ *  is treated as one gap opening at y0 (closing at y1) — pass a tight range to
+ *  see interior gaps only, a full range to include above-all/below-all. */
+export function clearBandsY(boxes: readonly LaneBox[], y0: number, y1: number): [number, number][] {
+  const sorted = boxes.map(b => [b.y, b.y + b.h] as [number, number]).sort((a, b) => a[0] - b[0])
+  const bands: [number, number][] = []
+  let prev = y0
+  for (const [by0, by1] of sorted) {
+    if (by1 < y0 || by0 > y1) continue
+    if (by0 - prev >= MIN_BAND) bands.push([prev + BAND_PAD, by0 - BAND_PAD])
+    prev = Math.max(prev, by1)
+  }
+  if (y1 - prev >= MIN_BAND) bands.push([prev + BAND_PAD, y1 - BAND_PAD])
+  return bands
+}
+
+/** Mid-x of every gutter between consecutive column bands that no box bleeds
+ *  into. Gutters are node-free by construction of the layout, but a box from a
+ *  NEIGHBOURING rank pair can straddle one (wrapped rows in the same column
+ *  pair), so the candidate is verified, not assumed. */
+export function clearCorridorsX(bands: readonly [number, number][], boxes: readonly LaneBox[]): number[] {
+  const out: number[] = []
+  for (let i = 0; i < bands.length - 1; i++) {
+    const mid = (bands[i][1] + bands[i + 1][0]) / 2
+    const straddles = boxes.some(b => mid > b.x && mid < b.x + b.w)
+    if (!straddles) out.push(mid)
+  }
+  return out
+}
+
+/** True when the straight segment p1→p2 clears every box (open-interval test:
+ *  touching an edge is clear, matching how the renderer strokes paths). */
+export function segmentClearsBoxes(p1: [number, number], p2: [number, number], boxes: readonly LaneBox[]): boolean {
+  const minx = Math.min(p1[0], p2[0])
+  const maxx = Math.max(p1[0], p2[0])
+  const miny = Math.min(p1[1], p2[1])
+  const maxy = Math.max(p1[1], p2[1])
+  return !boxes.some(b => minx < b.x + b.w && maxx > b.x && miny < b.y + b.h && maxy > b.y)
+}
+
+export interface SerpentineRoute {
+  /** Polyline points, first = source exit, last = target entry. */
+  points: [number, number][]
+  /** The bypass run's y (lr) — where the label anchors above. */
+  bypassY: number
+  /** True when no clear band existed and the route dips below all boxes. */
+  dipped: boolean
+}
+
+/** Orthogonal serpentine route for a skip-rank edge (lr): exit the source
+ *  rightward into the FIRST corridor (running the horizontal at exit-y past
+ *  the first crossed column is the defect being fixed), down/up to a clear
+ *  bypass band, across the span in that band, and up/down into the corridor
+ *  adjacent to the target. Falls back to a dip lane below all crossed boxes
+ *  when no band exists. Deterministic: band nearest the source/target row
+ *  midline (ties → the later, i.e. lower, band). `corridors` are the gutter
+ *  midpoints between column bands; only those strictly inside the span are
+ *  usable, and when fewer than two survive the flanks sx+8/tx−8 stand in —
+ *  gutters are box-free by construction, so those are always clear. */
+export function routeSerpentine(
+  a: LaneBox,
+  b: LaneBox,
+  bands: readonly [number, number][],
+  crossed: readonly LaneBox[],
+  laneIndex: number,
+  extent: number,
+): SerpentineRoute {
+  const sx = a.x + a.w
+  const sy = a.y + a.h / 2
+  const tx = b.x - 2
+  const ty = b.y + b.h / 2
+  const corridors = clearCorridorsX(bands, crossed).filter(c => c > sx && c < tx)
+  const first = corridors.length > 0 ? corridors[0] : sx + 8
+  const last = corridors.length > 1 ? corridors[corridors.length - 1] : tx - 8
+  const midY = (sy + ty) / 2
+  // INTERIOR bands first (between crossed boxes) — hopping above or below the
+  // whole figure is clear but reads as leaving the graph. Ties resolve to the
+  // later (lower) band so a route that must go around reads as going under.
+  const pick = (bands: [number, number][]): [number, number] | undefined =>
+    bands
+      .map(c => ({ c, d: Math.abs((c[0] + c[1]) / 2 - midY) }))
+      .sort((x, y) => (x.d === y.d ? y.c[0] - x.c[0] : x.d - y.d))[0]?.c
+  let band: [number, number] | undefined
+  if (crossed.length > 0) {
+    const top = Math.min(...crossed.map(b => b.y))
+    const bottom = Math.max(...crossed.map(b => b.y + b.h))
+    band = pick(clearBandsY(crossed, top, bottom)) ?? pick(clearBandsY(crossed, 0, extent))
+  }
+  if (band === undefined) {
+    const dipY = extent + BAND_PAD * 2 + laneIndex * 26
+    return {
+      points: [
+        [sx, sy],
+        [first, sy],
+        [first, dipY],
+        [last, dipY],
+        [last, ty],
+        [tx, ty],
+      ],
+      bypassY: dipY,
+      dipped: true,
+    }
+  }
+  const bypassY = (band[0] + band[1]) / 2
+  return {
+    points: [
+      [sx, sy],
+      [first, sy],
+      [first, bypassY],
+      [last, bypassY],
+      [last, ty],
+      [tx, ty],
+    ],
+    bypassY,
+    dipped: false,
+  }
+}
+
 /** The TRUE lowest point of a cubic whose two control points both sit at
  *  `ly`, given endpoints at `y0`/`y3`.
  *

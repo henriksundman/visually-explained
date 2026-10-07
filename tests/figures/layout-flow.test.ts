@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { layoutFlow } from "../../src/figures/layoutFlow"
+import {
+  clearBandsY,
+  clearCorridorsX,
+  layoutFlow,
+  routeSerpentine,
+  segmentClearsBoxes,
+} from "../../src/figures/layoutFlow"
 import * as demoExamples from "../../demo/examples"
 import type { NodeBoxEl, Scene } from "../../src/figures/scene"
 
@@ -8,6 +14,25 @@ function mustNode(scene: Scene, id: string): NodeBoxEl {
   if (!el) throw new Error(`node "${id}" not found in scene`)
   return el
 }
+
+interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** The EXACT node geometry of the run-3 "Cytotoxic T Cells: The Assassins"
+ *  diagram (merged dist a45db9c) — the live instance of the skip-rank defect. */
+const RUN3_BOXES: Box[] = [
+  { x: 16, y: 16, w: 144, h: 44 }, // cytotoxic_t_cell (rank 0)
+  { x: 224, y: 16, w: 92, h: 44 }, // granzymes (rank 1, top)
+  { x: 224, y: 88, w: 90, h: 44 }, // perforin (rank 1, bottom)
+  { x: 456, y: 16, w: 122, h: 44 }, // target_cell (rank 2)
+]
+
+const intersects = (a: Box, b: Box): boolean =>
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 
 describe("layoutFlow", () => {
   it("layers lr: sources in column 0, targets in column 1", () => {
@@ -700,5 +725,89 @@ describe("flow cycles and back-edge routing", () => {
     expect(scene.height).toBe(76)
     expect(mustArrow(scene, "sun->air").d).toBe("M 106 38 C 175 38, 175 38, 244 38")
     expect(mustArrow(scene, "air->eye").d).toBe("M 345 38 C 414 38, 414 38, 483 38")
+  })
+})
+
+describe("skip-rank routing helpers", () => {
+  const columns: [number, number][] = [
+    [16, 160], // rank 0 band
+    [224, 316], // rank 1 band
+    [456, 578], // rank 2 band
+  ]
+
+  it("finds the corridor midpoints clear of every box (run-3 geometry)", () => {
+    const corridors = clearCorridorsX(columns, RUN3_BOXES)
+    // gutter0 mid = (160+224)/2 = 192; gutter1 mid = (316+456)/2 = 386
+    expect(corridors).toEqual([192, 386])
+  })
+
+  it("excludes a corridor a box bleeds into", () => {
+    // a box spanning across the first gutter kills it
+    const boxes: Box[] = [...RUN3_BOXES, { x: 140, y: 200, w: 120, h: 40 }]
+    expect(clearCorridorsX(columns, boxes)).toEqual([386])
+  })
+
+  it("computes the clear bypass band between stacked boxes (run-3)", () => {
+    // crossed boxes are granzymes (y 16..60) and perforin (y 88..132);
+    // the 28px gap between them, with 6px clearance each side, is [66, 82]
+    // (mid 74 — what the route actually uses). MIN_BAND is 12, BAND_PAD 6.
+    // Interior-only call: tight range spanning exactly the crossed boxes.
+    const bands = clearBandsY([RUN3_BOXES[1], RUN3_BOXES[2]], 16, 132)
+    expect(bands).toEqual([[66, 82]])
+  })
+
+  it("offers above-all and below-all bands when the gap is missing", () => {
+    const tiled: Box[] = [
+      { x: 224, y: 0, w: 92, h: 74 },
+      { x: 224, y: 74, w: 92, h: 74 },
+    ]
+    const bands = clearBandsY(tiled, 0, 148)
+    expect(bands.length).toBe(0) // no interior gap ≥ MIN_BAND
+  })
+
+  it("rejects a segment crossing a box and accepts a clear one", () => {
+    expect(segmentClearsBoxes([160, 38], [454, 38], RUN3_BOXES)).toBe(false)
+    expect(segmentClearsBoxes([160, 38], [192, 38], RUN3_BOXES)).toBe(true)
+    expect(segmentClearsBoxes([192, 38], [192, 74], RUN3_BOXES)).toBe(true)
+  })
+
+  it("routes the run-3 skip edge through clear corridors only", () => {
+    const route = routeSerpentine(
+      { x: 16, y: 16, w: 144, h: 44 },
+      { x: 456, y: 16, w: 122, h: 44 },
+      columns,
+      [RUN3_BOXES[1], RUN3_BOXES[2]],
+      0,
+      148,
+    )
+    // every polyline segment clears every box
+    for (let i = 0; i < route.points.length - 1; i++) {
+      expect(segmentClearsBoxes(route.points[i], route.points[i + 1], RUN3_BOXES)).toBe(true)
+    }
+    // first leg must end in the corridor adjacent to the source (192),
+    // not somewhere past the first crossed column
+    expect(route.points[1][0]).toBe(192)
+    // bypass segment (the long middle horizontal) exists and is clear
+    expect(route.bypassY).toBeGreaterThan(RUN3_BOXES[1].y + RUN3_BOXES[1].h)
+    expect(route.bypassY).toBeLessThan(RUN3_BOXES[2].y)
+  })
+
+  it("falls back to a dip lane when no clear band exists", () => {
+    const tiled: Box[] = [
+      { x: 224, y: 0, w: 92, h: 74 },
+      { x: 224, y: 74, w: 92, h: 74 },
+    ]
+    const route = routeSerpentine(
+      { x: 16, y: 16, w: 144, h: 44 },
+      { x: 456, y: 16, w: 122, h: 44 },
+      columns,
+      tiled,
+      0,
+      148,
+    )
+    expect(route.dipped).toBe(true)
+    for (let i = 0; i < route.points.length - 1; i++) {
+      expect(segmentClearsBoxes(route.points[i], route.points[i + 1], [...RUN3_BOXES, ...tiled])).toBe(true)
+    }
   })
 })
