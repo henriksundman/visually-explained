@@ -211,22 +211,24 @@ export function segmentClearsBoxes(p1: [number, number], p2: [number, number], b
 export interface SerpentineRoute {
   /** Polyline points, first = source exit, last = target entry. */
   points: [number, number][]
-  /** The bypass run's y (lr) — where the label anchors above. */
+  /** The bypass run's y (lr) — below the label block when banded. */
   bypassY: number
+  /** Anchor for the label BLOCK's centre, only when the route is banded. */
+  labelY?: number
   /** True when no clear band existed and the route dips below all boxes. */
   dipped: boolean
 }
 
 /** Orthogonal serpentine route for a skip-rank edge (lr): exit the source
  *  rightward into the FIRST corridor (running the horizontal at exit-y past
- *  the first crossed column is the defect being fixed), down/up to a clear
- *  bypass band, across the span in that band, and up/down into the corridor
- *  adjacent to the target. Falls back to a dip lane below all crossed boxes
- *  when no band exists. Deterministic: band nearest the source/target row
- *  midline (ties → the later, i.e. lower, band). `corridors` are the gutter
- *  midpoints between column bands; only those strictly inside the span are
- *  usable, and when fewer than two survive the flanks sx+8/tx−8 stand in —
- *  gutters are box-free by construction, so those are always clear. */
+ *  the first crossed column is the defect being fixed), to a clear bypass
+ *  band, across the span in that band, and back into the corridor adjacent
+ *  to the target. Falls back to a dip lane below all crossed boxes when no
+ *  band fits. The bypass LINE runs `blockH + 3` below the band top so the
+ *  label block (height `blockH`) sits INSIDE the band, above its own line —
+ *  layout widens cross gaps so this fits (label-aware gutters, same idea).
+ *  `excludeY` steers later skip edges off bands already used by earlier ones
+ *  from the same source. Deterministic throughout. */
 export function routeSerpentine(
   a: LaneBox,
   b: LaneBox,
@@ -234,6 +236,8 @@ export function routeSerpentine(
   crossed: readonly LaneBox[],
   laneIndex: number,
   extent: number,
+  blockH: number,
+  excludeY: readonly number[] = [],
 ): SerpentineRoute {
   const sx = a.x + a.w
   const sy = a.y + a.h / 2
@@ -244,10 +248,14 @@ export function routeSerpentine(
   const last = corridors.length > 1 ? corridors[corridors.length - 1] : tx - 8
   const midY = (sy + ty) / 2
   // INTERIOR bands first (between crossed boxes) — hopping above or below the
-  // whole figure is clear but reads as leaving the graph. Ties resolve to the
-  // later (lower) band so a route that must go around reads as going under.
-  const pick = (bands: [number, number][]): [number, number] | undefined =>
-    bands
+  // whole figure is clear but reads as leaving the graph. The band must fit
+  // the label block plus the line below it. Ties resolve to the later (lower)
+  // band; bands already used by earlier skips of this source are excluded.
+  const fits = (c: [number, number]): boolean =>
+    c[1] - c[0] >= blockH + 6 && !excludeY.some(y => Math.abs((c[0] + c[1]) / 2 - y) < 8)
+  const pick = (candidates: [number, number][]): [number, number] | undefined =>
+    candidates
+      .filter(fits)
       .map(c => ({ c, d: Math.abs((c[0] + c[1]) / 2 - midY) }))
       .sort((x, y) => (x.d === y.d ? y.c[0] - x.c[0] : x.d - y.d))[0]?.c
   let band: [number, number] | undefined
@@ -268,10 +276,11 @@ export function routeSerpentine(
         [tx, ty],
       ],
       bypassY: dipY,
+      labelY: dipY - 3 - blockH / 2,
       dipped: true,
     }
   }
-  const bypassY = (band[0] + band[1]) / 2
+  const bypassY = band[0] + blockH + 3
   return {
     points: [
       [sx, sy],
@@ -282,6 +291,7 @@ export function routeSerpentine(
       [tx, ty],
     ],
     bypassY,
+    labelY: band[0] + blockH / 2,
     dipped: false,
   }
 }

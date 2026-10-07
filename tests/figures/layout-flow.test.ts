@@ -779,6 +779,7 @@ describe("skip-rank routing helpers", () => {
       [RUN3_BOXES[1], RUN3_BOXES[2]],
       0,
       148,
+      10, // label block that fits the 16px usable band (28px gap − 2×BAND_PAD)
     )
     // every polyline segment clears every box
     for (let i = 0; i < route.points.length - 1; i++) {
@@ -787,9 +788,10 @@ describe("skip-rank routing helpers", () => {
     // first leg must end in the corridor adjacent to the source (192),
     // not somewhere past the first crossed column
     expect(route.points[1][0]).toBe(192)
-    // bypass segment (the long middle horizontal) exists and is clear
-    expect(route.bypassY).toBeGreaterThan(RUN3_BOXES[1].y + RUN3_BOXES[1].h)
-    expect(route.bypassY).toBeLessThan(RUN3_BOXES[2].y)
+    // the line runs inside the [66,82] band, below the label block
+    expect(route.bypassY).toBe(66 + 10 + 3)
+    expect(route.labelY).toBe(66 + 5)
+    expect(route.dipped).toBe(false)
   })
 
   it("falls back to a dip lane when no clear band exists", () => {
@@ -804,6 +806,7 @@ describe("skip-rank routing helpers", () => {
       tiled,
       0,
       148,
+      14,
     )
     expect(route.dipped).toBe(true)
     for (let i = 0; i < route.points.length - 1; i++) {
