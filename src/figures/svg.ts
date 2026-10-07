@@ -289,6 +289,223 @@ function cleanInner(el: SceneElement, i: number): string {
   }
 }
 
+/** Grow-to-content bounds (figure scene quality spec §3.1). Only AUTHORED
+ *  figure elements participate: layout-driven scenes are sized to fit by their
+ *  layout passes, and estimating their text bounds could grow a demo scene.
+ *  Estimates are deliberately generous — growth only adds margin, and
+ *  under-estimating would leave content clipped, the defect this fixes. */
+interface Bounds {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
+const LABEL_CHAR_W = 6.5 // per-char estimate at 11px, generous (measured ~5.7)
+
+/** Path bounds, command-aware. A naive number-pairing desyncs twice, both
+ *  measured live on the demo corpus: `A` carries 7 parameters (an odd count —
+ *  its large-arc flag paired into a phantom point at (1,300), growing the
+ *  orbit figure to 360×300), and long `L` chains put x coordinates into y
+ *  candidates (the epicycles wave grew to 720×680). So: walk commands with
+ *  their real arities, track the current point, add endpoints + explicit
+ *  control points + reflected controls, and sample arcs via the SVG-spec
+ *  endpoint→center conversion — the arc's bulge is otherwise invisible to its
+ *  endpoints. Superset by construction: every on-curve and control point is a
+ *  candidate, and 15° arc sampling misses an extreme by ≤ 0.3% of the radius. */
+function pathBounds(d: string): Bounds | null {
+  const tokens = d.match(/[MmLlHhVvCcSsQqTtAaZz]|-?(?:\d+\.?\d*|\.\d+)(?:[eE]-?\d+)?/g) ?? []
+  let cx = 0
+  let cy = 0
+  let sx = 0
+  let sy = 0
+  let lastQx = 0
+  let lastQy = 0
+  let hasQ = false // T reflects only off a preceding Q/T (spec: otherwise it IS a lineto)
+  let lastCx = 0
+  let lastCy = 0
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  let saw = false
+  const add = (x: number, y: number) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return
+    saw = true
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
+  }
+  // Endpoint→center (SVG spec F.6.5), then sample the swept angles.
+  const arcCandidates = (
+    x0: number, y0: number, rx: number, ry: number, rotDeg: number,
+    laf: number, sf: number, x1: number, y1: number,
+  ) => {
+    const rxc = Math.abs(rx)
+    const ryc = Math.abs(ry)
+    const rad = (rotDeg * Math.PI) / 180
+    const cosR = Math.cos(rad)
+    const sinR = Math.sin(rad)
+    const dx2 = (x0 - x1) / 2
+    const dy2 = (y0 - y1) / 2
+    const x1p = cosR * dx2 + sinR * dy2
+    const y1p = -sinR * dx2 + cosR * dy2
+    const lambda = (x1p * x1p) / (rxc * rxc) + (y1p * y1p) / (ryc * ryc)
+    let erx = rxc
+    let ery = ryc
+    if (lambda > 1) {
+      const s = Math.sqrt(lambda)
+      erx *= s
+      ery *= s
+    }
+    const num = erx * erx * ery * ery - erx * erx * y1p * y1p - ery * ery * x1p * x1p
+    const den = erx * erx * y1p * y1p + ery * ery * x1p * x1p
+    const co = den === 0 ? 0 : (laf !== sf ? 1 : -1) * Math.sqrt(Math.max(0, num / den))
+    const cxp = (co * erx * y1p) / ery
+    const cyp = (-co * ery * x1p) / erx
+    const ccx = cxp + (x0 + x1) / 2
+    const ccy = cyp + (y0 + y1) / 2
+    const th1 = Math.atan2((y1p - cyp) / ery, (x1p - cxp) / erx)
+    let dth = Math.atan2((-y1p - cyp) / ery, (-x1p - cxp) / erx) - th1
+    if (!sf && dth > 0) dth -= 2 * Math.PI
+    if (sf && dth < 0) dth += 2 * Math.PI
+    const steps = Math.max(2, Math.ceil((Math.abs(dth) * 180) / Math.PI / 15))
+    for (let i = 0; i <= steps; i++) {
+      const th = th1 + (dth * i) / steps
+      const ex = erx * Math.cos(th)
+      const ey = ery * Math.sin(th)
+      add(ccx + cosR * ex - sinR * ey, ccy + sinR * ex + cosR * ey)
+    }
+  }
+  let cmd = ""
+  let args: number[] = []
+  const ARITY: Record<string, number> = { M: 2, L: 2, T: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, A: 7 }
+  const flush = () => {
+    const C = cmd.toUpperCase()
+    const rel = cmd !== C
+    const px = (v: number) => (rel ? cx + v : v)
+    const py = (v: number) => (rel ? cy + v : v)
+    if ((C === "M" || C === "L" || C === "T") && args.length >= 2) {
+      for (let i = 0; i + 1 < args.length; i += 2) add(px(args[i]!), py(args[i + 1]!))
+      const nx = px(args[args.length - 2]!)
+      const ny = py(args[args.length - 1]!)
+      if (C === "T" && hasQ) {
+        // the reflected quad control is part of the curve's hull
+        const qx = 2 * cx - lastQx
+        const qy = 2 * cy - lastQy
+        add(qx, qy)
+        lastQx = qx
+        lastQy = qy
+      }
+      if (C === "T") hasQ = true
+      cx = nx
+      cy = ny
+      if (C === "M") {
+        sx = cx
+        sy = cy
+      }
+    } else if (C === "H" && args.length >= 1) {
+      for (const v of args) add(px(v), cy)
+      cx = px(args[args.length - 1]!)
+    } else if (C === "V" && args.length >= 1) {
+      for (const v of args) add(cx, py(v))
+      cy = py(args[args.length - 1]!)
+    } else if (C === "C" && args.length >= 6) {
+      for (let i = 0; i + 5 < args.length; i += 6) {
+        add(px(args[i]!), py(args[i + 1]!))
+        add(px(args[i + 2]!), py(args[i + 3]!))
+        add(px(args[i + 4]!), py(args[i + 5]!))
+      }
+      lastCx = px(args[args.length - 4]!)
+      lastCy = py(args[args.length - 3]!)
+      cx = px(args[args.length - 2]!)
+      cy = py(args[args.length - 1]!)
+    } else if ((C === "S" || C === "Q") && args.length >= 4) {
+      if (C === "S") {
+        add(2 * cx - lastCx, 2 * cy - lastCy) // reflected cubic control
+        lastCx = 2 * cx - lastCx
+        lastCy = 2 * cy - lastCy
+      }
+      for (let i = 0; i + 3 < args.length; i += 4) {
+        add(px(args[i]!), py(args[i + 1]!))
+        add(px(args[i + 2]!), py(args[i + 3]!))
+      }
+      if (C === "Q") {
+        lastQx = px(args[args.length - 4]!)
+        lastQy = py(args[args.length - 3]!)
+        hasQ = true
+      }
+      cx = px(args[args.length - 2]!)
+      cy = py(args[args.length - 1]!)
+    } else if (C === "A" && args.length >= 7) {
+      for (let i = 0; i + 6 < args.length; i += 7) {
+        arcCandidates(cx, cy, args[i]!, args[i + 1]!, args[i + 2]!, args[i + 3]!, args[i + 4]!, px(args[i + 5]!), py(args[i + 6]!))
+        cx = px(args[i + 5]!)
+        cy = py(args[i + 6]!)
+      }
+    }
+    args = []
+  }
+  for (const t of tokens) {
+    if (/^[A-Za-z]$/.test(t)) {
+      flush()
+      if (t.toUpperCase() === "Z") {
+        cx = sx
+        cy = sy
+        cmd = ""
+      } else {
+        cmd = t
+      }
+    } else {
+      args.push(Number(t))
+      const C = cmd.toUpperCase()
+      if (cmd !== "" && args.length >= (ARITY[C] ?? 2)) flush()
+    }
+  }
+  flush()
+  if (!saw) return null
+  return { minX, minY, maxX, maxY }
+}
+
+function elementBounds(el: SceneElement): Bounds | null {
+  switch (el.kind) {
+    case "figure-box":
+      return { minX: el.x, minY: el.y, maxX: el.x + el.w, maxY: el.y + el.h }
+    case "figure-dot":
+      return { minX: el.cx - el.r, minY: el.cy - el.r, maxX: el.cx + el.r, maxY: el.cy + el.r }
+    case "figure-line":
+      return {
+        minX: Math.min(el.x1, el.x2),
+        minY: Math.min(el.y1, el.y2),
+        maxX: Math.max(el.x1, el.x2),
+        maxY: Math.max(el.y1, el.y2),
+      }
+    case "figure-path":
+      return pathBounds(el.d)
+    case "figure-label": {
+      const w = el.text.length * (el.size / 11) * LABEL_CHAR_W
+      const x = el.anchor === "middle" ? el.x - w / 2 : el.anchor === "end" ? el.x - w : el.x
+      return { minX: x, minY: el.y - el.size, maxX: x + w, maxY: el.y + 3 }
+    }
+    default:
+      return null
+  }
+}
+
+function sceneBounds(scene: Scene): Bounds {
+  const b: Bounds = { minX: 0, minY: 0, maxX: scene.width, maxY: scene.height }
+  for (const el of scene.elements) {
+    const eb = elementBounds(el)
+    if (!eb) continue
+    b.minX = Math.min(b.minX, eb.minX)
+    b.minY = Math.min(b.minY, eb.minY)
+    b.maxX = Math.max(b.maxX, eb.maxX)
+    b.maxY = Math.max(b.maxY, eb.maxY)
+  }
+  return b
+}
+
 export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
   const claimed = new Set<string>() // first id wins; later duplicates emit anonymous
   const body = opts.sketch
@@ -320,6 +537,7 @@ export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
         })
         .join("")
     : scene.elements.map((el, i) => cleanElement(el, i, claimed, opts.draggable)).join("")
+  const b = sceneBounds(scene)
   return (
     // width/height give the SVG an INTRINSIC size, so `max-width: 100%` +
     // `height: auto` can scale a too-wide figure DOWN without also forcing a
@@ -328,8 +546,8 @@ export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
     // for instance — was stretched to the column and rendered its 13px labels
     // at 26px, filling 1753px of vertical space. Scaling should be a response
     // to overflow, not something applied in both directions at once.
-    `<svg class="exp-figure" width="${n2(scene.width)}" height="${n2(scene.height)}" ` +
-    `viewBox="0 0 ${n2(scene.width)} ${n2(scene.height)}" role="img" ` +
+    `<svg class="exp-figure" width="${n2(b.maxX - b.minX)}" height="${n2(b.maxY - b.minY)}" ` +
+    `viewBox="${n2(b.minX)} ${n2(b.minY)} ${n2(b.maxX - b.minX)} ${n2(b.maxY - b.minY)}" role="img" ` +
     `aria-label="${escapeHtml(opts.ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +
     // No <title> element: it was the same string as `aria-label`, so every
     // figure carried its accessible name twice and showed a user-agent tooltip

@@ -283,3 +283,97 @@ describe("accessible name", () => {
     expect(svg).not.toContain("<title>")
   })
 })
+
+describe("sceneToSvg: grow-to-content viewBox", () => {
+  const ARIA = { ariaLabel: "test" }
+  const parseViewBox = (svg: string) =>
+    svg.match(/viewBox="([^"]+)"/)![1].split(/\s+/).map(Number)
+
+  it("grows the viewBox to contain an out-of-canvas figure-label", () => {
+    const svg = sceneToSvg(
+      {
+        width: 360,
+        height: 240,
+        elements: [{ kind: "figure-label", x: 100, y: 250, text: "below the canvas", size: 11, anchor: "middle" }],
+      },
+      ARIA,
+    )
+    const vb = parseViewBox(svg)
+    expect(vb[3]).toBeGreaterThanOrEqual(253) // baseline 250 + descender ~3
+  })
+
+  it("grows to negative bounds when content sits left of the canvas", () => {
+    const svg = sceneToSvg(
+      {
+        width: 360,
+        height: 240,
+        elements: [{ kind: "figure-dot", cx: -10, cy: 20, r: 4, tone: "accent" }],
+      },
+      ARIA,
+    )
+    const vb = parseViewBox(svg)
+    expect(vb[0]).toBeLessThanOrEqual(-14) // minX = cx - r
+  })
+
+  it("keeps the canvas floor: an in-canvas scene is byte-identical", () => {
+    const svg = sceneToSvg(
+      {
+        width: 360,
+        height: 240,
+        elements: [{ kind: "figure-dot", cx: 180, cy: 120, r: 3, tone: "accent" }],
+      },
+      ARIA,
+    )
+    expect(svg).toContain('width="360" height="240" viewBox="0 0 360 240"')
+  })
+
+  it("layout-driven elements never grow the scene (corpus safety)", () => {
+    const svg = sceneToSvg(
+      {
+        width: 360,
+        height: 240,
+        elements: [{ kind: "label", x: 350, y: 230, text: "very long layout label here", anchor: "start" }],
+      },
+      ARIA,
+    )
+    expect(svg).toContain('viewBox="0 0 360 240"')
+  })
+
+  // Regression: naive number-pairing of path data desyncs on `A` (7 params,
+  // odd count) — the demo orbit's arc paired its large-arc flag with the next
+  // x into a phantom point at (1,300) and grew the figure to 360×300. The
+  // exact orbit arcs must keep the canvas floor, and a genuinely out-of-canvas
+  // arc's bulge must be contained.
+  it("arc parameters never become phantom coordinates", () => {
+    const orbit: Scene = {
+      width: 360,
+      height: 240,
+      elements: [
+        { kind: "figure-path", d: "M 300 120 A 120 70 0 0 1 60 120", tone: "accent", fill: null, width: 2 },
+        { kind: "figure-path", d: "M 60 120 A 120 70 0 0 1 300 120", tone: "accent", fill: null, width: 2 },
+        { kind: "figure-line", x1: 50, y1: 120, x2: 310, y2: 120, tone: "muted", width: 1 },
+        { kind: "figure-line", x1: 180, y1: 40, x2: 180, y2: 200, tone: "muted", width: 1 },
+        { kind: "figure-dot", cx: 264.8528137423857, cy: 70.50252531694167, r: 3, tone: "ink" },
+        { kind: "figure-label", x: 272.8528137423857, y: 64.50252531694167, text: "θ = 45°", size: 11, anchor: "start" },
+        { kind: "figure-label", x: 12, y: 20, text: "rx × ry ellipse", size: 11, anchor: "start" },
+      ],
+    }
+    expect(sceneToSvg(orbit, { ariaLabel: "Orbit anatomy" })).toContain('width="360" height="240" viewBox="0 0 360 240"')
+  })
+
+  it("contains an arc whose bulge leaves the canvas", () => {
+    const svg = sceneToSvg(
+      {
+        width: 360,
+        height: 240,
+        elements: [{ kind: "figure-path", d: "M 100 200 A 80 80 0 0 0 260 200", tone: "accent", fill: null, width: 2 }],
+      },
+      ARIA,
+    )
+    const vb = parseViewBox(svg)
+    // sweep=0 runs counterclockwise: left→right dips BELOW the chord, to
+    // y = 200 + 80 = 280 — past the canvas floor, so the viewBox must grow
+    expect(vb[1]).toBe(0)
+    expect(vb[3]).toBeGreaterThanOrEqual(280)
+  })
+})
