@@ -407,6 +407,14 @@ Leaf elements accept `id` and `tip` (hover text); the SVG carries
 `data-el-id` / `data-tip`. In React, pass `onElementEvent` to receive
 hover/click events with the built-in popover.
 
+A figure's content may stray outside its 360×240 canvas — hand-authored
+figures stay inside, model-authored ones sometimes don't. The renderer grows
+the `viewBox` to contain whatever is there (possibly scaling the figure down
+slightly), so out-of-canvas content degrades to "a bit small" instead of
+disappearing. Box labels wrap to the box width, and a `label` on a
+`dot`/`line`/`curve`/`arc` renders beside the shape — the model's most
+natural spelling of "name this thing".
+
 A figure's accessible name is carried once, in `aria-label`. There is no
 `<title>` element, so the browser shows no native tooltip over a figure — the
 whole-figure summary is an accessible name, not something to hover for, and on

@@ -500,6 +500,28 @@ cycle):
   `.superpowers/real-compile/` (HTML + JSON per topic); run 1 kept as
   evidence in `real-compile-run1-broken/`. Re-running the whole experiment
   is ~90 seconds and pennies — use it before trusting a prompt change.
+- **Figure scene quality** (2026-10-07) — SHIPPED. The same real-model compile
+  (previous entry) exposed three scene defects the prompt contract never
+  taught and the renderer never repaired: the LNP figure's boxes stacked on a
+  shared centre with labels overlapping 1000px² — and the model's `label`
+  fields on dots silently dropped, because `dot` had no label field; the MHC
+  figure drew content outside the 360×240 canvas and clipped it without a
+  word (a caption at y=239, labels out to x=514.9), its box labels unable to
+  wrap (worst label×label overlap 1496px²); and a skip-rank `dc→tcell` edge
+  routed through the MHC node with its label on the node. What changed: the
+  renderer **grows the `viewBox`** to contain out-of-canvas content instead
+  of clipping it (grow, never warn — a warning means loss, and growing loses
+  nothing); **box labels wrap** to the box width; **`label` sugar** on
+  `dot`/`line`/`curve`/`arc` renders beside the shape (the model's most
+  natural spelling of "name this thing", previously a silently ignored
+  field); and `BLOCK_TYPE_DOCS` now teaches the scene contract — stay inside
+  the canvas, spread elements out, leave each box room for its label.
+  Re-measured on a fresh real-model compile (run 3, CDP probe, figures only):
+  outside-canvas 4→**0**, label overlaps 6→3, labels-on-shapes 15→**1**,
+  worst overlap 1496→1114px². The remaining overlaps are model behaviour
+  (stacked labels on one figure), a finding to watch, not a renderer bend.
+  The skip-rank defect stays its own cycle (see the `lr` item below). Spec:
+  `docs/superpowers/specs/2026-10-07-figure-scene-quality.md`.
 - **Heading block** (2026-10-05) — SHIPPED. `heading` takes `{ text }` and renders a
   fixed `<h3 class="exp-heading">`, filling the one level this library had
   empty: measured across the whole render surface it emitted four headings
@@ -662,7 +684,10 @@ one `<mi>` per letter with **zero warnings**.
       of one node land on the **same point** and a label can sit on a sibling
       edge. The demo fixture is shaped to avoid both (all edges
       rank-adjacent, one labelled edge per source) and says so in a comment —
-      a demo that silently dodged these would have hidden them again.
+      a demo that silently dodged these would have hidden them again. A
+      real-model compile hit both defects on 2026-10-07 (dc→tcell skip edge
+      through the MHC node, label on the node) — the fix now has a live
+      instance.
   - **`rl` (parked, gated on RTL text).** Right-to-left is **not** a mirror of
     `lr`, for two reasons. (1) The label gutter is `b.x - (a.x + a.w)`, which
     the 2026-10-04 cycle made *structurally* non-negative — forward edges always
