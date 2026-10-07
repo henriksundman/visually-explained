@@ -520,15 +520,28 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       // A feedback loop returns around the outside, so its label is bound by
       // the span it crosses, not by a column gutter. Positioned relative to
       // the lane depth; 6b refines it against the curve's true extremum.
+      // For `tb` the anchor sits OUTSIDE the lane strip (laneY − 6 − half the
+      // label's own width): laneY + 6 centred the text ON the strip the
+      // return lane rides, where it sat on every rank it crossed (the run-4
+      // "neutralizes pathogen (via APC)" case — the probe's ON-SHAPE hit).
+      // Wrap width is the same distance, so the block ends at the strip edge.
       const laneY = laneBasePre + PAD + RETURN_DROP + lane * RETURN_LANE
       if (direction === "lr") {
         labelX = (a.x + a.w / 2 + b.x + b.w / 2) / 2
         labelY = laneY - 6
         gutterW = Math.max(8, Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)))
       } else {
-        labelX = laneY + 6
-        labelY = (a.y + a.h / 2 + b.y + b.h / 2) / 2
-        gutterW = Math.max(8, Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)))
+        // For `tb` the mirror of lr's below-the-graph strip is a strip to the
+        // RIGHT of the graph — but a long label there has no guaranteed room
+        // (the nodes can reach the lane bulge), and anchoring at the spans'
+        // midpoint Y lands ON the crossed ranks' boxes (the run-4 case: the
+        // label rode node "b" at 765px²). So the label rides the lr way:
+        // BELOW the graph at the endpoints' mid-X (no boxes there), with the
+        // lane-clear span as its wrap width. 6b nudges it off the return
+        // curves if one dips that far (same lane-strip check as lr).
+        labelX = (a.x + a.w / 2 + b.x + b.w / 2) / 2
+        labelY = laneY - 6
+        gutterW = Math.max(8, Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)))
       }
     } else if (direction === "lr") {
       // For `lr` the label sits in the horizontal gutter between two columns
@@ -665,7 +678,30 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
             : `M ${sx} ${sy} C ${control} ${sy}, ${control} ${ty}, ${tx} ${ty}`
         // Head at the target's right edge, pointing LEFT into it.
         head = `M ${tx} ${ty} L ${tx + 9} ${ty - 4.5} L ${tx + 9} ${ty + 4.5} Z`
+        // Keep the label clear of the curve it annotates, then pull its
+        // BLOCK (not its first line) clear of the lane strip where a slipped
+        // back edge rides: laneX lands mid-curve, so the guard must be
+        // real-depth, not control-line, and the whole block clears it.
         labelX = Math.max(labelX + ((lines.length - 1) * EDGE_LABEL_PITCH) / 2, real + 6)
+        if (planIsSkip.get(edgeKey(e)) === true && lines.length > 0) {
+          const lanes = [0, 1, 2].map(i => laneBase + PAD + RETURN_DROP + i * RETURN_LANE)
+          const hit = lanes.find(lx => {
+            const w = Math.max(...lines.map(l => l.length * EDGE_CHAR_W))
+            const h = (lines.length - 1) * EDGE_LABEL_PITCH + 14
+            const r = { x: labelX - w / 2, y: labelY - h / 2, w, h }
+            const strip: { x: number; y: number; w: number; h: number } = { x: lx - 26, y: b.y - PAD, w: 44, h: b.h + 2 * PAD }
+            const ox = Math.min(r.x + r.w, strip.x + strip.w) - Math.max(r.x, strip.x)
+            const oy = Math.min(r.y + r.h, strip.y + strip.h) - Math.max(r.y, strip.y)
+            return ox > 0 && oy > 0
+          })
+          if (hit !== undefined) {
+            const labelR = labelX - 18
+            if (labelR > sx) {
+              labelX = labelR
+              labelY = (sy + ty) / 2 - 6
+            }
+          }
+        }
       }
     } else if (direction === "lr") {
       const sx = a.x + a.w
