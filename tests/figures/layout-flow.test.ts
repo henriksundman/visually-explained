@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   clearBandsY,
   clearCorridorsX,
+  edgeLabelRect,
+  estimateEdgeTextWidth,
   layoutFlow,
   routeSerpentine,
   segmentClearsBoxes,
@@ -858,5 +860,39 @@ describe("skip-rank routing helpers", () => {
     expect(second.bypassY).not.toBe(first.bypassY)
     // and their bypass lines never share a y
     expect(Math.abs(second.bypassY - first.bypassY)).toBeGreaterThanOrEqual(10)
+  })
+})
+
+describe("edge label rect superset invariant (tb edge-label cycle)", () => {
+  // Real rendered widths measured in Chrome at the 11px .exp-edge-label size
+  // on the run-4 reharmonization page (.superpowers/shots/reharm-report.json).
+  // The layout's estimate must be a SUPERSET of reality: est ≥ real for every
+  // string, or the collision nudge is blind exactly as it was in fig 1 —
+  // estimated rects 4–6px apart while real rects overlapped 90–286px².
+  const REAL_WIDTHS: Array<[string, number]> = [
+    ["Common Progression", 129.9],
+    ["Diatonic Supertonic", 119.1],
+    ["Borrowed Submediant", 134.2],
+    ["Subdominant", 80.3], // widest line of the wrapped 2-line blocks
+    ["Borrowed Supertonic", 127.6],
+  ]
+
+  it.each(REAL_WIDTHS)("estimates ≥ real width for %s", (text, real) => {
+    expect(estimateEdgeTextWidth(text)).toBeGreaterThanOrEqual(real)
+  })
+
+  it("estimates ≥ real for space-heavy and digit strings", () => {
+    // spaces are narrow but NOT free, and digits are tabular-width
+    expect(estimateEdgeTextWidth("step 1 of 4")).toBeGreaterThanOrEqual(60)
+    expect(estimateEdgeTextWidth("a b c d e f g h")).toBeGreaterThanOrEqual(80)
+  })
+
+  it("block rect height covers real rendered line boxes", () => {
+    // real: 1-line 16.0, 2-line 31.0 (reharm-report.json) — current 14/29
+    const one = edgeLabelRect({ label: "Strong Pull", labelX: 100, labelY: 100 })
+    expect(one.h).toBeGreaterThanOrEqual(16)
+    const two = edgeLabelRect({ label: "Diatonic Subdominant", lines: ["Diatonic", "Subdominant"], labelX: 100, labelY: 100 })
+    expect(two.h).toBeGreaterThanOrEqual(31)
+    expect(two.w).toBeGreaterThanOrEqual(81) // widest real line, not the string
   })
 })

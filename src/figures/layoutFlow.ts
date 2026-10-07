@@ -35,30 +35,101 @@ const MAX_LABEL_GUTTER = 140 // cap on a label-driven gutter, so one long
 const LABEL_PAD = 16 // breathing room either side of a single-line label
 const GAP_CROSS = 28 // gap between rows (lr) or columns (tb)
 const PAD = 16
-const CHAR_W = 7.5 // width estimate per character at 13px
-const EDGE_CHAR_W = 6.0 // per-char estimate at the 11px .exp-edge-label size
+const CHAR_W = 7.5 // width estimate per character at 13px (node labels)
+const EDGE_LABEL_H = 16 // measured single-line label block height at 11px
 export const EDGE_LABEL_PITCH = 15 // line pitch at that size
+
+/** Estimated rendered width of one edge-label line. The collision nudge and
+ *  the wrap logic MUST agree on this (one source of truth), and it must be a
+ *  SUPERSET of the real rendered width — measured 6.3–7.3px/char in Chrome
+ *  at 11px (proportional font), so a flat per-char estimate narrower than
+ *  that blinds the nudge to real collisions (tb edge-label spec D1). */
+const EDGE_CHAR_W_TABLE: Record<string, number> = {
+  "0": 8.12, "1": 5.96, "2": 7.77, "3": 8.08,
+  "4": 8.29, "5": 7.96, "6": 8.20, "7": 7.50,
+  "8": 8.23, "9": 8.20, " ": 3.58, "!": 3.97,
+  "\"": 6.13, "#": 8.12, "$": 8.12, "%": 11.95,
+  "&": 9.18, "'": 3.79, "(": 4.89, ")": 4.89,
+  "*": 6.06, "+": 8.12, ",": 3.79, "-": 6.06,
+  ".": 3.79, "/": 3.91, ":": 3.79, ";": 3.79,
+  "<": 8.12, "=": 8.12, ">": 8.12, "?": 6.59,
+  "@": 11.86, "A": 8.69, "B": 8.47, "C": 9.23,
+  "D": 9.37, "E": 7.67, "F": 7.37, "G": 9.63,
+  "H": 9.57, "I": 3.41, "J": 6.92, "K": 8.49,
+  "L": 7.31, "M": 11.29, "N": 9.57, "O": 9.95,
+  "P": 8.18, "Q": 9.95, "R": 8.42, "S": 8.21,
+  "T": 8.17, "U": 9.51, "V": 8.69, "W": 12.51,
+  "X": 8.75, "Y": 8.44, "Z": 8.53, "[": 4.89,
+  "\\": 3.91, "]": 4.89, "^": 8.12, "_": 7.20,
+  "`": 6.43, "a": 7.10, "b": 7.91, "c": 7.20,
+  "d": 7.91, "e": 7.35, "f": 4.63, "g": 7.85,
+  "h": 7.57, "i": 3.14, "j": 3.18, "k": 6.98,
+  "l": 3.21, "m": 11.24, "n": 7.51, "o": 7.61,
+  "p": 7.86, "q": 7.85, "r": 4.96, "s": 6.65,
+  "t": 4.65, "u": 7.51, "v": 6.97, "w": 9.99,
+  "x": 6.75, "y": 6.98, "z": 6.93, "{": 4.89,
+  "|": 3.29, "}": 4.89, "~": 8.12, "→": 11.70,
+  "ø": 7.61, "é": 7.35, "ü": 7.51,
+}
+// Unmeasured characters: wider than most lowercase letters, narrower than CJK —
+// biased HIGH because the estimate must stay a superset of reality.
+const EDGE_CHAR_W_DEFAULT = 11
+// Whole strings render within ±0.8px of the per-char sum (kerning); the pad
+// absorbs it. This function is the ONE width estimate every edge-label rect,
+// wrap decision and gutter sizing shares — duplicated arithmetic is how the
+// nudge went blind (tb edge-label spec D1).
+const EDGE_LABEL_KERN_PAD = 1.5
+
+export function estimateEdgeTextWidth(text: string): number {
+  let w = 0
+  for (const ch of text) w += EDGE_CHAR_W_TABLE[ch] ?? EDGE_CHAR_W_DEFAULT
+  return Math.ceil(w + EDGE_LABEL_KERN_PAD)
+}
+
+/** The label BLOCK rect the nudge compares: widest line wide, lines stacked
+ *  at EDGE_LABEL_PITCH. Exported so tests pin the same arithmetic layout uses
+ *  — the estimate-vs-real trap is exactly what duplicated arithmetic hides. */
+export function edgeLabelRect(el: { label?: string; lines?: string[]; labelX?: number; labelY?: number }): {
+  x: number
+  y: number
+  w: number
+  h: number
+} {
+  const lines = el.lines && el.lines.length > 0 ? el.lines : [el.label ?? ""]
+  const w = Math.max(...lines.map(l => estimateEdgeTextWidth(l)))
+  const h = (lines.length - 1) * EDGE_LABEL_PITCH + EDGE_LABEL_H
+  return { x: el.labelX! - w / 2, y: el.labelY! - h / 2, w, h }
+}
 
 /** Wrap an EDGE label to the gutter it is routed through. Unlike `wrapLabel`
  *  there is no node padding to reserve, and any single word wider than the
  *  gutter is hard-split — an edge label is never dropped, so it must never
  *  overflow either (figure label-overflow spec §3.1). */
 export function wrapEdgeLabel(label: string, avail: number): string[] {
-  const maxChars = Math.max(4, Math.floor(avail / EDGE_CHAR_W))
   const words = label.split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let current = ""
   for (const word of words) {
-    if (word.length > maxChars) {
+    if (estimateEdgeTextWidth(word) > avail) {
+      // hard-split an over-wide word AT THE WIDTH LIMIT, not a char count
       if (current) {
         lines.push(current)
         current = ""
       }
-      for (let i = 0; i < word.length; i += maxChars) lines.push(word.slice(i, i + maxChars))
+      let piece = ""
+      for (const ch of word) {
+        if (piece && estimateEdgeTextWidth(piece + ch) > avail) {
+          lines.push(piece)
+          piece = ch
+        } else {
+          piece += ch
+        }
+      }
+      current = piece
       continue
     }
     const candidate = current ? `${current} ${word}` : word
-    if (candidate.length > maxChars) {
+    if (estimateEdgeTextWidth(candidate) > avail) {
       lines.push(current)
       current = word
     } else {
@@ -414,7 +485,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       const to = layer.get(e.to)!
       if (Math.abs(from - to) !== 1 || Math.min(from, to) !== r) continue
       if (!e.label) continue
-      need = Math.max(need, e.label.length * EDGE_CHAR_W + LABEL_PAD)
+      need = Math.max(need, estimateEdgeTextWidth(e.label) + LABEL_PAD)
     }
     return Math.min(MAX_LABEL_GUTTER, need)
   })
@@ -686,7 +757,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         if (planIsSkip.get(edgeKey(e)) === true && lines.length > 0) {
           const lanes = [0, 1, 2].map(i => laneBase + PAD + RETURN_DROP + i * RETURN_LANE)
           const hit = lanes.find(lx => {
-            const w = Math.max(...lines.map(l => l.length * EDGE_CHAR_W))
+            const w = Math.max(...lines.map(l => estimateEdgeTextWidth(l)))
             const h = (lines.length - 1) * EDGE_LABEL_PITCH + 14
             const r = { x: labelX - w / 2, y: labelY - h / 2, w, h }
             const strip: { x: number; y: number; w: number; h: number } = { x: lx - 26, y: b.y - PAD, w: 44, h: b.h + 2 * PAD }
@@ -796,12 +867,7 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   //  cap on sweeps). `lr` nudges vertically, `tb` horizontally.
   const labelRects = elements
     .filter((el): el is Extract<Scene["elements"][number], { kind: "arrow" }> => el.kind === "arrow" && el.label !== undefined)
-  const rectOfLabel = (el: (typeof labelRects)[number]) => {
-    const w = Math.max(...(el.lines ?? [el.label!]).map(l => l.length * EDGE_CHAR_W))
-    const n = el.lines?.length ?? 1
-    const h = (n - 1) * EDGE_LABEL_PITCH + 14
-    return { x: el.labelX! - w / 2, y: el.labelY! - h / 2, w, h }
-  }
+  const rectOfLabel = edgeLabelRect
   const overlaps = (A: { x: number; y: number; w: number; h: number }, B: { x: number; y: number; w: number; h: number }): boolean =>
     Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x) > 2 && Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y) > 2
   for (let sweep = 0; sweep < 3; sweep++) {
