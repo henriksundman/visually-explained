@@ -3,6 +3,7 @@
  *  contracts stay in lockstep (spec §6); the explanation snippet's rendered
  *  text is regression-guarded by tests/llm.test.ts. */
 export const BLOCK_TYPE_DOCS = `
+Every block is one flat object: a "type" field naming the block type, with that type's payload fields beside it — e.g. { "type": "heading", "text": "Why caches work" }. The lines below are the payload reference: every block carries "type" at the top level, never nested under the type name.
 - heading: { text } — a subheading inside a section. Use it to break a long explanation into parts; use sections for a document's top-level split. Keep it to a few words, never repeat one, and never use it to label a single following sentence.
 - step-list: { steps: [{ title, detail? }] } — numbered steps.
 - worked-example: { problem, steps: [{ title, detail? }], result } — a full worked problem.
