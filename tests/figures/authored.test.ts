@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { compileFigure, parseFigureElement } from "../../src/figures/authored"
+import type { FigureDotEl, FigureLabelEl } from "../../src/figures/scene"
 
 describe("authored element identity", () => {
   it("preserves id and tip on compiled leaf elements", () => {
@@ -284,5 +285,38 @@ describe("figure box label wrapping", () => {
     })
     const box = scene.elements[0] as { label?: string; lines?: string[] }
     expect(box.lines!.join(" ")).toBe("ER (protein folding and loading)")
+  })
+})
+
+describe("figure label sugar on leaf elements", () => {
+  it("renders a dot's label above the dot", () => {
+    const { scene } = compileFigure({
+      elements: [{ kind: "dot", cx: 130, cy: 100, r: 10, label: "Ionizable Lipid" }],
+    })
+    expect(scene.elements).toHaveLength(2)
+    const [dot, lab] = scene.elements as [FigureDotEl, FigureLabelEl]
+    expect(dot.kind).toBe("figure-dot")
+    expect(lab.kind).toBe("figure-label")
+    expect(lab.text).toBe("Ionizable Lipid")
+    expect(lab.anchor).toBe("middle")
+    expect(lab.x).toBe(130)
+    expect(lab.y).toBeLessThan(dot.cy) // above the dot, not on it
+    expect(lab.id).toBeUndefined() // identity stays on the shape
+  })
+
+  it("places a line's label at the endpoint midpoint", () => {
+    const { scene } = compileFigure({
+      elements: [{ kind: "line", x1: 100, y1: 75, x2: 260, y2: 125, label: "binds" }],
+    })
+    const lab = scene.elements[1] as FigureLabelEl
+    expect(lab.x).toBe(180)
+    expect(lab.y).toBe(100)
+  })
+
+  it("adds nothing when there is no label", () => {
+    const { scene } = compileFigure({
+      elements: [{ kind: "dot", cx: 130, cy: 100, r: 10 }],
+    })
+    expect(scene.elements).toHaveLength(1)
   })
 })

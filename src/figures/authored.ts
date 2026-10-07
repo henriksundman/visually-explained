@@ -26,11 +26,11 @@ export interface XY {
 
 export type FigureEl =
   | { kind: "path"; d: string; tone?: Tone; fill?: Tone; width?: Num; id?: string; tip?: string } // d: path data; {{expr}} slots allowed
-  | { kind: "curve"; from: XY; cp1: XY; cp2: XY; to: XY; tone?: Tone; width?: Num; id?: string; tip?: string }
-  | { kind: "arc"; cx: Num; cy: Num; rx: Num; ry: Num; start: Num; end: Num; tone?: Tone; width?: Num; id?: string; tip?: string }
+  | { kind: "curve"; from: XY; cp1: XY; cp2: XY; to: XY; tone?: Tone; width?: Num; label?: string; id?: string; tip?: string }
+  | { kind: "arc"; cx: Num; cy: Num; rx: Num; ry: Num; start: Num; end: Num; tone?: Tone; width?: Num; label?: string; id?: string; tip?: string }
   | { kind: "box"; x: Num; y: Num; w: Num; h: Num; r?: Num; label?: string; tone?: Tone; fill?: Tone; id?: string; tip?: string }
-  | { kind: "line"; x1: Num; y1: Num; x2: Num; y2: Num; tone?: Tone; width?: Num; id?: string; tip?: string }
-  | { kind: "dot"; cx: Num; cy: Num; r?: Num; tone?: Tone; id?: string; tip?: string }
+  | { kind: "line"; x1: Num; y1: Num; x2: Num; y2: Num; tone?: Tone; width?: Num; label?: string; id?: string; tip?: string }
+  | { kind: "dot"; cx: Num; cy: Num; r?: Num; tone?: Tone; label?: string; id?: string; tip?: string }
   | { kind: "label"; x: Num; y: Num; text: string; size?: Num; anchor?: "start" | "middle" | "end"; id?: string; tip?: string }
   | { kind: "group"; dx?: Num; dy?: Num; elements: FigureEl[] } // identity deliberately absent (events spec §3)
 
@@ -297,7 +297,7 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         warn("figure-tone-bad: tone must be ink|muted|accent")
         return null
       }
-      return { kind: "curve", from, cp1, cp2, to, tone: parseTone(raw.tone), width: parseNum(raw.width), id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
+      return { kind: "curve", from, cp1, cp2, to, tone: parseTone(raw.tone), width: parseNum(raw.width), label: typeof raw.label === "string" && raw.label.trim() !== "" ? raw.label : undefined, id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "arc": {
       const cx = parseNum(raw.cx)
@@ -314,7 +314,7 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         warn("figure-tone-bad: tone must be ink|muted|accent")
         return null
       }
-      return { kind: "arc", cx, cy, rx, ry, start, end, tone: parseTone(raw.tone), width: parseNum(raw.width), id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
+      return { kind: "arc", cx, cy, rx, ry, start, end, tone: parseTone(raw.tone), width: parseNum(raw.width), label: typeof raw.label === "string" && raw.label.trim() !== "" ? raw.label : undefined, id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "box": {
       const x = parseNum(raw.x)
@@ -356,7 +356,7 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         warn("figure-tone-bad: tone must be ink|muted|accent")
         return null
       }
-      return { kind: "line", x1, y1, x2, y2, tone: parseTone(raw.tone), width: parseNum(raw.width), id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
+      return { kind: "line", x1, y1, x2, y2, tone: parseTone(raw.tone), width: parseNum(raw.width), label: typeof raw.label === "string" && raw.label.trim() !== "" ? raw.label : undefined, id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "dot": {
       const cx = parseNum(raw.cx)
@@ -369,7 +369,7 @@ export function parseFigureElement(raw: unknown, warn: (m: string) => void, dept
         warn("figure-tone-bad: tone must be ink|muted|accent")
         return null
       }
-      return { kind: "dot", cx, cy, r: parseNum(raw.r), tone: parseTone(raw.tone), id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
+      return { kind: "dot", cx, cy, r: parseNum(raw.r), tone: parseTone(raw.tone), label: typeof raw.label === "string" && raw.label.trim() !== "" ? raw.label : undefined, id: parseId(raw.id, warn), tip: parseTip(raw.tip, warn) }
     }
     case "label": {
       const x = parseNum(raw.x)
@@ -447,25 +447,25 @@ function compileEl(
   dx: number,
   dy: number,
   warn: (m: string) => void,
-): SceneElement | null {
+): SceneElement[] {
   const n = (v: Num): number | null => resolve(v, env)
   const finite = (...vs: (number | null)[]): boolean => vs.every(v => v !== null)
   const widthOf = (v: Num | undefined, fallback: number): number | null => (v === undefined ? fallback : n(v))
   switch (el.kind) {
     case "path": {
       const expanded = expandPathSlots(el.d, env, warn)
-      if (expanded === null) return null
+      if (expanded === null) return []
       if (!isSafePathD(expanded)) {
         warn("figure-path-unsafe: path d rejected by the grammar")
-        return null
+        return []
       }
       const width = widthOf(el.width, 2)
       if (width === null || width <= 0) {
         warn("figure-path-width: width must resolve to a positive number")
-        return null
+        return []
       }
       const out: FigurePathEl = { kind: "figure-path", d: expanded, tone: el.tone ?? "accent", fill: el.fill ?? null, width, ...identityOf(el, warn) }
-      return out
+      return [out]
     }
     case "curve": {
       const x1 = n(el.from.x)
@@ -478,18 +478,24 @@ function compileEl(
       const y2 = n(el.to.y)
       if (!finite(x1, y1, cx1, cy1, cx2, cy2, x2, y2)) {
         warn("figure-curve-resolve: curve coordinates did not resolve")
-        return null
+        return []
       }
       const width = widthOf(el.width, 2)
       if (width === null || width <= 0) {
         warn("figure-curve-width: width must resolve to a positive number")
-        return null
+        return []
       }
       const d =
         `M ${nf(dx + x1!)} ${nf(dy + y1!)} C ${nf(dx + cx1!)} ${nf(dy + cy1!)} ` +
         `${nf(dx + cx2!)} ${nf(dy + cy2!)} ${nf(dx + x2!)} ${nf(dy + y2!)}`
       const out: FigurePathEl = { kind: "figure-path", d, tone: el.tone ?? "accent", fill: null, width, ...identityOf(el, warn) }
-      return out
+      const result: SceneElement[] = [out]
+      // Label sugar: midpoint of from/to — control points can sit far off the
+      // curve body and would push the name away from what it names.
+      if (el.label) {
+        result.push({ kind: "figure-label", x: dx + (x1! + x2!) / 2, y: dy + (y1! + y2!) / 2, text: el.label, size: 11, anchor: "middle" })
+      }
+      return result
     }
     case "arc": {
       const cx = n(el.cx)
@@ -500,12 +506,12 @@ function compileEl(
       const end = n(el.end)
       if (!finite(cx, cy, rx, ry, start, end) || rx! <= 0 || ry! <= 0) {
         warn("figure-arc-resolve: arc fields must resolve to finite numbers with positive radii")
-        return null
+        return []
       }
       const width = widthOf(el.width, 2)
       if (width === null || width <= 0) {
         warn("figure-arc-width: width must resolve to a positive number")
-        return null
+        return []
       }
       const out: FigurePathEl = {
         kind: "figure-path",
@@ -515,7 +521,11 @@ function compileEl(
         width,
         ...identityOf(el, warn),
       }
-      return out
+      const result: SceneElement[] = [out]
+      if (el.label) {
+        result.push({ kind: "figure-label", x: dx + cx!, y: dy + cy!, text: el.label, size: 11, anchor: "middle" })
+      }
+      return result
     }
     case "box": {
       const x = n(el.x)
@@ -525,7 +535,7 @@ function compileEl(
       const r = el.r === undefined ? 4 : n(el.r)
       if (!finite(x, y, w, h, r) || w! <= 0 || h! <= 0 || (r !== null && r! < 0)) {
         warn("figure-box-resolve: box fields must resolve to finite numbers with positive w/h")
-        return null
+        return []
       }
       // A fitting label stays unwrapped: `lines` is absent for the single-line
       // case (scene.ts contract), so single-line markup stays byte-identical.
@@ -543,7 +553,7 @@ function compileEl(
         fill: el.fill ?? null,
         ...identityOf(el, warn),
       }
-      return out
+      return [out]
     }
     case "line": {
       const x1 = n(el.x1)
@@ -552,12 +562,12 @@ function compileEl(
       const y2 = n(el.y2)
       if (!finite(x1, y1, x2, y2)) {
         warn("figure-line-resolve: line coordinates did not resolve")
-        return null
+        return []
       }
       const width = widthOf(el.width, 1)
       if (width === null || width <= 0) {
         warn("figure-line-width: width must resolve to a positive number")
-        return null
+        return []
       }
       const out: FigureLineEl = {
         kind: "figure-line",
@@ -569,7 +579,11 @@ function compileEl(
         width,
         ...identityOf(el, warn),
       }
-      return out
+      const result: SceneElement[] = [out]
+      if (el.label) {
+        result.push({ kind: "figure-label", x: dx + (x1! + x2!) / 2, y: dy + (y1! + y2!) / 2, text: el.label, size: 11, anchor: "middle" })
+      }
+      return result
     }
     case "dot": {
       const cx = n(el.cx)
@@ -577,10 +591,14 @@ function compileEl(
       const r = el.r === undefined ? 3 : n(el.r)
       if (!finite(cx, cy, r) || (r !== null && r! <= 0)) {
         warn("figure-dot-resolve: dot fields must resolve to finite numbers with positive r")
-        return null
+        return []
       }
       const out: FigureDotEl = { kind: "figure-dot", cx: dx + cx!, cy: dy + cy!, r: r === null ? 3 : r!, tone: el.tone ?? "accent", ...identityOf(el, warn) }
-      return out
+      const result: SceneElement[] = [out]
+      if (el.label) {
+        result.push({ kind: "figure-label", x: dx + cx!, y: dy + cy! - (r === null ? 3 : r!) - 6, text: el.label, size: 11, anchor: "middle" })
+      }
+      return result
     }
     case "label": {
       const x = n(el.x)
@@ -588,7 +606,7 @@ function compileEl(
       const size = el.size === undefined ? 11 : n(el.size)
       if (!finite(x, y, size) || (size !== null && (size! <= 0 || size! > 40))) {
         warn("figure-label-resolve: label fields must resolve to finite numbers with a sane size")
-        return null
+        return []
       }
       const out: FigureLabelEl = {
         kind: "figure-label",
@@ -599,10 +617,10 @@ function compileEl(
         anchor: el.anchor ?? "start",
         ...identityOf(el, warn),
       }
-      return out
+      return [out]
     }
     case "group":
-      return null // handled by flatten; never reaches compileEl
+      return [] // handled by flatten; never reaches compileEl
   }
 }
 
@@ -638,7 +656,13 @@ function flatten(
       continue
     }
     const compiled = compileEl(el, env, dx, dy, warn)
-    if (compiled) out.push(compiled)
+    for (const c of compiled) {
+      if (out.length >= MAX_ELEMENTS) {
+        warn(`figure-too-many: scene truncated at ${MAX_ELEMENTS} elements`)
+        return
+      }
+      out.push(c)
+    }
   }
 }
 
