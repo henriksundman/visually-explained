@@ -1,4 +1,5 @@
 import { escapeHtml } from "../core/inline"
+import { estimateEdgeTextWidth } from "./layoutFlow"
 import { FIGURE_TONE_VAR, sketchElementSvg } from "./sketch"
 import type {
   ArrowEl,
@@ -496,7 +497,15 @@ function elementBounds(el: SceneElement): Bounds | null {
     case "figure-path":
       return pathBounds(el.d)
     case "figure-label": {
-      const w = el.text.length * (el.size / 11) * LABEL_CHAR_W
+      // The MEASURED advance-width table (layoutFlow) at the label's size —
+      // the old 6.5/char flat estimate undershot wide-letter strings by ~10%,
+      // the same estimate-vs-real trap that blinded the collision nudge.
+      // Authored { kind: "label" } elements compile to figure-label too, so
+      // this case bounds them. Scene kind "label" itself is ALWAYS
+      // layout-emitted (chart/timeline) against a scene already sized, and
+      // must never grow it (corpus safety — the guard test pins it): the
+      // run-4 "Bar 4" poke is a layoutChart placement concern, not a grow.
+      const w = estimateEdgeTextWidth(el.text) * (el.size / 11)
       const x = el.anchor === "middle" ? el.x - w / 2 : el.anchor === "end" ? el.x - w : el.x
       return { minX: x, minY: el.y - el.size, maxX: x + w, maxY: el.y + 3 }
     }
