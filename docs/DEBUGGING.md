@@ -14,6 +14,17 @@ git-ignored) is the raw feed; this file is the distilled, versioned record.
 
 Before deep-diving, test the failure against these recurring patterns:
 
+- **A clean run with garbage output: check what the model actually returned.**
+  `0 repairs / 0 failures / valid: true` while the rendered pages are nearly
+  empty means the validation surface is lenient *by design*
+  (`documentSectionSchema.blocks` is `z.array(z.unknown())`), so the repair
+  loop cannot see block-level violations. Dump the raw reply and check every
+  block starts `{ "type":`. See the 2026-10-07 entry — and run prompt
+  changes against a real model before trusting them.
+- **A one-shot job under `launchctl submit` re-runs after a clean exit.**
+  One `submit` observed to start the script three times, each relaunch
+  truncating the shared log with `>`. Remove the label as part of the run
+  and confirm with `ps` before trusting a log. See the 2026-10-07 entry.
 - **Stale `dist/`.** The demo server serves the *built* package and holds it
   from process start: rebuild without restart → old behavior; `EADDRINUSE` on
   4173 → a stale server from an earlier session (`lsof -ti tcp:4173`, kill,
@@ -175,6 +186,18 @@ Before deep-diving, test the failure against these recurring patterns:
   element rather than rendering a picture of it.
 
 ## Part 2 — Entries
+
+### 2026-10-07 — A prompt contract that never said what a block looks like
+- **Symptom:** the first real-LLM compile run produced two near-empty pages while reporting a *clean* run: section validation passed every section (0 repairs, 0 dropped, `valid: true`), and `renderDocument` then dropped 52 and 88 of ~60–90 blocks as `[invalid-block] missing "type"`. The `[checks]` audit added a misleading second symptom: "declared a check but placed no quiz" on sections whose quiz was present but keyed `kind`.
+- **Root cause:** no prompt surface states the block discriminator. `sectionSystemPrompt`, `systemPromptSnippet` and `documentSystemPromptSnippet` all show `Shape: { ... "blocks": Block[] }` and a payload-only list (`- heading: { text }`) — the string `"type"` occurred **zero times** in any of them, while `kind` primed the wrong guess inside chart/figure/diagram payload lines. The model guessed, and produced **three envelopes in one document**: `{ "kind": ... }` (16), `{ "heading": { ... } }` (36), `{ "type": ... }` (8). Three layers hid it: (1) the demo's stub replays hand-written JSON that uses `type` correctly, so orchestration tests prove nothing about the contract; (2) `documentSectionSchema.blocks` is `z.array(z.unknown())` by design, so the repair loop structurally cannot observe block-level violations; (3) the registry tests pinned types with bare-name `toContain("text")`, which passes vacuously on unrelated prose. A second gap in the same family surfaced in the same run: `- text:` / `- code:` were appended only to `systemPromptSnippet`, so the compiler never taught the paragraph block — the model invented type `description` and wrote a 90-block document with zero paragraphs.
+- **Fix:** one line at the head of `BLOCK_TYPE_DOCS` stating the envelope (`{ "type": "heading", ... }`, payload beside it, *never nested*) — the one string all three prompt surfaces embed verbatim — and the `- text:` / `- code:` lines moved into it. Registry pins upgraded from bare substrings to the `- <type>:` doc line; `tests/block-discriminator.test.ts` pins all four surfaces. TDD: watched 8 assertions fail first. Re-run: **156/156 blocks valid, 0 render warnings, 0 compile warnings.**
+- **Rule:** a contract a model must *guess* is broken even when every test is green — a stub replaying correct JSON validates the orchestration, never the contract. **Run prompts against a real model before trusting them** (this experiment costs ~90 seconds and pennies). Pin discriminating strings (`- text:`, `{ "type":`), never bare substrings. And when a pipeline reports a perfectly clean run whose output is visibly garbage, read the raw model reply before believing the validation — "valid" only ever means "passed the schema you wrote", and this schema deliberately passes blocks through.
+
+### 2026-10-07 — `launchctl submit` re-ran a one-shot script after every clean exit
+- **Symptom:** a scratch experiment submitted once ran **three times**; each relaunch truncated the shared log (`>`) mid-run, so the surviving log belonged to whichever run wrote last, while output files were a mix of runs. No second `submit` was ever issued.
+- **Root cause:** the submitted job stayed registered after exiting, and launchd started it again after each clean exit — one `launchctl submit`, three process starts about 90–120 seconds apart. The `>` redirect made every relaunch destructive to the previous run's log.
+- **Fix:** `launchctl remove explanations-real-compile` immediately after the run, verified with `launchctl list` and `ps` before trusting anything on disk. The duplicate runs were harmless here (identical inputs, same model) and the mixed artifacts were caught by timestamps plus a log that restarted at `[0s]`.
+- **Rule:** one-shot work under `launchctl submit` must remove its own job **as part of the run**, not after inspection — the job re-executes. If a log suddenly starts at `[0s]` again while you are still reading it, you are reading a different run. For repeated experiments, `node --env-file=... script` in a plain SYNC call is enough — this one only needed launchd because a misjudged multi-minute runtime was feared; it actually finishes in ~90 seconds.
 
 ### 2026-10-05 — A stability claim answered by probe, and a probe that named a type that does not exist
 - **Symptom:** asked whether the library was stable enough to build other apps on, and the obvious way to answer — read the schemas, reason about what an added field would do — produced no usable answer at all. Separately, the first probe run reported that `paragraph` was an unknown block type, which reads as a bug in the library.

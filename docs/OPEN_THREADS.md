@@ -4,7 +4,10 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-05, after the figure-hover-surfaces,
+Last updated: 2026-10-07, after the first real-LLM compile run — that run
+added **thread 21** (the compiler validates section shape, not blocks; the
+prompt fix was chosen over a compile-time safety net). Before that: 2026-10-05,
+after the figure-hover-surfaces,
 react-warning-surface, and image-body cycles, and again after the
 external-adoption assessment. Thread 13 is CLOSED. Thread 18 records the
 image/prose split as human-judged rather than guessed. **Threads 19 and 20 are
@@ -616,6 +619,38 @@ the unscoped name is very likely taken by an unrelated package — and treat the
 `exports` map as the place to make the public surface explicit. Adding a
 CHANGELOG and cutting `0.x` tags is what gives thread 19's policy any teeth;
 without them it is prose a consumer has no way to check.
+
+## 21. The compiler validates section SHAPE, not blocks — and the prompt fix was chosen over a compile-time safety net
+
+**Decided 2026-10-07**, on the first real-LLM compile run.
+
+`documentSectionSchema.blocks` is `z.array(z.unknown())` by design (per-block
+salvage happens at render time, so one malformed block drops alone instead of
+failing its section). The cost showed up the first time a real model ran:
+no prompt ever stated the block discriminator, the model returned three
+wrong envelopes in one document, and section validation passed **everything**
+— 0 repairs, 0 dropped, a "clean" run — while `renderDocument` reported 52 and
+88 `[invalid-block]` warnings for the blocks it would drop. The repair loop
+cannot fix what it structurally cannot observe.
+
+Two options were on the table: **(a)** fix the prompt — state the
+`{ "type": ... }` envelope once in `BLOCK_TYPE_DOCS`, which all three prompt
+surfaces embed (shipped, `eb59f75` + `6e6059d`), or **(b)** a compile-time
+safety net — validate blocks in the section stage and warn, or fire a repair.
+**(b) was declined for now**: it changes deliberately-lenient semantics, and
+the re-run after (a) produced 156/156 valid blocks with zero warnings, so for
+this model the prompt fix was sufficient.
+
+**Revisit if:** a run of the scratch experiment (`.superpowers/real-compile.mjs`,
+~90 seconds) shows wrong envelopes again, or a host reports compiled documents
+rendering with heavy `[invalid-block]` warnings. Then the options are strict
+block validation in the section stage (repair-triggering — note the repair
+`rules` string would also need the block contract, since only the outline stage
+passes the whole system prompt back), or a lighter
+`[compile] section N has X malformed blocks` warning that constrains without
+dropping. One indirect symptom already works: the checks audit reads `.type`,
+so a `kind`-keyed quiz surfaces as "declared a check but placed no quiz" —
+usable as a tripwire, not as a fix.
 
 ## Conventions worth knowing before the next session
 

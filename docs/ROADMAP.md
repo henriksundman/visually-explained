@@ -390,7 +390,8 @@ cycle):
   to stop `src/index.ts`'s 18 `export *` re-exports making internals public
   surface, and a CHANGELOG so a consumer can diff a breaking change at all.
   This is what gives the compatibility policy teeth; see open thread 20.
-- **Compile a real document and read it** (2026-10-05) — the one untested
+- **Compile a real document and read it** (2026-10-05) — **ANSWERED 2026-10-07**;
+  the verdict is at the end of this entry. Was: the one untested
   load-bearing claim. Every recommendation on this roadmap, including the whole
   Luma integration thread, is about what the IR *can* express. None of it says
   whether `compileDocument` produces an explanation anyone would want to read,
@@ -445,6 +446,60 @@ cycle):
   learner?* Not "is the IR valid" — that the suite already proves — but whether
   the prose is worth a person's attention. Record the answer here, whatever it
   is, including a negative one.
+
+  **ANSWERED 2026-10-07 — how it ran, what it found, the verdict.** Run with
+  `.superpowers/real-compile.mjs` (scratch, gitignored), OpenRouter
+  `google/gemini-2.5-flash-lite`, key from `.env.local` (never enters the
+  repo), and the two topics this entry prescribed: "How mRNA vaccines work"
+  and "Modal interchange in jazz reharmonization" — the second is the reader's
+  cold-topic control. Full pipeline, `checks: true`: ~21 calls, ~90 seconds,
+  pennies per run.
+
+  **The run found two prompt-contract gaps before it answered the question.**
+  Run 1 produced near-empty pages: no prompt surface ever said a block is
+  `{ "type": ... }`, so the model returned three different envelopes in ONE
+  document (16 `kind`, 36 payload-nested-under-the-name, 8 correct of 60) —
+  section validation passed everything (blocks are `z.array(z.unknown())` by
+  design), **0 repairs fired, a "clean" run**, and only the render warnings
+  (52 and 88) told the truth. Gap two: `- text:` / `- code:` were appended
+  only to `systemPromptSnippet`, so the compiler never taught the basic
+  paragraph block — the model invented type `description` (4 fallback chips)
+  and wrote one 90-block document with zero paragraphs. Both fixed the same
+  session (`eb59f75`, `6e6059d`) by moving the rules into `BLOCK_TYPE_DOCS`,
+  the one string every prompt surface embeds. Re-run: **156/156 blocks valid,
+  0 render warnings, 0 compile warnings, 0 repairs.** Lessons in
+  `docs/DEBUGGING.md`; the declined compile-time safety net is thread 21.
+
+  **The verdict — would you show this to a learner?** With light editing,
+  yes; unedited, one of the two.
+
+  - *mRNA (the control-topic direction — material worth knowing cold):* **yes
+    with light edits.** Science accurate at the level claimed; good
+    pedagogy — concept/intuition/analogy pairs, quizzes placed after the
+    material with distractors that name the real misconception (the "alters
+    your DNA" option), mind-maps/diagrams/figures where they earn their
+    place. Faults: one framing slip ("once the virus has hijacked the cell's
+    machinery" — there is no virus in a vaccine), and translation and memory
+    cells each explained two-to-three times across sections despite the
+    do-not-repeat rule.
+  - *Modal interchange (the cold control):* **theory sections yes, §5 no.**
+    Borrowed-chord vocabulary, both diatonic sets, and every quiz answer
+    check out. But the "Autumn Leaves reharmonization" effectively modulates
+    to G major while calling it borrowing, and asserts the melody still
+    fits — an expert reader would object. And §3 ships a chart of
+    **invented statistics** ("Relative Frequency of Borrowed Chords ... (Hypothetical
+    Example)", 70/55/60): plausible-looking fabricated data, the exact
+    failure the host `datasets` mechanism exists to prevent. Rule for hosts:
+    any factual chart needs host-supplied numbers, or the block ships as a
+    model guess.
+
+  Format and structure: solid, no degradation anywhere. Factual reliability:
+  good overall but needs a human eye on expert-niche sections. The two
+  failure classes worth re-checking on the next run: model confidence in
+  narrow domains, and fabricated numbers. Artifacts in
+  `.superpowers/real-compile/` (HTML + JSON per topic); run 1 kept as
+  evidence in `real-compile-run1-broken/`. Re-running the whole experiment
+  is ~90 seconds and pennies — use it before trusting a prompt change.
 - **Heading block** (2026-10-05) — SHIPPED. `heading` takes `{ text }` and renders a
   fixed `<h3 class="exp-heading">`, filling the one level this library had
   empty: measured across the whole render surface it emitted four headings
