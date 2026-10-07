@@ -1056,6 +1056,11 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         // it worse).
         const escape = axis === "y" ? A.h / 2 + B.h / 2 + 4 : A.w / 2 + B.w / 2 + 4
         const base = axis === "y" ? cur.labelY! : cur.labelX!
+        // Escapes that would carry the label past the canvas edge are REJECTED:
+        // off-canvas is invisible, which is worse than any overlap (the run-4
+        // "Borrowed Supertonic" escaped to x=−112; tb edge-label spec D3).
+        const inBounds = (x: number, y: number): boolean =>
+          x - A.w / 2 >= -0.5 && x + A.w / 2 <= width + 0.5 && y - A.h / 2 >= -0.5 && y + A.h / 2 <= height + 0.5
         const tryOrder: Array<[number, number]> = [
           [1, escape],
           [-1, escape],
@@ -1064,16 +1069,43 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
           [1, escape * 1.75],
           [-1, escape * 1.75],
         ]
+        let landed = false
         for (const [sign, dist] of tryOrder) {
           const candY = axis === "y" ? base + sign * dist : cur.labelY!
           const candX = axis === "x" ? base + sign * dist : cur.labelX!
+          if (!inBounds(candX, candY)) continue
           const CA = { x: candX - A.w / 2, y: candY - A.h / 2, w: A.w, h: A.h }
           const clearOfAll = labelRects.every((other, k) => k === i || !overlaps(CA, rectOfLabel(other)))
           if (clearOfAll) {
             cur.labelY = candY
             cur.labelX = candX
             moved = true
+            landed = true
             break
+          }
+        }
+        if (!landed) {
+          // No in-bounds candidate cleared every label: CLAMP the escape
+          // target into the canvas and take it anyway. Priority is in-bounds
+          // clear > in-bounds clamped (may still overlap — accepted, and the
+          // DEBUGGING entry records why) > the original anchor. Never out of
+          // bounds.
+          for (const sign of [1, -1] as const) {
+            const candX =
+              axis === "x"
+                ? Math.min(Math.max(base + sign * escape, A.w / 2), width - A.w / 2)
+                : cur.labelX!
+            const candY =
+              axis === "y"
+                ? Math.min(Math.max(base + sign * escape, A.h / 2), height - A.h / 2)
+                : cur.labelY!
+            const changed = axis === "x" ? candX !== cur.labelX! : candY !== cur.labelY!
+            if (inBounds(candX, candY) && changed) {
+              cur.labelY = candY
+              cur.labelX = candX
+              moved = true
+              break
+            }
           }
         }
         break // one resolver per pair per sweep
