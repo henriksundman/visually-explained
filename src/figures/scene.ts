@@ -124,6 +124,9 @@ export interface FigureBoxEl {
   h: number
   r: number
   label: string | null
+  /** Pre-wrapped label lines (box-width wrap, figure scene quality spec §3.3).
+   *  Absent = single line, which renders exactly as before. */
+  lines?: string[]
   tone: FigureTone
   fill: FigureTone | null
   id?: string

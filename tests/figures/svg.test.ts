@@ -377,3 +377,34 @@ describe("sceneToSvg: grow-to-content viewBox", () => {
     expect(vb[3]).toBeGreaterThanOrEqual(280)
   })
 })
+
+describe("figureBox label wrapping", () => {
+  const ARIA2 = { ariaLabel: "wrapped" }
+
+  it("renders a wrapped box label as centered tspans", () => {
+    const svg = sceneToSvg(
+      {
+        width: 360,
+        height: 240,
+        elements: [
+          { kind: "figure-box", x: 50, y: 200, w: 100, h: 40, r: 4, label: "Proteasome (degrades proteins)", tone: "ink", fill: null, lines: ["Proteasome", "(degrades", "proteins)"] },
+        ],
+      },
+      ARIA2,
+    )
+    expect(svg).toContain("<tspan")
+    expect(svg).toContain('class="exp-fig-label"')
+  })
+
+  it("keeps the single-line box label markup byte-identical", () => {
+    const svg = sceneToSvg(
+      {
+        width: 360,
+        height: 240,
+        elements: [{ kind: "figure-box", x: 50, y: 30, w: 100, h: 40, r: 4, label: "Cell", tone: "ink", fill: null }],
+      },
+      ARIA2,
+    )
+    expect(svg).toContain('<text x="100" y="50" text-anchor="middle" dominant-baseline="central" class="exp-fig-label">Cell</text>')
+  })
+})

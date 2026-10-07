@@ -207,9 +207,21 @@ function figurePath(el: FigurePathEl, i: number): string {
 function figureBox(el: FigureBoxEl, i: number): string {
   const fill = el.fill ? FIGURE_TONE_VAR[el.fill] : "none"
   const opacity = el.fill ? ` fill-opacity="0.12"` : ""
-  const label = el.label
-    ? `<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h / 2)}" text-anchor="middle" dominant-baseline="central" class="exp-fig-label">${escapeHtml(el.label)}</text>`
-    : ""
+  let label = ""
+  if (el.label) {
+    const lines = el.lines && el.lines.length > 0 ? el.lines : [el.label]
+    const cx = el.x + el.w / 2
+    const cy = el.y + el.h / 2
+    if (lines.length <= 1) {
+      label = `<text x="${n2(cx)}" y="${n2(cy)}" text-anchor="middle" dominant-baseline="central" class="exp-fig-label">${escapeHtml(lines[0] ?? el.label)}</text>`
+    } else {
+      const pitch = 15
+      const tspans = lines
+        .map((line, li) => `<tspan x="${n2(cx)}" y="${n2(cy - ((lines.length - 1) * pitch) / 2 + li * pitch)}">${escapeHtml(line)}</tspan>`)
+        .join("")
+      label = `<text text-anchor="middle" dominant-baseline="central" class="exp-fig-label">${tspans}</text>`
+    }
+  }
   return (
     `<g class="exp-fig-box" style="--draw-i:${i}">` +
     `<rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(el.h)}" rx="${n2(el.r)}" fill="${fill}"${opacity} stroke="${FIGURE_TONE_VAR[el.tone]}"/>` +

@@ -62,6 +62,28 @@ export interface AuthoredFigure {
 const DEFAULT_W = 360
 const DEFAULT_H = 240
 const MAX_ELEMENTS = 60
+
+const BOX_CHAR_W = 7.5 // per-char estimate at 13px — same basis as layoutFlow's wrapLabel
+
+/** Wrap a box label to the box width (figure scene quality spec §3.3): word
+ *  boundaries, 16px horizontal padding, never fewer than 6 chars per line.
+ *  Single-line results return the label unwrapped, so the renderer's existing
+ *  single-line markup (and the corpus) stays byte-identical. */
+function wrapBoxLabel(label: string, w: number): string[] {
+  const maxChars = Math.max(6, Math.floor((w - 16) / BOX_CHAR_W))
+  const lines: string[] = []
+  let line = ""
+  for (const word of label.split(/\s+/)) {
+    if (line && line.length + 1 + word.length > maxChars) {
+      lines.push(line)
+      line = word
+    } else {
+      line = line ? `${line} ${word}` : word
+    }
+  }
+  if (line) lines.push(line)
+  return lines.length > 1 ? lines : [label]
+}
 const MAX_PATH_SLOTS = 64
 const MAX_SLOT_EXPR = 80
 
@@ -505,6 +527,9 @@ function compileEl(
         warn("figure-box-resolve: box fields must resolve to finite numbers with positive w/h")
         return null
       }
+      // A fitting label stays unwrapped: `lines` is absent for the single-line
+      // case (scene.ts contract), so single-line markup stays byte-identical.
+      const wrapped = el.label ? wrapBoxLabel(el.label, w!) : undefined
       const out: FigureBoxEl = {
         kind: "figure-box",
         x: dx + x!,
@@ -513,6 +538,7 @@ function compileEl(
         h: h!,
         r: r === null ? 4 : r!,
         label: el.label ?? null,
+        lines: wrapped && wrapped.length > 1 ? wrapped : undefined,
         tone: el.tone ?? "ink",
         fill: el.fill ?? null,
         ...identityOf(el, warn),

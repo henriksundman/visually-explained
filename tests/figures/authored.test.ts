@@ -255,3 +255,34 @@ describe("path slots", () => {
     expect(warnings[0]).toContain("figure-path-unsafe")
   })
 })
+
+describe("figure box label wrapping", () => {
+  it("wraps a long box label to the box width", () => {
+    const { scene } = compileFigure({
+      elements: [{ kind: "box", x: 50, y: 200, w: 100, h: 40, label: "Proteasome (degrades proteins)" }],
+    })
+    const box = scene.elements[0]
+    expect(box.kind).toBe("figure-box")
+    const lines = (box as { lines?: string[] }).lines
+    expect(lines).toBeDefined()
+    expect(lines!.length).toBeGreaterThan(1)
+    // every line fits the wrap width: (100 - 16) / 7.5 chars, min 6
+    for (const line of lines!) expect(line.length).toBeLessThanOrEqual(Math.max(6, Math.floor((100 - 16) / 7.5)))
+  })
+
+  it("leaves a fitting label unwrapped (no lines field)", () => {
+    const { scene } = compileFigure({
+      elements: [{ kind: "box", x: 50, y: 30, w: 100, h: 40, label: "Cell" }],
+    })
+    const box = scene.elements[0] as { lines?: string[] }
+    expect(box.lines).toBeUndefined()
+  })
+
+  it("keeps every word: rejoining the lines equals the label", () => {
+    const { scene } = compileFigure({
+      elements: [{ kind: "box", x: 150, y: 130, w: 100, h: 40, label: "ER (protein folding and loading)" }],
+    })
+    const box = scene.elements[0] as { label?: string; lines?: string[] }
+    expect(box.lines!.join(" ")).toBe("ER (protein folding and loading)")
+  })
+})
