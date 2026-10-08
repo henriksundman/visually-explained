@@ -1162,5 +1162,13 @@
 }
 
 .exp-mind-map-figure .exp-figure {
-  margin: 4px auto 0;
+  /* The figure-breakout container query (`.exp-block > .exp-figure`) matches
+     mind-map svgs too — the mind-map block IS the .exp-block — and its
+     centering trick (left:50% + translate:-50%) only cancels when the auto
+     margins are zero. The auto margins this rule used to declare restored
+     them, so every mind map was shoved right by its own resolved margin
+     (2026-10-08 mrna review: five mind maps right-aligned, 17px from the
+     right edge). Same treatment as the breakout rule: zero the inline
+     margins and let the trick centre — mind maps keep the breakout too. */
+  margin: 4px 0 0;
 }
