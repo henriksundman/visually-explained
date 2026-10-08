@@ -592,21 +592,12 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   const placed = new Map<string, Placed>()
   let mainOffset = PAD
   let crossExtent = 0
-  // Label-aware gutters (spec §2.7): the gap between rank r and r+1 widens to
-  // fit the longest label crossing it, so an ordinary label sits on ONE line
-  // instead of stacking into a narrow column. Capped, and still never narrower
-  // than GAP_MAIN — short-label diagrams are exactly as compact as before.
-  const gutters: number[] = ranks.map((_, r) => {
-    let need = GAP_MAIN
-    for (const e of edges) {
-      const from = layer.get(e.from)!
-      const to = layer.get(e.to)!
-      if (Math.abs(from - to) !== 1 || Math.min(from, to) !== r) continue
-      if (!e.label) continue
-      need = Math.max(need, estimateEdgeTextWidth(e.label) + LABEL_PAD)
-    }
-    return Math.min(MAX_LABEL_GUTTER, need)
-  })
+  // Cross-axis positions do not depend on the gutters (the gutter is MAIN-axis
+  // room between rank bands), so a pre-pass places every node's cross
+  // coordinate first. That makes the STEEP-FAN gutter term below possible: it
+  // needs each adjacent edge's vertical drop, which only exists once cross
+  // positions are known — and the gutters must be known before main positions
+  // are assigned. (Label-aware gutters, spec §2.7.)
   // Skip-rank band widening (skiprank spec §3.1) — on the CROSS axis: the
   // bypass band runs between the stacked boxes of a crossed rank, so the gap
   // following that rank's boxes widens to fit a one-line label block with the
@@ -623,12 +614,68 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   }
   const crossGapFor = (r: number): number =>
     skipCrossRank.has(r) ? Math.max(GAP_CROSS, EDGE_LABEL_H + 6 + 2 * BAND_PAD) : GAP_CROSS
-  let lastGutter = GAP_MAIN
+  const crossOf = new Map<string, number>()
+  const sizeOf = new Map<string, { w: number; h: number }>()
   ranks.forEach((rankIds, r) => {
     let cross = PAD
     rankIds.forEach(id => {
       const n = byId.get(id)!
       const { w, lines, h } = wrapFor(n)
+      sizeOf.set(id, { w, h })
+      crossOf.set(id, cross)
+      cross += (direction === "lr" ? h : w) + crossGapFor(r)
+    })
+    crossExtent = Math.max(crossExtent, cross - GAP_CROSS)
+  })
+  // Label-aware gutters (spec §2.7): the gap between rank r and r+1 widens to
+  // fit the longest label crossing it, so an ordinary label sits on ONE line
+  // instead of stacking into a narrow column. STEEP-FAN term (the 2026-10-08
+  // Twinkle feedback): the VISUAL jumble on a many-to-few fan is line traffic
+  // — a source 288px below its target draws a near-vertical curve inside a
+  // 64px channel, and the fan's labels ride that channel 15px apart. The
+  // gutter also scales with the steepest ADJACENT edge's drop-per-width
+  // (vertical distance between endpoint centres over the horizontal span),
+  // capped by the same MAX_LABEL_GUTTER so one extreme edge cannot blow up
+  // the figure; shallow fans keep the compact 64px default.
+  const gutters: number[] = ranks.map((_, r) => {
+    let need = GAP_MAIN
+    for (const e of edges) {
+      const from = layer.get(e.from)!
+      const to = layer.get(e.to)!
+      if (Math.abs(from - to) !== 1 || Math.min(from, to) !== r) continue
+      if (!e.label) continue
+      need = Math.max(need, estimateEdgeTextWidth(e.label) + LABEL_PAD)
+    }
+    return Math.min(MAX_LABEL_GUTTER, need)
+  })
+  const slopeGutters: number[] = ranks.map((_, r) => {
+    let need = GAP_MAIN
+    for (const e of edges) {
+      const from = layer.get(e.from)!
+      const to = layer.get(e.to)!
+      if (Math.abs(from - to) !== 1 || Math.min(from, to) !== r) continue
+      const a = byId.get(e.from)!
+      const b = byId.get(e.to)!
+      const ac = crossOf.get(e.from)!
+      const bc = crossOf.get(e.to)!
+      const aMid = ac + (direction === "lr" ? sizeOf.get(e.from)!.h : sizeOf.get(e.from)!.w) / 2
+      const bMid = bc + (direction === "lr" ? sizeOf.get(e.to)!.h : sizeOf.get(e.to)!.w) / 2
+      const drop = Math.abs(bMid - aMid)
+      if (drop <= 0) continue
+      // Cubic with control points at the endpoints' x + gutter/3: the curve
+      // occupies the middle third of the gutter. A steep edge needs the
+      // chord's horizontal extent to keep its slope walkable — one unit of
+      // gutter per 4 units of drop, and never below the label floor.
+      need = Math.max(need, GAP_MAIN + drop / 4)
+    }
+    return Math.min(MAX_LABEL_GUTTER, need)
+  })
+  let lastGutter = GAP_MAIN
+  ranks.forEach((rankIds, r) => {
+    const gutter = Math.max(gutters[r] ?? GAP_MAIN, slopeGutters[r] ?? GAP_MAIN)
+    rankIds.forEach(id => {
+      const n = byId.get(id)!
+      const { w, h, lines } = wrapFor(n)
       placed.set(id, {
         id,
         label: n.label,
@@ -637,21 +684,11 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         tip: n.tip,
         w,
         h,
-        x: direction === "lr" ? mainOffset : cross,
-        y: direction === "lr" ? cross : mainOffset,
+        x: direction === "lr" ? mainOffset : crossOf.get(id)!,
+        y: direction === "lr" ? crossOf.get(id)! : mainOffset,
       })
-      // The cross axis is VERTICAL for `lr` but HORIZONTAL for `tb`, so it
-      // must advance by that axis' own dimension. Advancing by `h` always
-      // was right for `lr` and wrong for `tb`, where it spaced same-rank
-      // siblings by their heights: two 130px boxes landed 72px apart and
-      // overlapped. `crossExtent` is the same measure, which is why `tb`'s
-      // scene width (derived from it) tracked a sum of heights rather than
-      // the rightmost node edge and clipped a 227px box inside a 240px
-      // viewBox. Fixing the step fixes both.
-      cross += (direction === "lr" ? h : w) + crossGapFor(r)
     })
-    crossExtent = Math.max(crossExtent, cross - GAP_CROSS)
-    lastGutter = gutters[r] ?? GAP_MAIN
+    lastGutter = gutter
     mainOffset += Math.max(0, ...rankIds.map(id => placed.get(id)!.w)) + lastGutter
   })
   let width = direction === "lr" ? mainOffset - lastGutter + PAD : crossExtent + PAD

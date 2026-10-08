@@ -221,6 +221,49 @@ describe("edge label overflow", () => {
     }
   })
 
+  it("widens the gutter for a STEEP fan, so its curves and labels can breathe", () => {
+    // The 2026-10-08 Twinkle feedback: six sources fan into three targets
+    // across one 64px gutter. The label-aware rule only widens for LABEL text
+    // — but the VISUAL jumble is line traffic: a source 288px below its
+    // target draws a near-vertical curve in that 64px channel, and the fan's
+    // labels ride the same channel 15px apart, unreadable. The gutter must
+    // also scale with the steepest adjacent edge crossing it (vertical drop
+    // per unit of width), so the curves shallow out and the labels separate.
+    const gutterOf = (edges: { from: string; to: string; label?: string }[]) => {
+      const { scene } = layoutFlow({
+        nodes: [
+          { id: "a1", label: "A1" }, { id: "a2", label: "A2" },
+          { id: "b1", label: "B1" }, { id: "b2", label: "B2" },
+          { id: "b3", label: "B3" }, { id: "b4", label: "B4" },
+          { id: "b5", label: "B5" }, { id: "b6", label: "B6" },
+        ],
+        edges,
+        direction: "lr" as const,
+      })
+      const ns = scene.elements.filter(e => e.kind === "node-box") as { id: string; x: number; w: number }[]
+      const a1 = ns.find(n => n.id === "a1")!
+      const b1 = ns.find(n => n.id === "b1")!
+      return b1.x - (a1.x + a1.w)
+    }
+    // Every b is a target of a1 so rank 1 holds the full stack; the a1→b6
+    // edge then drops five rows (~360px) across the single gutter.
+    const steep = gutterOf([
+      { from: "a1", to: "b1", label: "fits" },
+      { from: "a1", to: "b2" }, { from: "a1", to: "b3" },
+      { from: "a1", to: "b4" }, { from: "a1", to: "b5" },
+      { from: "a1", to: "b6", label: "fits" },
+    ])
+    expect(steep).toBeGreaterThan(64)
+    expect(steep).toBeLessThanOrEqual(140) // the same cap a label-driven gutter obeys
+    // A shallow fan (same labels, no vertical drop) stays at the compact 64px
+    // default — the slope term must not tax ordinary diagrams.
+    const shallow = gutterOf([
+      { from: "a1", to: "b1", label: "fits" },
+      { from: "a2", to: "b2", label: "fits" },
+    ])
+    expect(shallow).toBe(64)
+  })
+
   it("hard-splits a single word too wide even for a label-aware gutter", () => {
     // The gutter widens to fit a label, but is capped at MAX_LABEL_GUTTER, so
     // a word longer than the cap must still be split rather than overflow.
