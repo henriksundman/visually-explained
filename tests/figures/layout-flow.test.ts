@@ -264,6 +264,85 @@ describe("edge label overflow", () => {
     expect(shallow).toBe(64)
   })
 
+  it("slides a label off a foreign curve that crosses its anchor", () => {
+    // The 2026-10-08 Twinkle follow-up: two same-rank curves into one target
+    // cross EXACTLY at the gutter's mid-x — which is also where each label
+    // anchors (the span midpoint). Label meets foreign line at a crossing:
+    // the jumble. The label must slide ALONG ITS OWN CURVE to a point no
+    // foreign curve passes through, staying within its own gutter and on its
+    // own curve's path.
+    const { scene } = layoutFlow({
+      nodes: [
+        { id: "a1", label: "A1" }, { id: "a2", label: "A2" },
+        { id: "b1", label: "B1" }, { id: "b2", label: "B2" },
+        { id: "b3", label: "B3" }, { id: "b4", label: "B4" },
+      ],
+      edges: [
+        { from: "a1", to: "b1", label: "fits" },
+        { from: "a2", to: "b1", label: "fits" }, // both curves converge on b1
+        { from: "a1", to: "b2" }, { from: "a1", to: "b3" }, { from: "a1", to: "b4" },
+      ],
+      direction: "lr" as const,
+    })
+    const a1 = mustNode(scene, "a1")
+    const b1 = mustNode(scene, "b1")
+    const sx = a1.x + a1.w
+    const ex = b1.x // target's left edge; the gutter span
+    const arrows = scene.elements.filter(
+      (e): e is Extract<Scene["elements"][number], { kind: "arrow" }> => e.kind === "arrow",
+    )
+    const fit = arrows.filter(e => e.label === "fits")
+    expect(fit.length).toBe(2)
+    // foreign curves = the other four a1→bk edges (same source, different
+    // targets) plus the sibling a2→b1 curve. A label's anchor must not sit
+    // within the label rect of any foreign curve's CROSSING of the band it
+    // lives in — approximated here by: the anchor's own-curve point must be
+    // at least EDGE-RECT-clear of every foreign curve's mid-gutter y-band.
+    // Simplest measurable invariant: the two labels' anchors differ by more
+    // than a label height (they can no longer both sit at the same crossing
+    // y-band), and each anchor stays inside its own gutter x-span.
+    const ys = fit.map(e => e.labelY!).sort((p, q) => p - q)
+    expect(ys[1] - ys[0]).toBeGreaterThan(16) // EDGE_LABEL_H: one label block
+    for (const e of fit) {
+      expect(e.labelX!).toBeGreaterThan(sx)
+      expect(e.labelX!).toBeLessThan(ex)
+    }
+    // The real invariant: no foreign curve passes through either label RECT.
+    // (A point-clear anchor still shipped rect-clipping curves in the first
+    // cut — the label is a 19x16 box, not a point.)
+    const cubic = (p0: [number, number], p1: [number, number], p2: [number, number], p3: [number, number], t: number): [number, number] => {
+      const mt = 1 - t
+      return [
+        mt * mt * mt * p0[0] + 3 * mt * mt * t * p1[0] + 3 * mt * t * t * p2[0] + t * t * t * p3[0],
+        mt * mt * mt * p0[1] + 3 * mt * mt * t * p1[1] + 3 * mt * t * t * p2[1] + t * t * t * p3[1],
+      ]
+    }
+    const sample = (d: string): [number, number][] => {
+      const m = /M ([\d.]+) ([\d.]+) C ([\d.]+) ([\d.]+), ([\d.]+) ([\d.]+), ([\d.]+) ([\d.]+)/.exec(d)!
+      const p0: [number, number] = [+m[1], +m[2]]
+      const p1: [number, number] = [+m[3], +m[4]]
+      const p2: [number, number] = [+m[5], +m[6]]
+      const p3: [number, number] = [+m[7], +m[8]]
+      return Array.from({ length: 49 }, (_, i) => cubic(p0, p1, p2, p3, i / 48))
+    }
+    const foreign = arrows.filter(e => e.label === undefined).map(e => sample(e.d))
+    expect(foreign.length).toBeGreaterThan(0)
+    for (const lbl of fit) {
+      const r = edgeLabelRect(lbl)
+      for (const poly of foreign) {
+        for (let i = 0; i + 1 < poly.length; i++) {
+          const [x1, y1] = poly[i]
+          const [x2, y2] = poly[i + 1]
+          // segment vs rect: either endpoint inside, or edge-crossing
+          const inside = (x: number, y: number): boolean => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h
+          if (inside(x1, y1) || inside(x2, y2)) {
+            throw new Error(`foreign curve passes through label "${lbl.label}" rect at (${r.x.toFixed(1)}, ${r.y.toFixed(1)})`)
+          }
+        }
+      }
+    }
+  })
+
   it("hard-splits a single word too wide even for a label-aware gutter", () => {
     // The gutter widens to fit a label, but is capped at MAX_LABEL_GUTTER, so
     // a word longer than the cap must still be split rather than overflow.

@@ -498,6 +498,27 @@ export function routeSerpentineTb(
  *  u = √((ly-y0)/(ly-y3)); this evaluates y there.
  *
  *  Computed FORWARD (control depth → real depth): exact, and no inversion. */
+/** Point of a symmetric control cubic (endpoints x0/x3, both control xs at
+ *  `mx`, endpoint ys y0/y3) at horizontal fraction t — the shape every
+ *  adjacent lr edge draws. Inverse of that curve's x(t) by bisection: x is
+ *  monotone in t, so 24 iterations are exact to well under 0.01px. */
+function cubicPointAtX(x0: number, x3: number, mx: number, y0: number, y3: number, x: number): { x: number; y: number } {
+  const xAt = (t: number): number => {
+    const mt = 1 - t
+    return 3 * mt * mt * t * mx + 3 * mt * t * t * mx + t * t * t * x3
+  }
+  let lo = 0
+  let hi = 1
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2
+    if (xAt(mid) < x) lo = mid
+    else hi = mid
+  }
+  const t = (lo + hi) / 2
+  const mt = 1 - t
+  return { x, y: mt * mt * mt * y0 + 3 * mt * mt * t * y0 + 3 * mt * t * t * y3 + t * t * t * y3 }
+}
+
 function cubicDepth(y0: number, y3: number, ly: number): number {
   if (ly <= Math.max(y0, y3)) return Math.max(y0, y3)
   const u = Math.sqrt((ly - y0) / (ly - y3))
@@ -1069,6 +1090,130 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     })
   }
 
+  const labelRects = elements.filter(
+    (el): el is Extract<Scene["elements"][number], { kind: "arrow" }> => el.kind === "arrow" && el.label !== undefined,
+  )
+
+  // 7c-pre. Label-off-crossing slide (the 2026-10-08 Twinkle follow-up): two
+  //  adjacent curves converge on a shared target, so they cross EXACTLY at
+  //  the gutter's mid-x — which is also where each label anchors (the span
+  //  midpoint). A label sitting on a foreign curve reads as belonging to the
+  //  wrong line; collision metrics never saw it because a CURVE is not a
+  //  label. For every adjacent label (lr and tb alike): sample its own curve
+  //  and every foreign curve into polylines, then walk the own curve for the
+  //  anchor where the FEWEST foreign curves pass through the label RECT —
+  //  rect, not anchor point: a first cut that cleared the point still
+  //  shipped labels whose rect clipped a neighbouring curve 8px away. The
+  //  block stays centred on a point of its own curve, so the label keeps
+  //  riding its line; candidates that would overlap a node box or leave the
+  //  canvas are rejected. The anchor only MOVES when it strictly reduces
+  //  the foreign-curve count — an already-clear midpoint is never traded
+  //  for distance. Runs BEFORE the 7c nudge: sliding changes label-label
+  //  geometry, so the nudge must see post-slide rects (a first cut ran
+  //  after and shipped 3 fresh overlaps on the Twinkle fig).
+  {
+    const cubicAt = (p0: {x:number;y:number}, p1: {x:number;y:number}, p2: {x:number;y:number}, p3: {x:number;y:number}, t: number): { x: number; y: number } => {
+      const mt = 1 - t
+      return {
+        x: mt*mt*mt*p0.x + 3*mt*mt*t*p1.x + 3*mt*t*t*p2.x + t*t*t*p3.x,
+        y: mt*mt*mt*p0.y + 3*mt*mt*t*p1.y + 3*mt*t*t*p2.y + t*t*t*p3.y,
+      }
+    }
+    type Poly = Array<{ x: number; y: number }>
+    type Bez = { p0: {x:number;y:number}; p1: {x:number;y:number}; p2: {x:number;y:number}; p3: {x:number;y:number} }
+    const bez = new Map<string, Bez>()
+    const backIds = new Set(plans.filter(p => p.isBack).map(p => edgeKey(p.e)))
+    for (const el of elements) {
+      if (el.kind !== "arrow" || el.id === undefined || backIds.has(el.id)) continue
+      // Adjacent lr/tb curves share the M a b C c d, e f, g h shape; skip-rank
+      // serpentines are polylines (no C) whose labels already ride segments
+      // the route proved clear, and back-edge labels have their own guards.
+      const m = /M ([-\d.]+) ([-\d.]+) C ([-\d.]+) ([-\d.]+), ([-\d.]+) ([-\d.]+), ([-\d.]+) ([-\d.]+)/.exec(el.d)
+      if (!m) continue
+      bez.set(el.id, {
+        p0: { x: +m[1], y: +m[2] },
+        p1: { x: +m[3], y: +m[4] },
+        p2: { x: +m[5], y: +m[6] },
+        p3: { x: +m[7], y: +m[8] },
+      })
+    }
+    const SAMPLES = 48
+    const polyOf = new Map<string, Poly>()
+    for (const [id, b] of bez) {
+      const poly: Poly = []
+      for (let i = 0; i <= SAMPLES; i++) poly.push(cubicAt(b.p0, b.p1, b.p2, b.p3, i / SAMPLES))
+      polyOf.set(id, poly)
+    }
+    const segHitsRect = (a: {x:number;y:number}, b: {x:number;y:number}, r: {x:number;y:number;w:number;h:number}): boolean => {
+      const inR = (p: {x:number;y:number}): boolean => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h
+      if (inR(a) || inR(b)) return true
+      // proper segment/rect test: segment against the rect's four edges
+      const segs = [
+        [r.x, r.y, r.x + r.w, r.y],
+        [r.x + r.w, r.y, r.x + r.w, r.y + r.h],
+        [r.x, r.y + r.h, r.x + r.w, r.y + r.h],
+        [r.x, r.y, r.x, r.y + r.h],
+      ] as const
+      const orient = (ax: number, ay: number, bx: number, by: number, px: number, py: number): number =>
+        (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+      for (const [x1, y1, x2, y2] of segs) {
+        const d1 = orient(x1, y1, x2, y2, a.x, a.y)
+        const d2 = orient(x1, y1, x2, y2, b.x, b.y)
+        const d3 = orient(a.x, a.y, b.x, b.y, x1, y1)
+        const d4 = orient(a.x, a.y, b.x, b.y, x2, y2)
+        if (((d1 > 0) !== (d2 > 0) || d1 === 0 || d2 === 0) && ((d3 > 0) !== (d4 > 0) || d3 === 0 || d4 === 0)) return true
+      }
+      return false
+    }
+    const hitsOnRect = (r: {x:number;y:number;w:number;h:number}, ownId: string): number => {
+      let hits = 0
+      for (const [id, poly] of polyOf) {
+        if (id === ownId) continue
+        for (let i = 0; i + 1 < poly.length; i++) {
+          if (segHitsRect(poly[i], poly[i + 1], r)) {
+            hits++
+            break
+          }
+        }
+      }
+      return hits
+    }
+    const boxList = [...placed.values()]
+    const hitsBox = (r: {x:number;y:number;w:number;h:number}): boolean =>
+      boxList.some(b => Math.min(r.x + r.w, b.x + b.w) - Math.max(r.x, b.x) > 1 && Math.min(r.y + r.h, b.y + b.h) - Math.max(r.y, b.y) > 1)
+    for (const cur of labelRects) {
+      const ownBez = cur.id !== undefined ? bez.get(cur.id) : undefined
+      if (!ownBez || cur.id === undefined) continue
+      const own = polyOf.get(cur.id)!
+      const w = edgeLabelRect(cur).w
+      const h = edgeLabelRect(cur).h
+      const rectAt = (pt: {x:number;y:number}): {x:number;y:number;w:number;h:number} => ({
+        x: pt.x - w / 2, y: pt.y - h / 2, w, h,
+      })
+      const current = hitsOnRect(rectAt({ x: cur.labelX!, y: cur.labelY! }), cur.id)
+      if (current === 0) continue
+      const ax = cur.labelX!
+      const ay = cur.labelY!
+      let best: { x: number; y: number; hits: number; dist: number } | null = null
+      for (let i = 2; i + 2 < own.length; i++) {
+        const pt = own[i]
+        const r = rectAt(pt)
+        if (r.x < 0.5 || r.y < 0.5 || r.x + r.w > width - 0.5 || r.y + r.h > height - 0.5) continue
+        if (hitsBox(r)) continue
+        const hits = hitsOnRect(r, cur.id)
+        const dist = Math.abs(pt.x - ax) + Math.abs(pt.y - ay)
+        if (best === null || hits < best.hits || (hits === best.hits && dist < best.dist)) {
+          best = { x: pt.x, y: pt.y, hits, dist }
+        }
+      }
+      if (best && best.hits < current) {
+        cur.labelX = best.x
+        cur.labelY = best.y
+      }
+    }
+  }
+
+
   // 7c. Label-label collision nudge (skiprank spec §3.2): the FIRST label in
   //  spec order keeps its anchor; a LATER label whose estimated text block
   //  overlaps ANY earlier one steps along its clear axis (NUDGE_STEP) until
@@ -1079,8 +1224,6 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   //  Runs to a fixed point over spec order (a later nudge can create a new
   //  collision with an even later label; re-scan until no move happens, hard
   //  cap on sweeps). `lr` nudges vertically, `tb` horizontally.
-  const labelRects = elements
-    .filter((el): el is Extract<Scene["elements"][number], { kind: "arrow" }> => el.kind === "arrow" && el.label !== undefined)
   const rectOfLabel = edgeLabelRect
   const overlaps = (A: { x: number; y: number; w: number; h: number }, B: { x: number; y: number; w: number; h: number }): boolean =>
     Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x) > 2 && Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y) > 2
