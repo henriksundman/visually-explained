@@ -652,6 +652,61 @@ dropping. One indirect symptom already works: the checks audit reads `.type`,
 so a `kind`-keyed quiz surfaces as "declared a check but placed no quiz" —
 usable as a tripwire, not as a fix.
 
+## 22. The figure breakout is a CSS containment trade, and its threshold is picked by arithmetic
+
+**Recorded 2026-10-08** (reharm review round). The wide-host figure breakout
+in `tokens.css` puts `container: exp / inline-size` on `.exp` — the library
+root. Inline-size containment means the element's own size can no longer
+depend on its contents; for a block-level article that is already true, so
+nothing should change in practice, but a host that made `.exp` size-to-fit
+its contents (inline-block, float, flex-item without a width) would see that
+stop working. If a host ever reports a collapsed or full-bleed article after
+upgrading, this declaration is the first suspect — the fix is a documented
+`container: none` opt-out, not a revert.
+
+The `640px` query threshold is arithmetic, not eyeballed: it must sit BELOW
+the ~672px 42rem column the demo hosts give the article (the container IS
+the article, so a threshold above the column's own width can never fire),
+and low enough that a slightly narrower host column still qualifies. Nobody
+has confirmed 640 is the right boundary by eye — same status thread 8 (the
+timeline's 825px budget) had until a human looked. If figures in real content
+either never break out or break out where they shouldn't, that constant is
+the first thing to move.
+
+The breakout amount (`--exp-figure-breakout`, default 48px) shares thread 18's
+status: a token a host can override, picked without a host sidebar actually
+butting against the article. `left: 50%` + `translate: -50%` replaces the
+`margin: auto` centring inside the query because auto margins give up on an
+over-constrained box; narrow figures land in the same place either way, but
+that equivalence is asserted by no test — the themes test pins the mechanism,
+not the pixels.
+
+## 23. The diagram payoff bar is a prompt instruction with no acceptance loop
+
+**Recorded 2026-10-08** (reharm review round). The `diagram` line in
+`BLOCK_TYPE_DOCS` now tells the model to emit a diagram only when the reader
+must trace a web of relationships, naming the page's 4-bars diagram as the
+shape to avoid. This is the prompt-fix lever the tb cycle chose for
+label-density (thread 21's decision pattern), and it has the same limitation:
+nothing in the library can *measure* whether a compiled document's diagrams
+earn their place. A recompile of the same topic is the only check, and one
+run showed the previous prompt producing the non-diagram — whether the new
+prompt reliably moves this model is unverified (the scratch experiment is
+`.superpowers/real-compile.mjs`, ~90s).
+
+**Revisit if** a recompile still emits uniform-rhythm diagrams, or a host
+reports decoration-diagrams. Then the options are: extend the same guidance
+to the outline prompt's `visual` field (the choice is planned earlier in the
+pipeline than the block writing), or accept it as model variance. A
+compile-time heuristic ("flag a diagram whose every node has in-degree ≤ 1
+and out-degree ≤ 1 — that's a chain, render it as a step-list") would be
+*validation*, not prompt, and would change deliberately-lenient semantics —
+thread 21's bar, not a drive-by.
+
+The two geometry changes this round (back-edge base-plane invariant, figure
+breakout) are test-pinned and browser-verified; this thread exists for the
+prompt change, which is exactly the class of change the suite cannot see.
+
 ## Conventions worth knowing before the next session
 
 - **Verify by measurement, and diff rendered output against `main`.** Three

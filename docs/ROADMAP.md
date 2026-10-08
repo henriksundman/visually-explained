@@ -729,6 +729,27 @@ one `<mi>` per letter with **zero warnings**.
       tradeoff). The `fits`-label density (one label crossed by up to 15
       paths) is model behavior, assigned to the compile prompt. Spec:
       `docs/superpowers/specs/2026-10-07-tb-edge-labels-design.md`.
+    - **Fixed — reharm review round (2026-10-08).** Three findings from the
+      user's review of the reharmonization page after the tb cycle. (1) A
+      back-edge return path's shaft ran to the arrowhead's TIP, so the
+      flattened arrival crossed the head's hollow interior and visually
+      attached at the base leg's corner (the modes-cycle `b→a` "H" edge);
+      the shaft now terminates at the head's BASE plane and enters through
+      the leg's midpoint, lr and tb (base-plane invariant tests). (2) A wide
+      figure squeezed inside a narrow article column now borrows the page
+      gutters: a **container query on `.exp` itself** (inline-size container
+      on the library root) raises only the figure's `max-width` by a bounded
+      `--exp-figure-breakout` (default 48px) each side, centred via
+      `left: 50%` + `translate: -50%` so a narrow figure keeps its intrinsic
+      size and never scales up; a host with no gutters to spare (a sidebar
+      tight against the article) sets the token to `0px` or just narrows the
+      article — the query reads the space the article was given, never the
+      viewport. The modes-cycle figure renders 638→734px in the 42rem demo
+      column. (3) The compile prompt's `diagram` line gains a payoff bar:
+      trace-a-web-of-relationships or cut — the page's 4-bars diagram (uniform
+      harmonic rhythm, every bar mapped the same way) is the motivating
+      non-diagram, and the fix is prompt-side by the same decision as the tb
+      cycle's label-density finding.
   - **`rl` (parked, gated on RTL text).** Right-to-left is **not** a mirror of
     `lr`, for two reasons. (1) The label gutter is `b.x - (a.x + a.w)`, which
     the 2026-10-04 cycle made *structurally* non-negative — forward edges always
