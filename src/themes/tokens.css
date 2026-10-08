@@ -522,20 +522,31 @@
    inside a ~660px column exactly where 13px labels stop being comfortable.
    Raising the cap (never forcing width) keeps a narrow figure at its intrinsic
    size — no sparkline ever scales UP — while a too-wide one may use the
-   column plus a bounded breakout each side. `left: 50%` + `translate: -50%`
-   centres the box whatever its width (auto margins give up on an
-   over-constrained box and overflow right), so narrow figures stay exactly
-   where `margin: auto` put them. The threshold is BELOW the ~672px 42rem
-   measure hosts actually give the article: the container is the article
-   itself, so the query must fire on the column it was given, and it is the
-   WINDOW being wide — page gutters to spare — that the host signals by
-   giving the article room. A sidebar squeezes the container under the
-   threshold and the breakout never engages, at any window size. The amount
-   is a token: a host whose layout cannot spare the gutters sets
-   --exp-figure-breakout: 0px and the old behavior returns. */
+   column plus a bounded breakout each side. Centering: auto margins centre a
+   NARROW figure but give up on an over-wide one (left-aligned, overflowing
+   right), while the `left: 50%` + `translate: -50%` trick centres either —
+   but ONLY once the auto margins are zeroed, because `left` is a percentage
+   of the PARENT and `translate` of the SELF: with live auto margins the two
+   percentages do not cancel and every narrow figure is shoved right by its
+   own resolved margin (measured +178px on a 367px figure in a 725px column,
+   riding the figures over the floated TOC on the reharm page). Zeroing the
+   inline margins inside the query makes the trick's precondition true for
+   both sizes; the block-level top margin stays. Scoped to DIRECT children of
+   .exp-block: the sparkline lives inside .exp-spark-box (a relative-offset
+   figure there would displace, not centre) and mind-map figures keep their
+   own centering rule. The threshold is BELOW the ~672px 42rem measure hosts
+   actually give the article: the container is the article itself, so the
+   query must fire on the column it was given, and it is the WINDOW being
+   wide — page gutters to spare — that the host signals by giving the article
+   room. A sidebar squeezes the container under the threshold and the breakout
+   never engages, at any window size. The amount is a token: a host whose
+   layout cannot spare the gutters sets --exp-figure-breakout: 0px and the old
+   behavior returns. */
 @container exp (min-width: 640px) {
-  .exp-figure {
+  .exp-block > .exp-figure {
     max-width: calc(100% + 2 * max(0px, var(--exp-figure-breakout, 48px)));
+    margin-left: 0;
+    margin-right: 0;
     position: relative;
     left: 50%;
     translate: -50%;
@@ -928,6 +939,11 @@
   max-width: 12rem;
   margin: 0 0 1rem 1.5rem;
   font-size: 0.85em;
+  /* A breakout figure (up to column + 2×48px) passes through this card's
+     band while scrolling; both are positioned with z-index auto, so DOM
+     order would paint the FIGURE over the nav. The nav is chrome — it wins
+     (measured: 1 figure under the card, previously painting over it). */
+  z-index: 5;
 }
 
 /* Opt-out: restore normal flow (drop the pin and the float layout). */

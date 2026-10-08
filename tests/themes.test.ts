@@ -63,11 +63,21 @@ describe("themes", () => {
     // breakout is a token so a host with no gutters to spare opts out.
     const css = readFileSync("src/themes/tokens.css", "utf8")
     expect(css).toMatch(/\.exp\s*{[^}]*container:\s*exp\s*\/\s*inline-size/)
-    expect(css).toMatch(/@container\s+exp\s+\(min-width:\s*640px\)\s*{\s*\.exp-figure\s*{[^}]*max-width:\s*calc\(/)
+    expect(css).toMatch(/@container\s+exp\s+\(min-width:\s*640px\)\s*{\s*\.exp-block\s*>\s*\.exp-figure\s*{[^}]*max-width:\s*calc\(/)
     // Cap-raise only: forcing `width` (not just max-width) inside the query
     // would upscale every small figure.
     const query = css.match(/@container exp \(min-width: 640px\)\s*{([\s\S]*?)\n}/)?.[1] ?? ""
     expect(query).not.toMatch(/(?<!max-)width:\s/)
+    // The left:50% + translate:-50% trick is a percentage of the PARENT
+    // against a percentage of the SELF — it only cancels when the figure's
+    // own auto margins are zero. With live auto margins the trick ADDED to
+    // correct centering and shoved every narrow figure right by its resolved
+    // margin (+178px measured, riding figures over the floated TOC).
+    expect(query).toMatch(/margin-left:\s*0/)
+    expect(query).toMatch(/margin-right:\s*0/)
+    // Direct children only: a sparkline inside .exp-spark-box would be
+    // DISPLACED by the relative offsets, not centred.
+    expect(query).not.toMatch(/^\s*\.exp-figure\s*{/m)
     // The opt-out token must be honoured.
     expect(css).toMatch(/--exp-figure-breakout/)
   })

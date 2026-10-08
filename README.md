@@ -437,8 +437,12 @@ sidebar and the container narrows, whatever the window does. Only the
 *maximum* width is raised (never forced), so a small figure keeps its
 intrinsic size and never scales up; a too-wide one gets up to
 `--exp-figure-breakout` (default `48px`) of extra room each side, centred on
-the column. Set the token to `0px` to keep figures strictly inside the
-column.
+the column — the query zeroes the figure's auto margins because the
+`left: 50%` + `translate: -50%` centering trick only cancels when the box is
+not also centering itself by margin. The query targets figures that are
+direct children of a block (sparklines live inside their metric card, mind
+maps keep their own rule), and the sticky TOC card paints above breakout
+figures. Set the token to `0px` to keep figures strictly inside the column.
 
 ## Themes
 
