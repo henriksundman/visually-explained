@@ -430,6 +430,16 @@ graph instead of expanding into ranks that are empty but still consume width.
 Figures scale to their container via `viewBox`, so an over-wide scene shrinks
 its own labels; keeping the scene honest is what keeps text legible.
 
+On a wide layout a figure squeezed by a narrow article column can borrow the
+page gutters: the theme reads a **container query on `.exp` itself**, so it
+fires on the space the article was actually given — put the article beside a
+sidebar and the container narrows, whatever the window does. Only the
+*maximum* width is raised (never forced), so a small figure keeps its
+intrinsic size and never scales up; a too-wide one gets up to
+`--exp-figure-breakout` (default `48px`) of extra room each side, centred on
+the column. Set the token to `0px` to keep figures strictly inside the
+column.
+
 ## Themes
 
 ```ts

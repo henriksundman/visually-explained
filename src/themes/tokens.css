@@ -3,6 +3,15 @@
    Consumers may override any token on .exp or any wrapper element. */
 
 .exp {
+  /* Width context for the figure-breakout container query below. Inline-size
+     containment on the library's own root means the query reads the space the
+     .exp element itself was GIVEN (host column minus sidebar minus padding),
+     never the viewport — a host placing the article beside a nav gets narrow-
+     container behaviour at any window size. Sizes nothing by itself: layout,
+     paint and style containment are not set, so this is inert until the
+     @container rule below reads it. */
+  container: exp / inline-size;
+
   /* palette */
   --exp-text: #1a1d23;
   --exp-text-muted: #5c6470;
@@ -505,6 +514,32 @@
 .exp-figure text {
   font-family: var(--exp-font);
   font-size: 13px;
+}
+
+/* Figure breakout: when the library's own column is wide, a too-wide figure
+   may scale down against the GUTTERS too. Model-authored diagrams are sized by
+   their LABELS, so a wide melody→chord graph lands ~640px and gets squeezed
+   inside a ~660px column exactly where 13px labels stop being comfortable.
+   Raising the cap (never forcing width) keeps a narrow figure at its intrinsic
+   size — no sparkline ever scales UP — while a too-wide one may use the
+   column plus a bounded breakout each side. `left: 50%` + `translate: -50%`
+   centres the box whatever its width (auto margins give up on an
+   over-constrained box and overflow right), so narrow figures stay exactly
+   where `margin: auto` put them. The threshold is BELOW the ~672px 42rem
+   measure hosts actually give the article: the container is the article
+   itself, so the query must fire on the column it was given, and it is the
+   WINDOW being wide — page gutters to spare — that the host signals by
+   giving the article room. A sidebar squeezes the container under the
+   threshold and the breakout never engages, at any window size. The amount
+   is a token: a host whose layout cannot spare the gutters sets
+   --exp-figure-breakout: 0px and the old behavior returns. */
+@container exp (min-width: 640px) {
+  .exp-figure {
+    max-width: calc(100% + 2 * max(0px, var(--exp-figure-breakout, 48px)));
+    position: relative;
+    left: 50%;
+    translate: -50%;
+  }
 }
 
 .exp-node rect {

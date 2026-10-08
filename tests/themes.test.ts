@@ -54,6 +54,24 @@ describe("themes", () => {
     expect(css).toMatch(/\.exp-doc-toc-list a\[aria-current="true"\]\s*{[^}]*text-decoration: underline/)
   })
 
+  it("breaks figures out over the gutters via a container query, not a viewport breakpoint", () => {
+    // Wide hosts get figures more room (the 2026-10-08 reharm feedback: a
+    // ~640px diagram squeezed inside a ~660px column). The query must read
+    // the .exp CONTAINER — a host placing the article beside a sidebar gets
+    // narrow behavior at any window size — and must raise the cap only: a
+    // width: 100% here would scale a sparkline UP to full column. The
+    // breakout is a token so a host with no gutters to spare opts out.
+    const css = readFileSync("src/themes/tokens.css", "utf8")
+    expect(css).toMatch(/\.exp\s*{[^}]*container:\s*exp\s*\/\s*inline-size/)
+    expect(css).toMatch(/@container\s+exp\s+\(min-width:\s*640px\)\s*{\s*\.exp-figure\s*{[^}]*max-width:\s*calc\(/)
+    // Cap-raise only: forcing `width` (not just max-width) inside the query
+    // would upscale every small figure.
+    const query = css.match(/@container exp \(min-width: 640px\)\s*{([\s\S]*?)\n}/)?.[1] ?? ""
+    expect(query).not.toMatch(/(?<!max-)width:\s/)
+    // The opt-out token must be honoured.
+    expect(css).toMatch(/--exp-figure-breakout/)
+  })
+
   it("styles the mind-map nested list and leaves room between levels", () => {
     const css = readFileSync("src/themes/tokens.css", "utf8")
     expect(css).toMatch(/\.exp-mind-map-list\s*{[^}]*list-style/)
