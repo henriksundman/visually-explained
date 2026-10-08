@@ -778,17 +778,22 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         labelY = laneY - 6
         gutterW = Math.max(8, Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)))
       } else {
-        // For `tb` the mirror of lr's below-the-graph strip is a strip to the
-        // RIGHT of the graph — but a long label there has no guaranteed room
-        // (the nodes can reach the lane bulge), and anchoring at the spans'
-        // midpoint Y lands ON the crossed ranks' boxes (the run-4 case: the
-        // label rode node "b" at 765px²). So the label rides the lr way:
-        // BELOW the graph at the endpoints' mid-X (no boxes there), with the
-        // lane-clear span as its wrap width. 6b nudges it off the return
-        // curves if one dips that far (same lane-strip check as lr).
+        // For `tb` the label rides BELOW the graph — the graph is VERTICAL,
+        // so below it lies the scene's full width with nothing on it (the
+        // return curve bulges RIGHT in tb, never down), and the block can
+        // wrap to that width. The earlier design rode a strip to the RIGHT
+        // of the curve with the endpoints' X-SPAN as its wrap width — but
+        // for a back edge between two rows of one column that span is ~0px,
+        // and "neutralizes pathogen (via APC)" shredded into five 45px
+        // lines beside a 294px scene (2026-10-08 mrna review). laneY here is
+        // a right-side X (laneBasePre is the x-extent for tb), so the old
+        // `labelY = laneY − 6` parked the block at an arbitrary mid-graph
+        // height besides. Anchor: below the deepest node, one row per lane
+        // so multiple tb cycles stack; 6b grows the scene for the block.
+        const bottom = Math.max(...[...placed.values()].map(p => p.y + p.h))
         labelX = (a.x + a.w / 2 + b.x + b.w / 2) / 2
-        labelY = laneY - 6
-        gutterW = Math.max(8, Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)))
+        labelY = bottom + PAD + EDGE_LABEL_H / 2 + lane * (2 * EDGE_LABEL_H + 8)
+        gutterW = Math.max(8, width - 2 * PAD)
       }
     } else if (direction === "lr") {
       // For `lr` the label sits in the horizontal gutter between two columns
@@ -833,6 +838,13 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     }
 
     const lines = e.label ? wrapEdgeLabel(e.label, gutterW) : []
+    // A tb back-edge block can now be as wide as the scene (its wrap width):
+    // clamp the centre so the block stays inside — shifting it off the
+    // endpoints' mid-X costs nothing, the space below the graph is empty.
+    if (isBack && direction === "tb" && lines.length > 0) {
+      const bw = Math.max(...lines.map(l => estimateEdgeTextWidth(l)))
+      labelX = Math.min(Math.max(labelX, bw / 2 + 2), Math.max(bw / 2 + 2, width - bw / 2 - 2))
+    }
     // The maths above places the FIRST line; shift up by half the block so
     // the block as a whole is centred on the edge.
     plans.push({
@@ -947,30 +959,15 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
             : `M ${sx} ${sy} C ${control} ${sy}, ${control} ${ty}, ${baseX} ${ty}`
         // Head at the target's right edge, pointing LEFT into it.
         head = `M ${tx} ${ty} L ${tx + 9} ${ty - 4.5} L ${tx + 9} ${ty + 4.5} Z`
-        // Keep the label clear of the curve it annotates, then pull its
-        // BLOCK (not its first line) clear of the lane strip where a slipped
-        // back edge rides: laneX lands mid-curve, so the guard must be
-        // real-depth, not control-line, and the whole block clears it.
-        labelX = Math.max(labelX + ((lines.length - 1) * EDGE_LABEL_PITCH) / 2, real + 6)
-        if (planIsSkip.get(edgeKey(e)) === true && lines.length > 0) {
-          const lanes = [0, 1, 2].map(i => laneBase + PAD + RETURN_DROP + i * RETURN_LANE)
-          const hit = lanes.find(lx => {
-            const w = Math.max(...lines.map(l => estimateEdgeTextWidth(l)))
-            const h = (lines.length - 1) * EDGE_LABEL_PITCH + EDGE_LABEL_H
-            const r = { x: labelX - w / 2, y: labelY - h / 2, w, h }
-            const strip: { x: number; y: number; w: number; h: number } = { x: lx - 26, y: b.y - PAD, w: 44, h: b.h + 2 * PAD }
-            const ox = Math.min(r.x + r.w, strip.x + strip.w) - Math.max(r.x, strip.x)
-            const oy = Math.min(r.y + r.h, strip.y + strip.h) - Math.max(r.y, strip.y)
-            return ox > 0 && oy > 0
-          })
-          if (hit !== undefined) {
-            const labelR = labelX - 18
-            if (labelR > sx) {
-              labelX = labelR
-              labelY = (sy + ty) / 2 - 6
-            }
-          }
-        }
+        // The label rides BELOW the graph (see the plan-level anchor): the tb
+        // return curve bulges RIGHT and never enters that space, so the plan
+        // anchor stands — the block was already centred and clamped in-bounds
+        // at plan level. Grow the scene for the block's true height (step 7's
+        // label-extent allowance is 2px per line, ~6px short of a real one).
+        height = Math.max(
+          height,
+          labelY + ((lines.length - 1) * EDGE_LABEL_PITCH + EDGE_LABEL_H) / 2 + PAD,
+        )
       }
     } else if (direction === "lr") {
       const sx = a.x + a.w

@@ -668,6 +668,42 @@ describe("flow cycles and back-edge routing", () => {
     expect(scene.height).toBeGreaterThan(lowest)
   })
 
+  it("rides a tb back-edge label BELOW the graph, wrapped to the scene's width", () => {
+    // The 2026-10-08 mrna review: "neutralizes pathogen (via APC)" rendered on
+    // FIVE 45px lines. The tb back-edge label wrapped to the endpoints' X-span
+    // — for two rows of one column that span is ~0px — while the scene below
+    // the graph (the curve bulges RIGHT in tb, never down) had the full width
+    // empty. The label must ride below the graph and use that width.
+    const { scene } = layoutFlow({
+      direction: "tb",
+      nodes: [
+        { id: "apc", label: "Antigen-Presenting Cell" },
+        { id: "killer", label: "Killer T Cell" },
+        { id: "ab", label: "Antibody" },
+      ],
+      edges: [
+        { from: "apc", to: "killer", label: "presents antigen" },
+        { from: "killer", to: "ab", label: "triggers production" },
+        { from: "ab", to: "apc", label: "neutralizes pathogen (via APC)" }, // the cycle
+      ],
+    })
+    const back = mustArrow(scene, "ab->apc")
+    expect(back.label).toBe("neutralizes pathogen (via APC)")
+    const lines = back.lines ?? [back.label!]
+    // Two rows at most: the scene below the graph has ~270px of width for a
+    // ~250px label — five 45px lines was never a width constraint, it was an
+    // arithmetic one (wrapping to the ~0px endpoint span).
+    expect(lines.length).toBeLessThanOrEqual(2)
+    // ...and the block rides BELOW every node, inside the scene.
+    const r = edgeLabelRect(back)
+    const nodes = scene.elements.filter((e): e is NodeBoxEl => e.kind === "node-box")
+    const lowestNode = Math.max(...nodes.map(n => n.y + n.h))
+    expect(r.y).toBeGreaterThan(lowestNode)
+    expect(r.y + r.h).toBeLessThanOrEqual(scene.height)
+    expect(r.x).toBeGreaterThanOrEqual(-0.5)
+    expect(r.x + r.w).toBeLessThanOrEqual(scene.width + 0.5)
+  })
+
   it("gives each back edge its own lane so two cycles do not overprint", () => {
     const { scene } = layoutFlow({
       direction: "lr",
