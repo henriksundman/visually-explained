@@ -515,13 +515,27 @@ describe("flow cycles and back-edge routing", () => {
     const b = mustNode(scene, "cache")
     const start = pathStart(back.d)
     const end = pathEnd(back.d)
-    // Leaves the source's bottom edge and enters the target's bottom edge.
+    // Leaves the source's bottom edge; the shaft terminates at the head's
+    // base plane (HEAD_BASE below the target's bottom edge), not at the tip.
     expect(start.y).toBeCloseTo(a.y + a.h, 5)
-    expect(end.y).toBeCloseTo(b.y + b.h, 5)
+    expect(end.y).toBeCloseTo(b.y + b.h + 9, 5)
     // Head base sits below the tip, i.e. the arrow points UP into the target.
     const headNums = back.head.match(/-?[\d.]+/g)!.map(Number)
     expect(headNums[1]).toBeCloseTo(b.y + b.h, 5)
     expect(headNums[3]).toBeCloseTo(b.y + b.h + 9, 5)
+    // The stem must terminate at the midpoint of the head's base leg (the
+    // leg parallel to the box), so the shaft reads as entering the hollow
+    // head through the middle of its base. The 2026-10-08 reharm modes-cycle
+    // page showed the old cubic's flattened arrival crossing the base plane
+    // ~3.7px off-centre — visually attached at the base leg's corner.
+    // Tip x and base centre x coincide, so the base midpoint is (end.x, baseY).
+    const baseY = headNums[3]!
+    const nearBase = samplePath(back.d).filter(p => Math.abs(p.y - baseY) < 1)
+    expect(nearBase.length).toBeGreaterThan(0)
+    const nearest = nearBase.reduce((best, p) =>
+      Math.abs(p.x - end.x) < Math.abs(best.x - end.x) ? p : best,
+    )
+    expect(Math.abs(nearest.x - end.x)).toBeLessThan(1)
     // The dip must clear every node and stay inside the scene. Measured on the
     // DRAWN curve: with equal endpoints it reaches only 3/4 of the control line.
     const lowest = Math.max(...samplePath(back.d).map(p => p.y))
@@ -615,6 +629,17 @@ describe("flow cycles and back-edge routing", () => {
     const headNums = back.head.match(/-?[\d.]+/g)!.map(Number)
     expect(headNums[0]).toBeCloseTo(a.x, 5)
     expect(headNums[2]).toBeCloseTo(a.x + 9, 5)
+    // tb mirror of the base-plane invariant: the shaft terminates at the
+    // head's base leg (x = a.x + 9), entering through the leg's midpoint.
+    const endTb = pathEnd(back.d)
+    expect(endTb.x).toBeCloseTo(a.x + 9, 5)
+    const baseXTb = headNums[2]!
+    const nearBaseTb = samplePath(back.d).filter(p => Math.abs(p.x - baseXTb) < 1)
+    expect(nearBaseTb.length).toBeGreaterThan(0)
+    const nearestTb = nearBaseTb.reduce((best, p) =>
+      Math.abs(p.y - endTb.y) < Math.abs(best.y - endTb.y) ? p : best,
+    )
+    expect(Math.abs(nearestTb.y - endTb.y)).toBeLessThan(1)
     // The lane must clear every node it passes, not cut back through them.
     // Measured on the DRAWN curve: the control point lies outside it.
     const rightmost = Math.max(...samplePath(back.d).map(p => p.x))

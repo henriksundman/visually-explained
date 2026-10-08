@@ -849,16 +849,25 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         const sy = a.y + a.h
         const tx = b.x + b.w / 2
         const ty = b.y + b.h
+        // The shaft terminates at the head's BASE plane, not the tip: a
+        // hollow triangle reads as an arrow only when the shaft stops where
+        // the head's own width begins, entering through the middle of the
+        // leg parallel to the box. The modes-cycle page (2026-10-08) showed
+        // the old tip-anchored shaft's flattened arrival grazing the base
+        // leg's corner instead.
+        const baseY = ty + 9
         const control = laneBase + PAD + RETURN_DROP + lane * RETURN_LANE
         // Size the scene from the curve's TRUE depth, not its control line:
         // the curve only reaches 3/4 of the way to the control points.
-        const real = cubicDepth(sy, ty, control)
+        const real = cubicDepth(sy, baseY, control)
         height = Math.max(height, real + PAD)
         d =
           Math.abs(sx - tx) < 1
-            ? `M ${sx} ${sy} L ${sx} ${control} L ${tx} ${control} L ${tx} ${ty}`
-            : `M ${sx} ${sy} C ${sx} ${control}, ${tx} ${control}, ${tx} ${ty}`
-        // Head at the target's bottom edge, pointing UP into it.
+            ? `M ${sx} ${sy} L ${sx} ${control} L ${tx} ${control} L ${tx} ${baseY}`
+            : `M ${sx} ${sy} C ${sx} ${control}, ${tx} ${control}, ${tx} ${baseY}`
+        // Head at the target's bottom edge, pointing UP into it: tip on the
+        // edge, base 9px lower, centred on tx. The shaft's endpoint sits on
+        // that base leg's midpoint by construction.
         head = `M ${tx} ${ty} L ${tx - 4.5} ${ty + 9} L ${tx + 4.5} ${ty + 9} Z`
         // Keep the label clear of the curve it annotates.
         labelY = Math.min(labelY - ((lines.length - 1) * EDGE_LABEL_PITCH) / 2, real - 6)
@@ -867,13 +876,17 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         const sy = a.y + a.h / 2
         const tx = b.x
         const ty = b.y + b.h / 2
+        // The shaft terminates at the head's BASE plane (9px right of the
+        // target's left edge) — the lr mirror: the shaft enters the hollow
+        // head through the middle of the leg parallel to the box.
+        const baseX = tx + 9
         const control = laneBase + PAD + RETURN_DROP + lane * RETURN_LANE
-        const real = cubicDepth(sx, tx, control)
+        const real = cubicDepth(sx, baseX, control)
         width = Math.max(width, real + PAD)
         d =
           Math.abs(sy - ty) < 1
-            ? `M ${sx} ${sy} L ${control} ${sy} L ${control} ${ty} L ${tx} ${ty}`
-            : `M ${sx} ${sy} C ${control} ${sy}, ${control} ${ty}, ${tx} ${ty}`
+            ? `M ${sx} ${sy} L ${control} ${sy} L ${control} ${ty} L ${baseX} ${ty}`
+            : `M ${sx} ${sy} C ${control} ${sy}, ${control} ${ty}, ${baseX} ${ty}`
         // Head at the target's right edge, pointing LEFT into it.
         head = `M ${tx} ${ty} L ${tx + 9} ${ty - 4.5} L ${tx + 9} ${ty + 4.5} Z`
         // Keep the label clear of the curve it annotates, then pull its
