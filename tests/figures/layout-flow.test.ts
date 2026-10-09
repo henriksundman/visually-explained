@@ -253,15 +253,15 @@ describe("edge label overflow", () => {
       { from: "a1", to: "b4" }, { from: "a1", to: "b5" },
       { from: "a1", to: "b6", label: "fits" },
     ])
-    expect(steep).toBeGreaterThan(64)
+    expect(steep).toBeGreaterThan(88)
     expect(steep).toBeLessThanOrEqual(140) // the same cap a label-driven gutter obeys
-    // A shallow fan (same labels, no vertical drop) stays at the compact 64px
+    // A shallow fan (same labels, no vertical drop) stays at the compact 88px
     // default — the slope term must not tax ordinary diagrams.
     const shallow = gutterOf([
       { from: "a1", to: "b1", label: "fits" },
       { from: "a2", to: "b2", label: "fits" },
     ])
-    expect(shallow).toBe(64)
+    expect(shallow).toBe(88)
   })
 
   it("slides a label off a foreign curve that crosses its anchor", () => {
@@ -370,13 +370,14 @@ describe("edge label overflow", () => {
       const ns = scene.elements.filter(e => e.kind === "node-box") as { x: number; w: number }[]
       return ns[1].x - (ns[0].x + ns[0].w)
     }
-    // Unchanged default: a short label leaves the gutter at its 64px minimum.
-    expect(shortGutter()).toBe(64)
+    // Unchanged default: a short label leaves the gutter at its 88px minimum
+    // (raised from 64 — 2026-10-09 breathing room).
+    expect(shortGutter()).toBe(88)
 
     const { scene } = layoutFlow(overflowIr)
     const ns = scene.elements.filter(e => e.kind === "node-box") as { x: number; w: number }[]
     const gutter = ns[1].x - (ns[0].x + ns[0].w)
-    expect(gutter).toBeGreaterThan(64)
+    expect(gutter).toBeGreaterThan(88)
     expect(gutter).toBeLessThanOrEqual(140) // the cap
   })
 
@@ -668,12 +669,14 @@ describe("flow cycles and back-edge routing", () => {
     expect(scene.height).toBeGreaterThan(lowest)
   })
 
-  it("rides a tb back-edge label BELOW the graph, wrapped to the scene's width", () => {
-    // The 2026-10-08 mrna review: "neutralizes pathogen (via APC)" rendered on
-    // FIVE 45px lines. The tb back-edge label wrapped to the endpoints' X-span
-    // — for two rows of one column that span is ~0px — while the scene below
-    // the graph (the curve bulges RIGHT in tb, never down) had the full width
-    // empty. The label must ride below the graph and use that width.
+  it("rides a labelled tb back-edge label ON its curve's right flank, broken between words", () => {
+    // 2026-10-09 review: the below-the-graph anchor (2026-10-08) fixed the
+    // five-line shredding but orphaned the block ~150px from its curve — the
+    // user: "it's unclear as to what it refers to... keep the text along the
+    // line but put line breaks (if needed) between words and not in the
+    // middle of them." The return curve bulges RIGHT and runs near-vertical
+    // around its extremum, so a word-wrapped block hugging that flank reads
+    // as text along the line.
     const { scene } = layoutFlow({
       direction: "tb",
       nodes: [
@@ -690,18 +693,61 @@ describe("flow cycles and back-edge routing", () => {
     const back = mustArrow(scene, "ab->apc")
     expect(back.label).toBe("neutralizes pathogen (via APC)")
     const lines = back.lines ?? [back.label!]
-    // Two rows at most: the scene below the graph has ~270px of width for a
-    // ~250px label — five 45px lines was never a width constraint, it was an
-    // arithmetic one (wrapping to the ~0px endpoint span).
-    expect(lines.length).toBeLessThanOrEqual(2)
-    // ...and the block rides BELOW every node, inside the scene.
+    expect(lines.length).toBeLessThanOrEqual(3)
+    // Breaks land BETWEEN words: joining the lines back with single spaces
+    // reproduces the label exactly. wrapEdgeLabel hard-splits a word only
+    // when that word alone is wider than the wrap width, so a mid-word
+    // break would change this join ("neutral" + "izes" joins to
+    // "neutral izes"). Pinning the join pins the word-completeness.
+    expect(lines.join(" ")).toBe("neutralizes pathogen (via APC)")
     const r = edgeLabelRect(back)
+    // The block hugs the curve: its left edge sits just right of the curve's
+    // rightmost point (the extremum, sampled from the DRAWN path).
+    const pts = samplePath(back.d, 256)
+    const extremum = Math.max(...pts.map(p => p.x))
+    expect(r.x).toBeGreaterThanOrEqual(extremum - 0.5)
+    expect(r.x).toBeLessThanOrEqual(extremum + 12)
+    // ...it rides ALONG the curve's span, not below the graph...
+    const ys = pts.map(p => p.y)
+    expect(r.y).toBeGreaterThanOrEqual(Math.min(...ys) - 0.5)
+    expect(r.y + r.h).toBeLessThanOrEqual(Math.max(...ys) + 0.5)
     const nodes = scene.elements.filter((e): e is NodeBoxEl => e.kind === "node-box")
     const lowestNode = Math.max(...nodes.map(n => n.y + n.h))
-    expect(r.y).toBeGreaterThan(lowestNode)
-    expect(r.y + r.h).toBeLessThanOrEqual(scene.height)
-    expect(r.x).toBeGreaterThanOrEqual(-0.5)
+    expect(r.y).toBeLessThan(lowestNode)
+    // ...clears every node box...
+    for (const n of nodes) expect(intersects(r as unknown as Box, n)).toBe(false)
+    // ...and the scene grew wide enough to hold the block.
     expect(r.x + r.w).toBeLessThanOrEqual(scene.width + 0.5)
+  })
+
+  it("gives a figure room to breathe: wider gutters, taller rows, more padding", () => {
+    // 2026-10-09 review: even after the slope gutter and the crossing slide,
+    // dense figures still read cramped — "there is plenty of space to make
+    // the figures more spaced out in all directions". The layout minimums
+    // were tuned tight: GAP_MAIN 64→88, GAP_CROSS 28→44, PAD 16→24. Two
+    // parallel chains keep the slope-gutter term at zero (every edge's drop
+    // is 0), so the raw minimums are visible exactly.
+    const { scene } = layoutFlow({
+      nodes: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B" },
+        { id: "c", label: "C" },
+        { id: "d", label: "D" },
+      ],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "c", to: "d" },
+      ],
+    })
+    const a = mustNode(scene, "a")
+    const b = mustNode(scene, "b")
+    const c = mustNode(scene, "c")
+    const d = mustNode(scene, "d")
+    expect(a.x).toBe(24) // PAD: breathing room at the scene's left edge
+    expect(b.x - (a.x + a.w)).toBe(88) // GAP_MAIN: room between the columns
+    expect(d.x - (c.x + c.w)).toBe(88)
+    expect(c.y - (a.y + a.h)).toBe(44) // GAP_CROSS: room between the rows
+    expect(scene.width).toBe(d.x + d.w + 24) // right padding
   })
 
   it("gives each back edge its own lane so two cycles do not overprint", () => {
@@ -902,14 +948,16 @@ describe("flow cycles and back-edge routing", () => {
   })
 
   it("leaves a cycle-free spec byte-identical to the pre-cycle layout", () => {
-    // Nothing about a DAG should have changed: only cycle handling and the
-    // clamp's application point moved. These values are the pre-fix output,
-    // captured from commit 0945bfd — not derived from the new code.
+    // Nothing about a DAG changes when a cycle is present: only cycle
+    // handling differs. The absolute geometry below was captured from commit
+    // 0945bfd and re-captured after the 2026-10-09 spacing raise (GAP_MAIN
+    // 64→88, PAD 16→24) moved every layout; the INVARIANT pinned is that the
+    // cyclic and acyclic renders agree byte-for-byte, not these numbers.
     const { scene } = layoutFlow(overflowIr)
-    expect(scene.width).toBe(591)
-    expect(scene.height).toBe(76)
-    expect(mustArrow(scene, "sun->air").d).toBe("M 106 38 C 175 38, 175 38, 244 38")
-    expect(mustArrow(scene, "air->eye").d).toBe("M 345 38 C 414 38, 414 38, 483 38")
+    expect(scene.width).toBe(607)
+    expect(scene.height).toBe(92)
+    expect(mustArrow(scene, "sun->air").d).toBe("M 114 46 C 183 46, 183 46, 252 46")
+    expect(mustArrow(scene, "air->eye").d).toBe("M 353 46 C 422 46, 422 46, 491 46")
   })
 })
 

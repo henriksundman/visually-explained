@@ -29,12 +29,16 @@ const NODE_W_MIN = 90
 const NODE_W_MAX = 260
 const LINE_H = 44 // height of a single-line node
 const LINE_PITCH = 16 // extra vertical room per additional text line
-const GAP_MAIN = 64 // minimum gap between columns (lr) or rows (tb)
+const GAP_MAIN = 88 // minimum gap between columns (lr) or rows (tb) — raised
+                     // from 64 (2026-10-09 review: dense figures still read
+                     // cramped; the slope gutter and crossing slide shrank the
+                     // problem, the minimums were still tuned tight)
 const MAX_LABEL_GUTTER = 140 // cap on a label-driven gutter, so one long
-                               // label cannot blow up the figure's width
+                             // label cannot blow up the figure's width
 const LABEL_PAD = 16 // breathing room either side of a single-line label
-const GAP_CROSS = 28 // gap between rows (lr) or columns (tb)
-const PAD = 16
+const GAP_CROSS = 44 // gap between rows (lr) or columns (tb) — raised from 28
+                     // for the same reason as GAP_MAIN
+const PAD = 24
 const CHAR_W = 7.5 // width estimate per character at 13px (node labels)
 const EDGE_LABEL_H = 16 // measured single-line label block height at 11px
 export const EDGE_LABEL_PITCH = 15 // line pitch at that size
@@ -527,6 +531,81 @@ function cubicDepth(y0: number, y3: number, ly: number): number {
   return mt * mt * mt * y0 + 3 * mt * mt * t * ly + 3 * mt * t * t * ly + t * t * t * y3
 }
 
+interface Pt {
+  x: number
+  y: number
+}
+interface Rect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** Evaluate a cubic Bezier at parameter t. */
+function cubicPoint(p0: Pt, p1: Pt, p2: Pt, p3: Pt, t: number): Pt {
+  const mt = 1 - t
+  return {
+    x: mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x,
+    y: mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y,
+  }
+}
+
+/** Sample every ADJACENT arrow curve (M a b C …, the shape forward lr/tb
+ *  edges draw) into a 48-point polyline keyed by edge id. Skip-rank
+ *  serpentines are polylines (no C) whose labels already ride segments the
+ *  route proved clear, and back-edge labels have their own guards — both are
+ *  excluded via `skipIds`. Shared by the 7c-pre crossing slide and the 7c
+ *  nudge's on-curve escape (the slide anchors labels ON their curves; the
+ *  nudge must not carry them off again). */
+function sampleArrowPolylines(elements: Scene["elements"], skipIds: Set<string>): Map<string, Pt[]> {
+  const bez = new Map<string, { p0: Pt; p1: Pt; p2: Pt; p3: Pt }>()
+  for (const el of elements) {
+    if (el.kind !== "arrow" || el.id === undefined || skipIds.has(el.id)) continue
+    const m = /M ([-\d.]+) ([-\d.]+) C ([-\d.]+) ([-\d.]+), ([-\d.]+) ([-\d.]+), ([-\d.]+) ([-\d.]+)/.exec(el.d)
+    if (!m) continue
+    bez.set(el.id, {
+      p0: { x: +m[1], y: +m[2] },
+      p1: { x: +m[3], y: +m[4] },
+      p2: { x: +m[5], y: +m[6] },
+      p3: { x: +m[7], y: +m[8] },
+    })
+  }
+  const SAMPLES = 48
+  const polyOf = new Map<string, Pt[]>()
+  for (const [id, b] of bez) {
+    const poly: Pt[] = []
+    for (let i = 0; i <= SAMPLES; i++) poly.push(cubicPoint(b.p0, b.p1, b.p2, b.p3, i / SAMPLES))
+    polyOf.set(id, poly)
+  }
+  return polyOf
+}
+
+/** Does segment a→b touch rect r (an endpoint inside, or a proper edge
+ *  crossing)? Proper test, not endpoint sampling: a first cut that only
+ *  checked endpoints shipped labels whose rect clipped a curve passing
+ *  through their middle. */
+function segmentHitsRect(a: Pt, b: Pt, r: Rect): boolean {
+  const inR = (p: Pt): boolean => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h
+  if (inR(a) || inR(b)) return true
+  const edges = [
+    [r.x, r.y, r.x + r.w, r.y],
+    [r.x + r.w, r.y, r.x + r.w, r.y + r.h],
+    [r.x, r.y + r.h, r.x + r.w, r.y + r.h],
+    [r.x, r.y, r.x, r.y + r.h],
+  ] as const
+  const orient = (ax: number, ay: number, bx: number, by: number, px: number, py: number): number =>
+    (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+  for (const [x1, y1, x2, y2] of edges) {
+    const d1 = orient(x1, y1, x2, y2, a.x, a.y)
+    const d2 = orient(x1, y1, x2, y2, b.x, b.y)
+    const d3 = orient(a.x, a.y, b.x, b.y, x1, y1)
+    const d4 = orient(a.x, a.y, b.x, b.y, x2, y2)
+    if (((d1 > 0) !== (d2 > 0) || d1 === 0 || d2 === 0) && ((d3 > 0) !== (d4 > 0) || d3 === 0 || d4 === 0)) return true
+  }
+  return false
+}
+
 interface Placed {
   id: string
   label: string
@@ -778,22 +857,19 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         labelY = laneY - 6
         gutterW = Math.max(8, Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)))
       } else {
-        // For `tb` the label rides BELOW the graph — the graph is VERTICAL,
-        // so below it lies the scene's full width with nothing on it (the
-        // return curve bulges RIGHT in tb, never down), and the block can
-        // wrap to that width. The earlier design rode a strip to the RIGHT
-        // of the curve with the endpoints' X-SPAN as its wrap width — but
-        // for a back edge between two rows of one column that span is ~0px,
-        // and "neutralizes pathogen (via APC)" shredded into five 45px
-        // lines beside a 294px scene (2026-10-08 mrna review). laneY here is
-        // a right-side X (laneBasePre is the x-extent for tb), so the old
-        // `labelY = laneY − 6` parked the block at an arbitrary mid-graph
-        // height besides. Anchor: below the deepest node, one row per lane
-        // so multiple tb cycles stack; 6b grows the scene for the block.
-        const bottom = Math.max(...[...placed.values()].map(p => p.y + p.h))
-        labelX = (a.x + a.w / 2 + b.x + b.w / 2) / 2
-        labelY = bottom + PAD + EDGE_LABEL_H / 2 + lane * (2 * EDGE_LABEL_H + 8)
-        gutterW = Math.max(8, width - 2 * PAD)
+        // For `tb` the label rides the return curve's RIGHT FLANK (anchored
+        // after the wrap below, which needs only this width): the curve
+        // bulges RIGHT and runs near-vertical around its extremum, so a
+        // word-wrapped block hugging that flank reads as text along the line
+        // (2026-10-09 — the below-the-graph anchor of 2026-10-08 left the
+        // block ~150px from its curve, "unclear as to what it refers to").
+        // Wrap width: the full one-line width capped at 120 — a longer label
+        // stacks into a tidy column beside the curve — floored at the widest
+        // WORD's width, so wrapEdgeLabel can always break between words and
+        // never mid-word.
+        const words = (e.label ?? "").split(/\s+/).filter(Boolean)
+        const widestWord = Math.max(0, ...words.map(w => estimateEdgeTextWidth(w)))
+        gutterW = Math.max(widestWord, Math.min(estimateEdgeTextWidth(e.label ?? ""), 120))
       }
     } else if (direction === "lr") {
       // For `lr` the label sits in the horizontal gutter between two columns
@@ -838,12 +914,61 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
     }
 
     const lines = e.label ? wrapEdgeLabel(e.label, gutterW) : []
-    // A tb back-edge block can now be as wide as the scene (its wrap width):
-    // clamp the centre so the block stays inside — shifting it off the
-    // endpoints' mid-X costs nothing, the space below the graph is empty.
     if (isBack && direction === "tb" && lines.length > 0) {
+      // Anchor the block on the return curve's RIGHT FLANK (see gutterW above):
+      // left edge 6px right of the curve's extremum — the curve is near-
+      // vertical there, so a word-wrapped block reads as text along the line.
+      // The extremum is the DRAWN curve's, same cubic the emit branch draws
+      // (base plane 9px right of the target's left edge); t* is the mirror of
+      // cubicDepth's closed form, giving both coordinates exactly.
       const bw = Math.max(...lines.map(l => estimateEdgeTextWidth(l)))
-      labelX = Math.min(Math.max(labelX, bw / 2 + 2), Math.max(bw / 2 + 2, width - bw / 2 - 2))
+      const bh = (lines.length - 1) * EDGE_LABEL_PITCH + EDGE_LABEL_H
+      const sx = a.x + a.w
+      const sy = a.y + a.h / 2
+      const baseX = b.x + 9
+      const ty = b.y + b.h / 2
+      const control = laneBasePre + PAD + RETURN_DROP + lane * RETURN_LANE
+      const u = Math.sqrt((control - sx) / (control - baseX))
+      const tStar = u / (1 + u)
+      const mt = 1 - tStar
+      const extremumX =
+        mt * mt * mt * sx + 3 * mt * mt * tStar * control + 3 * mt * tStar * tStar * control + tStar * tStar * tStar * baseX
+      const extremumY =
+        mt * mt * mt * sy + 3 * mt * mt * tStar * control + 3 * mt * tStar * tStar * control + tStar * tStar * tStar * ty
+      // Walk down from the top for a slot whose rect clears every node box
+      // (the flank strip can overlap a wide rank's boxes in x). Start at the
+      // curve's extremum — text beside the bulge, where the reading eye is.
+      const NODE_CLEAR = 4
+      const overlapsNode = (yy: number): boolean =>
+        [...placed.values()].some(
+          n =>
+            extremumX + 6 < n.x + n.w + NODE_CLEAR &&
+            extremumX + 6 + bw > n.x - NODE_CLEAR &&
+            yy - bh / 2 < n.y + n.h + NODE_CLEAR &&
+            yy + bh / 2 > n.y - NODE_CLEAR,
+        )
+      let anchorY = Math.max(extremumY, PAD + bh / 2)
+      if (overlapsNode(anchorY)) {
+        let found = false
+        for (let y = PAD + bh / 2; y <= height + 600; y += 8) {
+          if (!overlapsNode(y)) {
+            anchorY = y
+            found = true
+            break
+          }
+        }
+        if (!found) {
+          // Nothing clear along the flank: the below-graph strip (the
+          // 2026-10-08 fallback) is still there — step 7 grows the scene for
+          // a block that hangs below it, and the emit re-checks.
+          const bottom = Math.max(...[...placed.values()].map(pp => pp.y + pp.h))
+          anchorY = bottom + PAD + EDGE_LABEL_H / 2 + lane * (2 * EDGE_LABEL_H + 8)
+        }
+      }
+      labelX = extremumX + 6 + bw / 2
+      labelY = anchorY
+      // The scene must be wide enough to hold the block beside the curve.
+      width = Math.max(width, extremumX + 6 + bw + PAD)
     }
     // The maths above places the FIRST line; shift up by half the block so
     // the block as a whole is centred on the edge.
@@ -1090,6 +1215,31 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   const labelRects = elements.filter(
     (el): el is Extract<Scene["elements"][number], { kind: "arrow" }> => el.kind === "arrow" && el.label !== undefined,
   )
+  const backIds = new Set(plans.filter(p => p.isBack).map(p => edgeKey(p.e)))
+  // Sampled ADJACENT curves and box/foreign-curve hit tests, shared by the
+  // 7c-pre slide and the 7c nudge's on-curve escape: the slide anchors labels
+  // ON their curves, so the nudge's first escape must stay on the curve too —
+  // an analytic axis jump that lands the block off its line re-creates the
+  // orphan the slide just fixed (measured 63px off-curve on fig 1 with 88px
+  // gutters, 2026-10-09).
+  const polyOf = sampleArrowPolylines(elements, backIds)
+  const boxList = [...placed.values()]
+  const rectHitsBox = (r: Rect): boolean =>
+    boxList.some(b => Math.min(r.x + r.w, b.x + b.w) - Math.max(r.x, b.x) > 1 && Math.min(r.y + r.h, b.y + b.h) - Math.max(r.y, b.y) > 1)
+  /** Foreign curves passing through rect r (own curve excluded). */
+  const foreignCurvesThrough = (r: Rect, ownId: string): number => {
+    let hits = 0
+    for (const [id, poly] of polyOf) {
+      if (id === ownId) continue
+      for (let i = 0; i + 1 < poly.length; i++) {
+        if (segmentHitsRect(poly[i], poly[i + 1], r)) {
+          hits++
+          break
+        }
+      }
+    }
+    return hits
+  }
 
   // 7c-pre. Label-off-crossing slide (the 2026-10-08 Twinkle follow-up): two
   //  adjacent curves converge on a shared target, so they cross EXACTLY at
@@ -1109,85 +1259,15 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
   //  geometry, so the nudge must see post-slide rects (a first cut ran
   //  after and shipped 3 fresh overlaps on the Twinkle fig).
   {
-    const cubicAt = (p0: {x:number;y:number}, p1: {x:number;y:number}, p2: {x:number;y:number}, p3: {x:number;y:number}, t: number): { x: number; y: number } => {
-      const mt = 1 - t
-      return {
-        x: mt*mt*mt*p0.x + 3*mt*mt*t*p1.x + 3*mt*t*t*p2.x + t*t*t*p3.x,
-        y: mt*mt*mt*p0.y + 3*mt*mt*t*p1.y + 3*mt*t*t*p2.y + t*t*t*p3.y,
-      }
-    }
-    type Poly = Array<{ x: number; y: number }>
-    type Bez = { p0: {x:number;y:number}; p1: {x:number;y:number}; p2: {x:number;y:number}; p3: {x:number;y:number} }
-    const bez = new Map<string, Bez>()
-    const backIds = new Set(plans.filter(p => p.isBack).map(p => edgeKey(p.e)))
-    for (const el of elements) {
-      if (el.kind !== "arrow" || el.id === undefined || backIds.has(el.id)) continue
-      // Adjacent lr/tb curves share the M a b C c d, e f, g h shape; skip-rank
-      // serpentines are polylines (no C) whose labels already ride segments
-      // the route proved clear, and back-edge labels have their own guards.
-      const m = /M ([-\d.]+) ([-\d.]+) C ([-\d.]+) ([-\d.]+), ([-\d.]+) ([-\d.]+), ([-\d.]+) ([-\d.]+)/.exec(el.d)
-      if (!m) continue
-      bez.set(el.id, {
-        p0: { x: +m[1], y: +m[2] },
-        p1: { x: +m[3], y: +m[4] },
-        p2: { x: +m[5], y: +m[6] },
-        p3: { x: +m[7], y: +m[8] },
-      })
-    }
-    const SAMPLES = 48
-    const polyOf = new Map<string, Poly>()
-    for (const [id, b] of bez) {
-      const poly: Poly = []
-      for (let i = 0; i <= SAMPLES; i++) poly.push(cubicAt(b.p0, b.p1, b.p2, b.p3, i / SAMPLES))
-      polyOf.set(id, poly)
-    }
-    const segHitsRect = (a: {x:number;y:number}, b: {x:number;y:number}, r: {x:number;y:number;w:number;h:number}): boolean => {
-      const inR = (p: {x:number;y:number}): boolean => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h
-      if (inR(a) || inR(b)) return true
-      // proper segment/rect test: segment against the rect's four edges
-      const segs = [
-        [r.x, r.y, r.x + r.w, r.y],
-        [r.x + r.w, r.y, r.x + r.w, r.y + r.h],
-        [r.x, r.y + r.h, r.x + r.w, r.y + r.h],
-        [r.x, r.y, r.x, r.y + r.h],
-      ] as const
-      const orient = (ax: number, ay: number, bx: number, by: number, px: number, py: number): number =>
-        (bx - ax) * (py - ay) - (by - ay) * (px - ax)
-      for (const [x1, y1, x2, y2] of segs) {
-        const d1 = orient(x1, y1, x2, y2, a.x, a.y)
-        const d2 = orient(x1, y1, x2, y2, b.x, b.y)
-        const d3 = orient(a.x, a.y, b.x, b.y, x1, y1)
-        const d4 = orient(a.x, a.y, b.x, b.y, x2, y2)
-        if (((d1 > 0) !== (d2 > 0) || d1 === 0 || d2 === 0) && ((d3 > 0) !== (d4 > 0) || d3 === 0 || d4 === 0)) return true
-      }
-      return false
-    }
-    const hitsOnRect = (r: {x:number;y:number;w:number;h:number}, ownId: string): number => {
-      let hits = 0
-      for (const [id, poly] of polyOf) {
-        if (id === ownId) continue
-        for (let i = 0; i + 1 < poly.length; i++) {
-          if (segHitsRect(poly[i], poly[i + 1], r)) {
-            hits++
-            break
-          }
-        }
-      }
-      return hits
-    }
-    const boxList = [...placed.values()]
-    const hitsBox = (r: {x:number;y:number;w:number;h:number}): boolean =>
-      boxList.some(b => Math.min(r.x + r.w, b.x + b.w) - Math.max(r.x, b.x) > 1 && Math.min(r.y + r.h, b.y + b.h) - Math.max(r.y, b.y) > 1)
     for (const cur of labelRects) {
-      const ownBez = cur.id !== undefined ? bez.get(cur.id) : undefined
-      if (!ownBez || cur.id === undefined) continue
-      const own = polyOf.get(cur.id)!
+      const own = cur.id !== undefined ? polyOf.get(cur.id) : undefined
+      if (!own || cur.id === undefined) continue
       const w = edgeLabelRect(cur).w
       const h = edgeLabelRect(cur).h
-      const rectAt = (pt: {x:number;y:number}): {x:number;y:number;w:number;h:number} => ({
+      const rectAt = (pt: {x:number;y:number}): Rect => ({
         x: pt.x - w / 2, y: pt.y - h / 2, w, h,
       })
-      const current = hitsOnRect(rectAt({ x: cur.labelX!, y: cur.labelY! }), cur.id)
+      const current = foreignCurvesThrough(rectAt({ x: cur.labelX!, y: cur.labelY! }), cur.id)
       if (current === 0) continue
       const ax = cur.labelX!
       const ay = cur.labelY!
@@ -1196,8 +1276,8 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         const pt = own[i]
         const r = rectAt(pt)
         if (r.x < 0.5 || r.y < 0.5 || r.x + r.w > width - 0.5 || r.y + r.h > height - 0.5) continue
-        if (hitsBox(r)) continue
-        const hits = hitsOnRect(r, cur.id)
+        if (rectHitsBox(r)) continue
+        const hits = foreignCurvesThrough(r, cur.id)
         const dist = Math.abs(pt.x - ax) + Math.abs(pt.y - ay)
         if (best === null || hits < best.hits || (hits === best.hits && dist < best.dist)) {
           best = { x: pt.x, y: pt.y, hits, dist }
@@ -1251,6 +1331,33 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
         // "Borrowed Supertonic" escaped to x=−112; tb edge-label spec D3).
         const inBounds = (x: number, y: number): boolean =>
           x - A.w / 2 >= -0.5 && x + A.w / 2 <= width + 0.5 && y - A.h / 2 >= -0.5 && y + A.h / 2 <= height + 0.5
+        // ON-CURVE escape FIRST: the slide anchored this label on its own
+        // curve, so the nudge's first move stays there — walk the curve for
+        // the nearest point whose rect clears every label, node, and foreign
+        // curve. Only when no on-curve point clears does the analytic axis
+        // jump run (which may orphan the label — an overlap of two texts is
+        // the lesser defect). The slide's own anchor is always on the walk.
+        let landed = false
+        const own = cur.id !== undefined ? polyOf.get(cur.id) : undefined
+        if (own) {
+          let onCurve: { x: number; y: number; dist: number } | null = null
+          for (let k = 1; k < own.length; k++) {
+            const pt = own[k]
+            const r: Rect = { x: pt.x - A.w / 2, y: pt.y - A.h / 2, w: A.w, h: A.h }
+            if (!inBounds(pt.x, pt.y)) continue
+            if (labelRects.some((other, k2) => k2 !== i && overlaps(r, rectOfLabel(other)))) continue
+            if (rectHitsBox(r)) continue
+            if (foreignCurvesThrough(r, cur.id!) > 0) continue
+            const dist = Math.abs(pt.x - cur.labelX!) + Math.abs(pt.y - cur.labelY!)
+            if (onCurve === null || dist < onCurve.dist) onCurve = { x: pt.x, y: pt.y, dist }
+          }
+          if (onCurve) {
+            cur.labelX = onCurve.x
+            cur.labelY = onCurve.y
+            moved = true
+            landed = true
+          }
+        }
         const tryOrder: Array<[number, number]> = [
           [1, escape],
           [-1, escape],
@@ -1259,19 +1366,20 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
           [1, escape * 1.75],
           [-1, escape * 1.75],
         ]
-        let landed = false
-        for (const [sign, dist] of tryOrder) {
-          const candY = axis === "y" ? base + sign * dist : cur.labelY!
-          const candX = axis === "x" ? base + sign * dist : cur.labelX!
-          if (!inBounds(candX, candY)) continue
-          const CA = { x: candX - A.w / 2, y: candY - A.h / 2, w: A.w, h: A.h }
-          const clearOfAll = labelRects.every((other, k) => k === i || !overlaps(CA, rectOfLabel(other)))
-          if (clearOfAll) {
-            cur.labelY = candY
-            cur.labelX = candX
-            moved = true
-            landed = true
-            break
+        if (!landed) {
+          for (const [sign, dist] of tryOrder) {
+            const candY = axis === "y" ? base + sign * dist : cur.labelY!
+            const candX = axis === "x" ? base + sign * dist : cur.labelX!
+            if (!inBounds(candX, candY)) continue
+            const CA = { x: candX - A.w / 2, y: candY - A.h / 2, w: A.w, h: A.h }
+            const clearOfAll = labelRects.every((other, k) => k === i || !overlaps(CA, rectOfLabel(other)))
+            if (clearOfAll) {
+              cur.labelY = candY
+              cur.labelX = candX
+              moved = true
+              landed = true
+              break
+            }
           }
         }
         if (!landed) {
