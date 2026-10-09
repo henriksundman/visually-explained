@@ -683,6 +683,30 @@ not the pixels.
 
 ## 23. The diagram payoff bar is a prompt instruction with no acceptance loop
 
+**UPDATED 2026-10-09 — run 5 gives the acceptance loop its first data point,
+and it PASSES.** Recompiled the same two topics plus a fresh one ("Why
+housing is expensive in big cities"; 38 calls, ~112k tokens, all three
+valid). On the reharm page: the run-4 "harmonic rhythm in the first four
+bars" chart — the non-diagram the payoff bar names — is GONE, replaced by a
+prose/table-friendly chart of modal-interchange chord counts; diagram count
+went 4→7 and 7 of 8 are genuine webs (some node has in-degree ≥2 or
+out-degree ≥2; the thread-21 chain heuristic). The one chain is a 3-node
+unlabelled stub (I → ii → bVII7). On the mrna page two of four diagrams are
+chains (DNA→mRNA→Ribosome→Protein, the exact "chains → step-list" case) —
+model variance the prompt does not fully suppress; one clean run is one
+data point. The housing page emitted a `figure` block with `type:` instead
+of `kind:` on all 7 elements — the lenient parse salvaged them all (7 loud
+warnings, empty figure), which is the degradation path working as designed;
+the other figure on the same page spelled `kind` correctly, so this is
+variance, not a prompt gap (BLOCK_TYPE_DOCS already spells `kind`
+exhaustively). Dense-chart label crowding got its strongest specimen yet:
+a 12-quarter bar chart squeezing "2020 Q1"…"2022 Q4" into 460px — 11
+label-label overlaps, 2 outside — same class as the reharm "Bar 4" item,
+strengthens the case for a chart-label cycle (denser tick thinning / rotate
+/ wrap). Renderer legibility held on all three pages: reharm-run5 (incl. a
+24-node diagram at 2440×559) and mrna-run5 0 overlaps / 0 orphans across
+every figure probed.
+
 **Recorded 2026-10-08** (reharm review round). The `diagram` line in
 `BLOCK_TYPE_DOCS` now tells the model to emit a diagram only when the reader
 must trace a web of relationships, naming the page's 4-bars diagram as the
