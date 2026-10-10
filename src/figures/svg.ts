@@ -483,8 +483,19 @@ function pathBounds(d: string): Bounds | null {
 
 function elementBounds(el: SceneElement): Bounds | null {
   switch (el.kind) {
-    case "figure-box":
-      return { minX: el.x, minY: el.y, maxX: el.x + el.w, maxY: el.y + el.h }
+    case "figure-box": {
+      // The box's wrapped label lines hang BELOW (and above) the box when the
+      // box was authored too short for them: compiled at pitch 15 centred on
+      // the box, a 4-line label needs ~68px where the housing run-5 model
+      // drew a 40px box — the last block clipped at the canvas floor. The
+      // bounds must include the label lines' vertical extent (the x extent
+      // is the box itself; wrapping keeps lines inside the box width).
+      const base: Bounds = { minX: el.x, minY: el.y, maxX: el.x + el.w, maxY: el.y + el.h }
+      if (!el.lines || el.lines.length <= 1) return base
+      const pitch = 15
+      const total = ((el.lines.length - 1) * pitch) / 2 + 3
+      return { ...base, minY: Math.min(base.minY, el.y - total), maxY: Math.max(base.maxY, el.y + el.h + total) }
+    }
     case "figure-dot":
       return { minX: el.cx - el.r, minY: el.cy - el.r, maxX: el.cx + el.r, maxY: el.cy + el.r }
     case "figure-line":

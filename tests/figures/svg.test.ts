@@ -376,6 +376,31 @@ describe("sceneToSvg: grow-to-content viewBox", () => {
     expect(vb[1]).toBe(0)
     expect(vb[3]).toBeGreaterThanOrEqual(280)
   })
+
+  // Finding 3 (housing run-5 "feedback loop" figure): the model authored
+  // 40px-tall boxes whose wrapped 4-line labels need ~68px, compiled at
+  // pitch 15 centered on the box — so the label tspans hang up to ~26px
+  // BELOW the last box's bottom edge. figure-box was not an elementBounds
+  // case at all: the box's rect grew the scene but its label did not, and
+  // the last block clipped at the canvas floor. The box bounds must include
+  // the label lines' vertical extent.
+  it("grows the floor for a figure-box label that hangs below the box", () => {
+    const svg = sceneToSvg(
+      {
+        width: 390,
+        height: 390,
+        elements: [
+          { kind: "figure-box", x: 130, y: 350, w: 100, h: 40, r: 4, label: "Indirect Impact on Housing Costs", tone: "ink", fill: null, lines: ["Indirect", "Impact on", "Housing", "Costs"] },
+        ],
+      },
+      ARIA,
+    )
+    const vb = parseViewBox(svg)
+    // label center = box center (370); 4 lines at pitch 15 → last baseline at
+    // 370 + 22.5, descender ≈ +3. The canvas floor is 390, so the box's own
+    // rect would NOT grow — only the label extent can.
+    expect(vb[3]).toBeGreaterThanOrEqual(370 + 22.5 + 3)
+  })
 })
 
 describe("figureBox label wrapping", () => {
