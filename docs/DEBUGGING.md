@@ -25,10 +25,14 @@ Before deep-diving, test the failure against these recurring patterns:
   One `submit` observed to start the script three times, each relaunch
   truncating the shared log with `>`. Remove the label as part of the run
   and confirm with `ps` before trusting a log. See the 2026-10-07 entry.
-- **Stale `dist/`.** The demo server serves the *built* package and holds it
-  from process start: rebuild without restart → old behavior; `EADDRINUSE` on
-  4173 → a stale server from an earlier session (`lsof -ti tcp:4173`, kill,
-  resubmit). See AGENTS.md "Running the demo server".
+- **Stale artifacts downstream of an edit.** Two forms, both hit 2026-10-10:
+  (a) the demo server serves the *built* package and holds it from process
+  start — rebuild without restart → old behavior; `EADDRINUSE` on 4173 → a
+  stale server (`lsof -ti tcp:4173`, kill, resubmit; see AGENTS.md);
+  (b) a probe input that is only regenerated for the slugs its script names —
+  `.superpowers/rerender-saved-ir.mjs` kept serving housing's old HTML while
+  legibility probes "verified" fixes in it. Confirm the artifact's
+  regeneration log/timestamp BEFORE reading any probe result on it.
 - **Browser module-graph holes.** Demo route 200s but the page is blank:
   bare specifiers reachable from `dist/` (`zod`, `roughjs`) must be in the
   page's importmap. Read the console, not just the status code.
@@ -186,6 +190,18 @@ Before deep-diving, test the failure against these recurring patterns:
   element rather than rendering a picture of it.
 
 ## Part 2 — Entries
+
+### 2026-10-10 — The probe verified the old build, twice over
+- **Symptom:** after landing five fixes for the run-5 findings, re-probing the housing page showed findings 1/2 UNCHANGED (same "31000000"+"2020" outside, same 11 quarter-label overlaps) while the same fixes' unit tests were green — and after adding the real root-cause fixes (measured char widths, tick fit checks), the probe STILL reported the run-5 numbers. Both "failures" were the probe reading stale output.
+- **Root cause:** `.superpowers/rerender-saved-ir.mjs` only re-rendered mrna + reharm — the housing HTML on disk was never regenerated, so the legibility probe re-verified run-5 output alphabetically first in the loop. Confirmed by reading the script before diagnosing the second time; the first "unchanged" round burned a re-verification cycle on it.
+- **Fix:** add the missing slug to the rerender list; probe only files whose regeneration the current session just verified (log line per slug).
+- **Rule:** before reading a verification result about the PRODUCT, verify the harness produced the thing it claims to verify — a stale artifact makes every downstream "still broken" (or "all clean") a measurement of the past. This is the same trap as a server holding old dist/ (Part 1), one file deeper.
+
+### 2026-10-10 — A layout whose width model under-measured by 21% looked correct at every unit level
+- **Symptom:** the chart edge clamp (finding 1 fix) passed its byte tests and the scene's own bounds tests, yet the re-rendered page still hung "31000000" and "2020" ~6px past the 460px viewBox. The neighbor check (finding 2 fix) passed its pair test while the TICK row still overlapped 11 times — because the fit check guarded only the value row, and the row of graph labels ("2020 Q1") had NO check at all.
+- **Root cause:** flat per-char width constants (VALUE_CHAR_W 6.6, TICK_CHAR_W 5.7) under-measured the 11px label CSS the clamp itself was measured against — "2020" renders 31.8px (7.95/char), so the clamp's own arithmetic proved its estimate. The 2026-10-07 estimate-vs-real entry is this bug's ancestor; layoutChart was still carrying the flat-constant disease the tb cycle cured for flow labels.
+- **Fix:** layoutChart routes ALL width estimates through layoutFlow's MEASURED per-char table (`estimateEdgeTextWidth`) — ONE table everywhere, no chart-specific constants left to drift. Tick row gains a real fit pass (stride-grid planner with pinned first/last bookends, emission-time guard on the clamped center).
+- **Rule:** a width estimate governs everything downstream of it; if the estimate is flat-per-char, everything touching label geometry inherits the error. When a measured table exists in this repo, route through it — the second duplicated estimate is how the next estimate-vs-real cycle starts.
 
 ### 2026-10-07 — A collision guard blind to real pixels (estimate-vs-real)
 - **Symptom:** the run-4 reharm page shipped 4 label-on-label overlaps and 2 OFF-CANVAS labels AFTER the analytic-escape nudge landed with green unit tests — and an earlier probe had even recorded "0 label-label across 4 diagrams", because nobody checked that the page has FIVE figures.

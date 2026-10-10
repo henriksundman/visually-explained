@@ -681,10 +681,9 @@ over-constrained box; narrow figures land in the same place either way, but
 that equivalence is asserted by no test — the themes test pins the mechanism,
 not the pixels.
 
-## 23. The diagram payoff bar is a prompt instruction with no acceptance loop
+## 23. The diagram payoff bar is a prompt instruction with no acceptance loop**UPDATED 2026-10-10 — the heuristic half ships, flag-gated (`diagramAudit: true`), per the user's "Prompt + heuristic" decision.** The compile-time safety net this thread's revisit clause sketched now exists as a warn-only audit (`[diagram] section N: a diagram reads as a chain …`), NOT validation: a default-on warning under `failOnWarning` would convert a quality heuristic into a throw on every host compile (the same bar thread 21 set for `checks`). Because it is warn-only and flag-gated, thread 21's "prompt over safety net" framing survives — the prompt is still the defense that runs for every host; the flag is the enforcement-offering a host can opt into. The prompt line itself was re-anchored by DEGREE ("a node with two or more edges entering or leaving it"; "A chain where every node has at most one edge in and one out is a step-list, not a diagram, whatever its topic is") after the mrna page beat the role-based wording (DNA→mRNA→Ribosome→Protein). Whether flag-on compiles change model behavior is unmeasured — same status as above.
 
-**UPDATED 2026-10-09 — run 5 gives the acceptance loop its first data point,
-and it PASSES.** Recompiled the same two topics plus a fresh one ("Why
+**Run 5 gives the acceptance loop its first data point, and it PASSES.** Recompiled the same two topics plus a fresh one ("Why
 housing is expensive in big cities"; 38 calls, ~112k tokens, all three
 valid). On the reharm page: the run-4 "harmonic rhythm in the first four
 bars" chart — the non-diagram the payoff bar names — is GONE, replaced by a
