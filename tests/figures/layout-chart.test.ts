@@ -135,4 +135,121 @@ describe("chart value label overflow", () => {
     expect(texts).not.toContain("987654")
     expect(scene.elements.filter(e => e.kind === "bar")).toHaveLength(12)
   })
+
+  // The housing run-5 "Population Growth" chart: the LAST tick and value
+  // printed centered on the last point but half their width past the scene's
+  // right edge — "31000..." and "2020" visually cut mid-glyph. A centered
+  // label's box is x ± w/2, and the plot's right margin (PAD_R 12) is smaller
+  // than half a wide label, so the last point needs explicit containment.
+  it("keeps the last point's value and x-label inside the scene bounds", () => {
+    const housing = {
+      kind: "line" as const,
+      points: [
+        { label: "2000", value: 25000000 },
+        { label: "2005", value: 26500000 },
+        { label: "2010", value: 28000000 },
+        { label: "2015", value: 29500000 },
+        { label: "2020", value: 31000000 },
+      ],
+      unit: "People",
+    }
+    const { scene } = layoutChart(housing)
+    // Every emitted element (value label + tick) must fit the canvas.
+    const widthOf = (s: string) => valueTextW(s)
+    for (const l of scene.elements.filter(e => e.kind === "label") as { text: string; x: number; anchor: string }[]) {
+      const half = widthOf(l.text) / 2
+      expect(l.x - half, `label "${l.text}" left edge`).toBeGreaterThanOrEqual(0)
+      expect(l.x + half, `label "${l.text}" right edge`).toBeLessThanOrEqual(scene.width)
+    }
+    // ...the last tick specifically (the reported clip)...
+    const lastTick = scene.elements.find(
+      e => e.kind === "label" && (e as { text: string }).text === "2020",
+    ) as { x: number }
+    expect(lastTick, "2020 tick exists").toBeDefined()
+    expect(lastTick.x + widthOf("2020") / 2).toBeLessThanOrEqual(scene.width)
+    // ...and the last value label too.
+    const lastValue = emphasis(scene).at(-1) as { x: number; text: string }
+    expect(lastValue.text).toBe("31000000")
+    expect(lastValue.x + valueTextW(lastValue.text) / 2).toBeLessThanOrEqual(scene.width)
+  })
+
+  // The housing-v2 probe (2026-10-10): the run-5 clamp fixed the ANCHOR but
+  // not the GLYPHS, because TICK_CHAR_W (5.7) under-measured the 11px label
+  // CSS — "2020" renders 31.8px (7.95/char), so the clamped "31000000" still
+  // ended 6px past the 460 edge. The estimate must sit at the measured
+  // per-char width or every downstream clamp inherits the same error.
+  it("keeps the last value's GLYPHS inside the edge at the measured char width", () => {
+    const housing = {
+      kind: "line" as const,
+      points: [
+        { label: "2000", value: 25000000 },
+        { label: "2005", value: 26500000 },
+        { label: "2010", value: 28000000 },
+        { label: "2015", value: 29500000 },
+        { label: "2020", value: 31000000 },
+      ],
+      unit: "People",
+    }
+    const { scene } = layoutChart(housing)
+    // Measured probe boxes: value 8.4/char (67.2/8), tick 7.95/char (31.8/4).
+    // Assert with the LOOSER of the two so a small estimate drift can't
+    // silently re-open the clip the probe caught.
+    for (const l of scene.elements.filter(e => e.kind === "label") as { text: string; x: number }[]) {
+      const half = (l.text.length * 8.4) / 2
+      expect(l.x + half, `label "${l.text}" right glyph edge at 8.4px/char`).toBeLessThanOrEqual(
+        scene.width + 1,
+      )
+    }
+  })
+
+  // The housing run-5 12-quarter chart: 12 one-line value labels in 460px of
+  // plot, each ~53px wide in a 36px band — 11 label-label overlaps measured.
+  // valueLabelFits only compared a label to its OWN slot, so the NEIGHBOR'S
+  // overhang into that slot went unseen. The rule must be: label i's box may
+  // not overlap label i+1's box.
+  it("never lets adjacent value labels overlap (the 12-quarter chart)", () => {
+    const quarters = Array.from({ length: 12 }, (_, q) => ({
+      label: `202${Math.floor(q / 4)} Q${(q % 4) + 1}`,
+      value: [400, 550, 700, 800, 950, 1100, 1000, 850, 750, 700, 650, 600][q],
+    }))
+    const { scene } = layoutChart({ kind: "line", points: quarters, caption: "lumber" })
+    const values = emphasis(scene) as { x: number; text: string }[]
+    expect(values.length).toBeGreaterThan(0)
+    for (let i = 0; i < values.length - 1; i++) {
+      const a = values[i]
+      const b = values[i + 1]
+      const overlap = valueTextW(a.text) / 2 + valueTextW(b.text) / 2 - Math.abs(b.x - a.x)
+      expect(overlap, `adjacent value labels ${a.text} and ${b.text} overlap by ${overlap}px`).toBeLessThanOrEqual(0)
+    }
+  })
+
+  // The housing-v2 probe caught the SAME defect on the x-tick row: the 12
+  // "2020 Q1"…"2022 Q4" ticks carried no fit check at all (the clamp only
+  // repositions), so 11 tick-tick pairs overlapped at a ~36px pitch. The fix
+  // is greedy thinning — the first tick always prints, a later tick prints
+  // only when it clears the last printed one — so the row degrades to a
+  // sparse subset instead of a solid block of overlapping text.
+  it("thins overlapping x-tick labels instead of letting them overlap (the 12-quarter chart)", () => {
+    const quarters = Array.from({ length: 12 }, (_, q) => ({
+      label: `202${Math.floor(q / 4)} Q${(q % 4) + 1}`,
+      value: [400, 550, 700, 800, 950, 1100, 1000, 850, 750, 700, 650, 600][q],
+    }))
+    for (const kind of ["bar", "line"] as const) {
+      const { scene } = layoutChart({ kind, points: quarters })
+      const ticks = (scene.elements.filter(e => e.kind === "label") as { x: number; text: string }[]).filter(
+        t => /^\d{4} Q\d$/.test(t.text),
+      )
+      expect(ticks, "first tick always prints").toContainEqual(expect.objectContaining({ text: "2020 Q1" }))
+      expect(ticks.length, "thin but don't gut the row").toBeGreaterThanOrEqual(3)
+      const sorted = [...ticks].sort((a, b) => a.x - b.x)
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const overlap =
+          (sorted[i]!.text.length * 7.9) / 2 + (sorted[i + 1]!.text.length * 7.9) / 2 - (sorted[i + 1]!.x - sorted[i]!.x)
+        expect(
+          overlap,
+          `adjacent tick labels ${sorted[i]!.text} and ${sorted[i + 1]!.text} overlap by ${overlap}px`,
+        ).toBeLessThanOrEqual(0)
+      }
+    }
+  })
 })
