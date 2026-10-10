@@ -534,8 +534,11 @@ function expectEndpointsAligned(scene: Scene, spec: FlowSpecLike, label: string)
     if (isReturnPath(start, a, direction)) continue
     checked++
     const wantStart = direction === "lr" ? a.y + a.h / 2 : a.y + a.h
-    const wantEndX = direction === "lr" ? b.x - 2 : b.x + b.w / 2
-    const wantEndY = direction === "lr" ? b.y + b.h / 2 : b.y - 2
+    // The head's TIP lands 2px inside the target's edge, and its base plane
+    // — where the shaft must terminate (the base-plane invariant,
+    // 2026-10-10 findings 5/6) — sits 9px further back along the flow axis.
+    const wantEndX = direction === "lr" ? b.x - 2 - 9 : b.x + b.w / 2
+    const wantEndY = direction === "lr" ? b.y + b.h / 2 : b.y - 2 - 9
     const end = pathEnd(el.d)
     const msg = `${label}: ${el.id}`
     expect(`${msg} start y ${start.y} === source mid ${wantStart}`).toBe(
@@ -956,8 +959,188 @@ describe("flow cycles and back-edge routing", () => {
     const { scene } = layoutFlow(overflowIr)
     expect(scene.width).toBe(607)
     expect(scene.height).toBe(92)
-    expect(mustArrow(scene, "sun->air").d).toBe("M 114 46 C 183 46, 183 46, 252 46")
-    expect(mustArrow(scene, "air->eye").d).toBe("M 353 46 C 422 46, 422 46, 491 46")
+    // Captured after the 2026-10-10 arrowhead base-plane change: the shaft
+    // ends 9px before the target edge (at the head's base plane), so both
+    // curves end at 252-9=243 and 491-9=482. The INVARIANT pinned is that
+    // the cyclic and acyclic renders agree byte-for-byte, not these numbers.
+    expect(mustArrow(scene, "sun->air").d).toBe("M 114 46 C 178.5 46, 178.5 46, 243 46")
+    expect(mustArrow(scene, "air->eye").d).toBe("M 353 46 C 417.5 46, 417.5 46, 482 46")
+  })
+})
+
+describe("arrowhead attachment (2026-10-10 review findings 5/6)", () => {
+  /** The head's base-plane midpoint: the base leg is corners A/B — the head
+   *  path is `M tip L baseA L baseB Z` in every emit branch, so the leg's
+   *  midpoint averages points 2 and 3. */
+  const headBaseMid = (head: string): { x: number; y: number } => {
+    const n = head.match(/-?[\d.]+/g)!.map(Number)
+    return { x: (n[2]! + n[4]!) / 2, y: (n[3]! + n[5]!) / 2 }
+  }
+
+  it("terminates every FORWARD shaft at the head's base plane, in every demo diagram", () => {
+    // Finding 6 ("Mechanism of the Backdoor ii-V"): a forward shaft ran to
+    // the head's TIP (2px inside the target edge), so its last ~9px crossed
+    // the hollow head and visually ran to the arrowhead's centre — reading
+    // as two lines, the second off-centre, at the grey/thin rendering scale.
+    // The back-edge branches already obey the base-plane invariant; the four
+    // forward branches must too. Checked on the DRAWN path: the sampled shaft
+    // must reach the base plane and nothing may pass beyond it toward the
+    // target's edge.
+    const diagrams = demoDiagrams()
+    expect(diagrams.length).toBeGreaterThan(0)
+    let checked = 0
+    for (const { name, spec } of diagrams) {
+      const direction = spec.direction ?? "lr"
+      const { scene } = layoutFlow(spec)
+      for (const el of scene.elements.filter(
+        (e): e is Extract<Scene["elements"][number], { kind: "arrow" }> =>
+          e.kind === "arrow" && e.id !== undefined,
+      )) {
+        const [from, to] = el.id!.split("->")
+        const a = mustNode(scene, from)
+        const b = mustNode(scene, to)
+        if (isReturnPath(pathStart(el.d), a, direction)) continue
+        checked++
+        const base = headBaseMid(el.head)
+        const end = pathEnd(el.d)
+        // The shaft endpoint IS the base-leg midpoint (the base-plane
+        // invariant verified in coordinates)...).
+        expect(`${name}: ${el.id} shaft ends at head base`).toBe(`${name}: ${el.id} shaft ends at head base`)
+        expect(Math.abs(end.x - base.x)).toBeLessThan(0.01)
+        expect(Math.abs(end.y - base.y)).toBeLessThan(0.01)
+        // ...and on the DRAWN curve nothing penetrates the base plane toward
+        // the target edge (which is what draws the line through the hollow
+        // head). Project the shaft's last sampled point and the plane's own
+        // axis coordinate: for lr the plane is a vertical line x = base.x,
+        // for tb a horizontal line y = base.y.
+        const pts = samplePath(el.d)
+        if (direction === "lr") {
+          const beyond = pts.filter(p => p.x > base.x + 0.5)
+          expect(beyond).toEqual([])
+        } else {
+          const beyond = pts.filter(p => p.y > base.y + 0.5)
+          expect(beyond).toEqual([])
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
+
+  it("keeps every LR back-edge label off every node box, after the nudge", () => {
+    // Finding 5 ("The iv Chord (Subdominant)"): the reharm fig-3 geometry —
+    // seven nodes, C Major's rank over three rows, back edges V-I and
+    // bVII-I returning around the graph. The plan-level lr back-edge label
+    // anchor sits at the span midpoint (x, y), and when a mid-rank box
+    // occupies that band the label printed ON the box: measured in the
+    // run-5 HTML, "V-I" centred at (406, 220) inside Bb Major's rect
+    // [270..407]×[200..244] — the reader sees the head + label vanish
+    // behind the node. The 7c-pre slide excludes back edges (they are not
+    // in polyOf), and the 7c nudge compares labels only against labels —
+    // so nothing ever moved it. Pin: every edge-label rect, back edges
+    // included, clears every node box, over the real fixture shape AND
+    // every demo diagram.
+    const reharmFig3 = {
+      direction: "lr" as const,
+      nodes: [
+        { id: "cmaj", label: "C Major (I)" },
+        { id: "amaj", label: "A minor (vi)" },
+        { id: "fmaj", label: "F Major (IV)" },
+        { id: "abmaj", label: "Ab Major (bVI)" },
+        { id: "bbmaj", label: "Bb Major (bVII)" },
+        { id: "fmin", label: "F minor (iv)" },
+        { id: "gmaj", label: "G Major (V)" },
+      ],
+      edges: [
+        { from: "cmaj", to: "fmaj", label: "I-IV" },
+        { from: "fmaj", to: "gmaj", label: "IV-V" },
+        { from: "gmaj", to: "cmaj", label: "V-I" }, // back: the reported label
+        { from: "cmaj", to: "abmaj", label: "I-bVI" },
+        { from: "abmaj", to: "gmaj", label: "bVI-V" },
+        { from: "cmaj", to: "bbmaj", label: "I-bVII" },
+        { from: "bbmaj", to: "cmaj", label: "bVII-I" }, // back, also labelled
+        { from: "fmaj", to: "fmin", label: "IV-iv" },
+        { from: "fmin", to: "gmaj", label: "iv-V" },
+      ],
+    }
+    const checkedBack = { n: 0 }
+    const checkLabels = (spec: FlowSpecLike): void => {
+      const { scene } = layoutFlow(spec)
+      const nodes = scene.elements.filter((e): e is NodeBoxEl => e.kind === "node-box")
+      for (const el of scene.elements.filter(
+        (e): e is Extract<Scene["elements"][number], { kind: "arrow" }> => e.kind === "arrow" && e.label !== undefined,
+      )) {
+        const r = edgeLabelRect(el) as unknown as Box
+        // A return path exits through the source's far edge; the direction
+        // signature (height dominated by stacked rows vs width by columns)
+        // is not needed here — a back-edge id is detectable geometrically in
+        // both directions as "exits at the node's own bottom/right edge".
+        const [from] = el.id!.split("->")
+        const a = mustNode(scene, from)
+        const start = pathStart(el.d)
+        if (Math.abs(start.x - (a.x + a.w)) < 0.01 || Math.abs(start.y - (a.y + a.h)) < 0.01) checkedBack.n++
+        for (const n of nodes) {
+          const ix = Math.min(r.x + r.w, n.x + n.w) - Math.max(r.x, n.x)
+          const iy = Math.min(r.y + r.h, n.y + n.h) - Math.max(r.y, n.y)
+          expect(
+            `label "${el.label!}" vs node "${n.id}": ${ix > 2 && iy > 2 ? `OVERLAP ${Math.round(ix)}x${Math.round(iy)}` : "clear"}`,
+          ).toBe(`label "${el.label!}" vs node "${n.id}": clear`)
+        }
+      }
+    }
+    checkLabels(reharmFig3)
+    for (const { spec } of demoDiagrams()) checkLabels(spec)
+    expect(checkedBack.n).toBeGreaterThan(0)
+  })
+
+  it("keeps an LR back-edge's drawn curve clear of OTHER nodes' boxes on its return", () => {
+    // Finding 5 ("The iv Chord (Subdominant)"), the curve half: the reharm
+    // fig-3 V-I return path pulls right→left across the RANKS between its
+    // source (G Major, top right) and target (C Major, top left); the
+    // ascent's mid-span swept behind Bb Major's box — the reader saw head +
+    // shaft vanish behind the node. Unlike the label pass above, the CURVE
+    // itself must also clear every box between the two: the drawn return
+    // curve may pass under the graph, and into its TARGET's left edge by
+    // way of a base-plane approach, but must not cross an unrelated box.
+    const reharmFig3 = {
+      direction: "lr" as const,
+      nodes: [
+        { id: "cmaj", label: "C Major (I)" },
+        { id: "fmaj", label: "F Major (IV)" },
+        { id: "bbmaj", label: "Bb Major (bVII)" },
+        { id: "gmaj", label: "G Major (V)" },
+        { id: "fmin", label: "F minor (iv)" },
+      ],
+      edges: [
+        { from: "cmaj", to: "fmaj", label: "I-IV" },
+        { from: "fmaj", to: "gmaj", label: "IV-V" },
+        { from: "gmaj", to: "cmaj" }, // back: V-I
+        { from: "cmaj", to: "bbmaj", label: "I-bVII" },
+        { from: "bbmaj", to: "cmaj" }, // back: bVII-I
+        { from: "fmaj", to: "fmin", label: "IV-iv" },
+        { from: "fmin", to: "gmaj", label: "iv-V" },
+      ],
+    }
+    const { scene } = layoutFlow(reharmFig3)
+    const back = mustArrow(scene, "gmaj->cmaj")
+    const pts = samplePath(back.d, 256)
+    const nodes = scene.elements.filter((e): e is NodeBoxEl => e.kind === "node-box")
+    // Interior test (1px inset matches the suite's > 2 label-overlap
+    // convention): touching a box's edge is fine — the shaft legitimately
+    // leaves the source's bottom edge and the head's tip touches the
+    // target's bottom edge — but the CURVE must not pass through any box.
+    const deepInside = (p: { x: number; y: number }, n: NodeBoxEl): boolean =>
+      p.x > n.x + 1 && p.x < n.x + n.w - 1 && p.y > n.y + 1 && p.y < n.y + n.h - 1
+    for (const p of pts) {
+      for (const n of nodes) {
+        expect(
+          deepInside(p, n),
+          `return curve enters node "${n.id}" at (${p.x.toFixed(1)},${p.y.toFixed(1)})`,
+        ).toBe(false)
+      }
+    }
+    // Guards the guard: the return path must actually wrap around the graph
+    // (its drawn depth below every node), so this test cannot pass vacuously.
+    expect(Math.max(...pts.map(p => p.y))).toBeGreaterThan(Math.max(...nodes.map(n => n.y + n.h)))
   })
 })
 

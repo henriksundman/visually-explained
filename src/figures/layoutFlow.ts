@@ -1100,8 +1100,17 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       const tx = b.x - 2
       const ty = b.y + b.h / 2
       if (adjacent) {
-        const mx = (sx + tx) / 2
-        d = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
+        // The shaft terminates at the head's BASE plane, not at its tip: a
+        // hollow triangle reads as an arrow only when the shaft stops where
+        // the head's own width begins — the same invariant the back-edge
+        // branches already enforce (visible in the run-5 "Mechanism of the
+        // Backdoor ii-V" figure, where the tip-anchored shaft drew a second
+        // line through the hollow head to the arrowhead's centre). The head
+        // trio's first point is the tip; base legs at tx-9, so the base-leg
+        // midpoint (lr: x = tx-9, y = ty) is where the shaft ends.
+        const baseX = tx - 9
+        const mx = (sx + baseX) / 2
+        d = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${baseX} ${ty}`
         head = `M ${tx} ${ty} L ${tx - 9} ${ty - 4.5} L ${tx - 9} ${ty + 4.5} Z`
       } else {
         // Skip-rank serpentine (skiprank spec §3.1): clear-corridor route.
@@ -1137,7 +1146,12 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
           skipYs.push(route.bypassY)
         }
         skipLane++
-        d = `M ${route.points.map(pt => `${String(Math.round(pt[0] * 100) / 100)} ${String(Math.round(pt[1] * 100) / 100)}`).join(" L ")}`
+        // Base-plane invariant as above: the route's final leg stops at the
+        // head's base plane rather than running to the tip through the
+        // hollow head.
+        const segs = [...route.points]
+        segs[segs.length - 1] = [tx - 9, segs[segs.length - 1]![1]!]
+        d = `M ${segs.map(pt => `${String(Math.round(pt[0] * 100) / 100)} ${String(Math.round(pt[1] * 100) / 100)}`).join(" L ")}`
         head = `M ${tx} ${ty} L ${tx - 9} ${ty - 4.5} L ${tx - 9} ${ty + 4.5} Z`
         if (e.label && route.labelY !== undefined) {
           // Label anchored to the bypass segment — inside the band (banded)
@@ -1155,8 +1169,11 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       const tx = b.x + b.w / 2
       const ty = b.y - 2
       if (adjacent) {
-        const my = (sy + ty) / 2
-        d = `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`
+        // tb mirror of the lr base-plane invariant: the shaft stops at the
+        // head's base leg (y = ty-9) instead of running to the tip.
+        const baseY = ty - 9
+        const my = (sy + baseY) / 2
+        d = `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${baseY}`
         head = `M ${tx} ${ty} L ${tx - 4.5} ${ty - 9} L ${tx + 4.5} ${ty - 9} Z`
       } else {
         // Skip-rank serpentine, tb mirror of the lr route (tb edge-label spec
@@ -1190,7 +1207,10 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
           skipXs.push(route.bypassX)
         }
         skipLane++
-        d = `M ${route.points.map(pt => `${String(Math.round(pt[0] * 100) / 100)} ${String(Math.round(pt[1] * 100) / 100)}`).join(" L ")}`
+        // tb mirror of the lr base-plane invariant (see above).
+        const segs = [...route.points]
+        segs[segs.length - 1] = [segs[segs.length - 1]![0]!, ty - 9]
+        d = `M ${segs.map(pt => `${String(Math.round(pt[0] * 100) / 100)} ${String(Math.round(pt[1] * 100) / 100)}`).join(" L ")}`
         head = `M ${tx} ${ty} L ${tx - 4.5} ${ty - 9} L ${tx + 4.5} ${ty - 9} Z`
         if (e.label && route.labelX !== undefined) {
           labelX = route.labelX
@@ -1410,6 +1430,52 @@ export function layoutFlow(spec: FlowSpec): FlowLayoutResult {
       }
     }
     if (!moved) break
+  }
+
+  // 7d. Back-edge label vs NODE clearance: back-edge labels are anchored at
+  //  plan level, and neither the 7c-pre slide (a back edge has no sample in
+  //  `polyOf`, which excluded them) nor the 7c nudge (labels compared only
+  //  against labels) ever checks one against a NODE box. Measured on the
+  //  2026-10-10 reharm page, "V-I" printed 3px (est) into Bb Major's rect —
+  //  the reader saw head + label vanish behind the opaque node. Walk the
+  //  nudge axis in 8px steps, both directions, preferring the in-bounds,
+  //  box-clear, label-label-clear candidate NEAREST the label's own drawn
+  //  return path (a block that still rides its curve beats one that merely
+  //  left the box). Never out of bounds; the anchor stands when nothing is
+  //  clear.
+  const backPolyOf = sampleArrowPolylines(elements, new Set(planIsSkip.keys()))
+  for (const cur of labelRects) {
+    if (cur.id === undefined || !backIds.has(cur.id)) continue
+    const A = rectOfLabel(cur)
+    if (!rectHitsBox(A)) continue
+    const own = backPolyOf.get(cur.id)
+    const clearAt = (x: number, y: number): boolean => {
+      const r: Rect = { x: x - A.w / 2, y: y - A.h / 2, w: A.w, h: A.h }
+      if (r.x < -0.5 || r.y < -0.5 || r.x + r.w > width + 0.5 || r.y + r.h > height + 0.5) return false
+      if (rectHitsBox(r)) return false
+      return labelRects.every(other => other === cur || !overlaps(r, rectOfLabel(other)))
+    }
+    const dist2own = (x: number, y: number): number => {
+      if (!own) return Math.abs(x - cur.labelX!) + Math.abs(y - cur.labelY!)
+      let d = Infinity
+      for (const pt of own) d = Math.min(d, Math.hypot(x - pt.x, y - pt.y))
+      return d
+    }
+    const axisY = direction === "lr"
+    const found: { x: number; y: number; d: number }[] = []
+    for (let step = 8; step <= 240; step += 8) {
+      for (const sign of [1, -1] as const) {
+        const x = axisY ? cur.labelX! : cur.labelX! + sign * step
+        const y = axisY ? cur.labelY! + sign * step : cur.labelY!
+        if (clearAt(x, y)) found.push({ x, y, d: dist2own(x, y) })
+      }
+      if (found.length >= 2) break // one candidate per direction is enough
+    }
+    if (found.length > 0) {
+      found.sort((a, b) => a.d - b.d)
+      cur.labelX = found[0]!.x
+      cur.labelY = found[0]!.y
+    }
   }
 
   // 8. Nodes AFTER edges: their opaque fill covers crossings. Their y comes
