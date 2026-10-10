@@ -4,13 +4,14 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-07, after the first real-LLM compile run — that run
-added **thread 21** (the compiler validates section shape, not blocks; the
-prompt fix was chosen over a compile-time safety net). Before that: 2026-10-05,
-after the figure-hover-surfaces,
-react-warning-surface, and image-body cycles, and again after the
-external-adoption assessment. Thread 13 is CLOSED. Thread 18 records the
-image/prose split as human-judged rather than guessed. **Threads 19 and 20 are
+Last updated: 2026-10-10. **The user has PARKED the compile flow** — the
+host-driven per-block render API is the product, and figure-quality chasing on
+model output stops unless a use materializes. Threads 21/23's acceptance loops
+(chain heuristic, payoff bar) are therefore accepted-as-is, not queued for
+measurement. Shipped this week through the merge gate: the tb edge-label cycle
+and ten follow-up rounds (findings 1–6 of the run-5 review), all on
+`fix/tb-edge-labels`, merged to main at a6d3f01 after the user's review.
+Thread 13 is CLOSED. **Threads 19 and 20 are
 the ones to read before answering "can another app depend on this yet"** — they
 record what is and is not guaranteed about upgrades.
 
