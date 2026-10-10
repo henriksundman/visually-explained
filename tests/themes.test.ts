@@ -55,15 +55,21 @@ describe("themes", () => {
   })
 
   it("breaks figures out over the gutters via a container query, not a viewport breakpoint", () => {
-    // Wide hosts get figures more room (the 2026-10-08 reharm feedback: a
-    // ~640px diagram squeezed inside a ~660px column). The query must read
-    // the .exp CONTAINER — a host placing the article beside a sidebar gets
-    // narrow behavior at any window size — and must raise the cap only: a
+    // Wide hosts MAY give figures more room (the 2026-10-08 reharm feedback:
+    // a ~640px diagram squeezed inside a ~660px column) — but the DEFAULT is
+    // FIT: --exp-figure-breakout defaults to 0px, because the 48px default
+    // let the widened breathing-room gutters push two /document flow figures
+    // 62px past the column (a symmetric 31px overhang each side, reported by
+    // the user at the a6d3f01 merge gate). The query must read the .exp
+    // CONTAINER — a host placing the article beside a sidebar gets narrow
+    // behavior at any window size — and must raise the cap only: a
     // width: 100% here would scale a sparkline UP to full column. The
-    // breakout is a token so a host with no gutters to spare opts out.
+    // breakout is an OPT-IN token.
     const css = readFileSync("src/themes/tokens.css", "utf8")
     expect(css).toMatch(/\.exp\s*{[^}]*container:\s*exp\s*\/\s*inline-size/)
     expect(css).toMatch(/@container\s+exp\s+\(min-width:\s*640px\)\s*{\s*\.exp-block\s*>\s*\.exp-figure\s*{[^}]*max-width:\s*calc\(/)
+    // The raised cap must default to 0 extra room: fit-first.
+    expect(css).toMatch(/var\(--exp-figure-breakout,\s*0px\)/)
     // Cap-raise only: forcing `width` (not just max-width) inside the query
     // would upscale every small figure.
     const query = css.match(/@container exp \(min-width: 640px\)\s*{([\s\S]*?)\n}/)?.[1] ?? ""
@@ -78,7 +84,7 @@ describe("themes", () => {
     // Direct children only: a sparkline inside .exp-spark-box would be
     // DISPLACED by the relative offsets, not centred.
     expect(query).not.toMatch(/^\s*\.exp-figure\s*{/m)
-    // The opt-out token must be honoured.
+    // The opt-in token must be honoured.
     expect(css).toMatch(/--exp-figure-breakout/)
   })
 

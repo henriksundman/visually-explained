@@ -430,20 +430,24 @@ graph instead of expanding into ranks that are empty but still consume width.
 Figures scale to their container via `viewBox`, so an over-wide scene shrinks
 its own labels; keeping the scene honest is what keeps text legible.
 
-On a wide layout a figure squeezed by a narrow article column can borrow the
-page gutters: the theme reads a **container query on `.exp` itself**, so it
-fires on the space the article was actually given — put the article beside a
-sidebar and the container narrows, whatever the window does. Only the
-*maximum* width is raised (never forced), so a small figure keeps its
-intrinsic size and never scales up; a too-wide one gets up to
-`--exp-figure-breakout` (default `48px`) of extra room each side, centred on
-the column — the query zeroes the figure's auto margins because the
-`left: 50%` + `translate: -50%` centering trick only cancels when the box is
-not also centering itself by margin. The query targets figures that are
-direct children of a block (sparklines live inside their metric card and are
-never displaced); mind-map figures are such children too and get the same
-treatment. The sticky TOC card paints above breakout figures. Set the token
-to `0px` to keep figures strictly inside the column.
+On a wide layout the theme can let a figure squeezed by a narrow article
+column borrow the page gutters: the theme reads a **container query on `.exp`
+itself**, so it fires on the space the article was actually given — put the
+article beside a sidebar and the container narrows, whatever the window does.
+Only the *maximum* width is raised (never forced), so a small figure keeps
+its intrinsic size and never scales up; a too-wide one gets up to
+`--exp-figure-breakout` of extra room each side, centred on the column — the
+query zeroes the figure's auto margins because the `left: 50%` +
+`translate: -50%` centering trick only cancels when the box is not also
+centering itself by margin. The query targets figures that are direct
+children of a block (sparklines live inside their metric card and are never
+displaced); mind-map figures are such children too and get the same
+treatment. The sticky TOC card paints above breakout figures.
+
+**The token defaults to `0px`: figures fit the column by default.** Raise it
+(e.g. `--exp-figure-breakout: 48px`) to let a too-wide figure spill a bounded
+amount into the page gutters instead of scaling down — useful when a wide
+diagram's labels would otherwise shrink below comfortable size.
 
 ## Themes
 

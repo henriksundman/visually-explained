@@ -235,4 +235,8 @@ body {
   background: var(--exp-surface);
   border: 1px solid var(--exp-border);
   padding: calc(var(--exp-pad) * 1.8);
+  /* The editorial column is the showcase for the breakout: its generous
+     gutters are exactly what a too-wide figure should borrow, so this page
+     opts in (the token defaults to 0 / fit-first since 2026-10-10). */
+  --exp-figure-breakout: 48px;
 }

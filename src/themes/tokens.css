@@ -539,12 +539,19 @@
    query must fire on the column it was given, and it is the WINDOW being
    wide — page gutters to spare — that the host signals by giving the article
    room. A sidebar squeezes the container under the threshold and the breakout
-   never engages, at any window size. The amount is a token: a host whose
-   layout cannot spare the gutters sets --exp-figure-breakout: 0px and the old
-   behavior returns. */
+   never engages, at any window size.
+
+   The amount DEFAULTS TO 0 — figures fit the column by default. The token is
+   OPT-IN: a host may raise it (e.g. `--exp-figure-breakout: 48px`) to let a
+   too-wide figure spill a bounded amount into the page gutters instead of
+   scaling down. The 48px default previously let the widened breathing-room
+   gutters (2026-10-09) push two /document flow figures 62px past the column
+   — a symmetric 31px overhang each side a reader reported as overflowing the
+   container. Fit-first is the safer default for unknown hosts; the reharm
+   page's own demo sets the token to keep its breakout. */
 @container exp (min-width: 640px) {
   .exp-block > .exp-figure {
-    max-width: calc(100% + 2 * max(0px, var(--exp-figure-breakout, 48px)));
+    max-width: calc(100% + 2 * max(0px, var(--exp-figure-breakout, 0px)));
     margin-left: 0;
     margin-right: 0;
     position: relative;
