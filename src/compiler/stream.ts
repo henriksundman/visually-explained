@@ -62,6 +62,57 @@ function hasQuiz(blocks: unknown[]): boolean {
   })
 }
 
+/** Whether any `diagram` block in a block tree is a CHAIN — every node has at
+ *  most one edge in and one edge out, so the graph reads as a sequence and a
+ *  `step-list` renders it better (2026-10-10 review finding 4). Recursing into
+ *  `stack` children exactly like `hasQuiz`; tolerates malformed payloads:
+ *  missing or wrong-typed `nodes`/`edges` are simply not auditable, so they
+ *  never crash and never fire. Degenerate shapes (single node or nodeless) do
+ *  not count as chains. */
+function hasChainDiagram(blocks: unknown[]): boolean {
+  return blocks.some(b => {
+    if (typeof b !== "object" || b === null) return false
+    const rec = b as { type?: unknown; blocks?: unknown; nodes?: unknown; edges?: unknown }
+    if (rec.type === "diagram" && Array.isArray(rec.nodes)) {
+      const ids = new Set<string>()
+      for (const n of rec.nodes) {
+        if (typeof n === "object" && n !== null && typeof (n as { id?: unknown }).id === "string") {
+          ids.add((n as { id: string }).id)
+        }
+      }
+      const inDeg = new Map<string, number>()
+      const outDeg = new Map<string, number>()
+      let knownEdges = 0
+      if (Array.isArray(rec.edges)) {
+        for (const e of rec.edges) {
+          if (typeof e !== "object" || e === null) continue
+          const from = (e as { from?: unknown }).from
+          const to = (e as { to?: unknown }).to
+          if (typeof from !== "string" || typeof to !== "string") continue
+          if (!ids.has(from) || !ids.has(to)) continue
+          outDeg.set(from, (outDeg.get(from) ?? 0) + 1)
+          inDeg.set(to, (inDeg.get(to) ?? 0) + 1)
+          knownEdges++
+        }
+      }
+      // At least one resolvable edge: with no valid edges the degree claim is
+      // vacuous (any node is trivially ≤1/≤1), and a malformed payload must
+      // stay silent rather than guess.
+      if (ids.size >= 2 && knownEdges >= 1) {
+        let chain = true
+        for (const id of ids) {
+          if ((inDeg.get(id) ?? 0) > 1 || (outDeg.get(id) ?? 0) > 1) {
+            chain = false
+            break
+          }
+        }
+        if (chain) return true
+      }
+    }
+    return rec.type === "stack" && Array.isArray(rec.blocks) && hasChainDiagram(rec.blocks)
+  })
+}
+
 interface StageArgs<T> {
   client: CompileOptions["client"]
   maxRepairs: number
@@ -117,6 +168,11 @@ export async function* compileDocumentStream(
   // Retrieval checks (quiz-placement spec §3): flag-gated. Off ⇒ byte-identical
   // prompts, events, and warnings.
   const checksOn = opts.checks === true
+
+  // Diagram audit (2026-10-10 review finding 4): flag-gated, same shape as
+  // `checks` — a warn-only heuristic must not reach into every host's default
+  // compile, where `failOnWarning` would convert it into an exception.
+  const diagramAuditOn = opts.diagramAudit === true
 
   // Image catalog (image spec §6): validated once, before any prompting. Empty
   // after validation ⇒ byte-identical USER prompts to an uncatalogued compile.
@@ -204,6 +260,14 @@ export async function* compileDocumentStream(
     // quiz — recurse into stack children; constrain-and-warn only, never drop.
     if (checksOn && entry.check === true && !hasQuiz(outcome.value.blocks)) {
       warnings.push(`[checks] section ${i} declared a check but placed no quiz`)
+    }
+
+    // Diagram audit (finding 4): a diagram whose every node has at most one
+    // edge in and one out is a chain — warn, never drop or rewrite.
+    if (diagramAuditOn && hasChainDiagram(outcome.value.blocks)) {
+      warnings.push(
+        `[diagram] section ${i}: a diagram reads as a chain (every node has at most one edge in and out) — consider a step-list`,
+      )
     }
 
     yield { kind: "section-done", index: i, title: entry.title, blocks: outcome.value.blocks }

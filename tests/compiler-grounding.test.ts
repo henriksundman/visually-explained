@@ -249,6 +249,7 @@ describe("grounded compile", () => {
   })
 })
 
+
 /** A minimal quiz-free section reply. Cites s2 so grounded checks-compile
  *  fixtures don't trip the never-cited audit. */
 const goodSection = (title: string) => ({
@@ -390,7 +391,7 @@ describe("checks compile", () => {
     ])
   })
 
-  it("compileDocument and the drained stream agree with checks on", async () => {
+  it("compileDocument and the drained stream agree with checks on — and with diagramAudit on", async () => {
     const a = await compileDocument("signals", { client: checksClient(quizTail("Body.")).client, checks: true })
     const events: StreamCompileEvent[] = []
     let document: unknown
@@ -398,6 +399,7 @@ describe("checks compile", () => {
     for await (const e of compileDocumentStream("signals", {
       client: checksClient(quizTail("Body.")).client,
       checks: true,
+      diagramAudit: true,
     })) {
       if (e.kind === "compile-done") {
         document = e.document
@@ -409,5 +411,100 @@ describe("checks compile", () => {
     expect(events).toEqual(a.events)
     expect(document).toEqual(a.document)
     expect(warnings).toEqual(a.warnings)
+  })
+})
+
+describe("diagram audit (finding 4: chain diagrams warn as step-list candidates)", () => {
+  /** Section reply carrying one diagram block. */
+  const diagramSection = (diagram: Record<string, unknown>) => ({
+    title: "What is a signal",
+    blocks: [{ type: "diagram", ...diagram }],
+  })
+  const chainClient = (diagram: Record<string, unknown>) =>
+    scriptedClient([
+      { match: /Design the outline/, reply: JSON.stringify(groundedOutline) },
+      { match: /Write section .*"What is a signal"/, reply: JSON.stringify(diagramSection(diagram)) },
+      { match: /Write section .*"Reading data"/, reply: JSON.stringify(goodSection("Reading data")) },
+    ])
+
+  const CHAIN = {
+    nodes: [
+      { id: "a", label: "A" },
+      { id: "b", label: "B" },
+      { id: "c", label: "C" },
+    ],
+    edges: [
+      { from: "a", to: "b" },
+      { from: "b", to: "c" },
+    ],
+  }
+  const BRANCHED = {
+    nodes: [
+      { id: "a", label: "A" },
+      { id: "b", label: "B" },
+      { id: "c", label: "C" },
+    ],
+    edges: [
+      { from: "a", to: "b" },
+      { from: "a", to: "c" },
+    ],
+  }
+
+  const CHAIN_WARNING =
+    "[diagram] section 0: a diagram reads as a chain (every node has at most one edge in and out) — consider a step-list"
+
+  it("warns for a pure chain diagram when the flag is on", async () => {
+    const { client } = chainClient(CHAIN)
+    const { warnings } = await compileDocument("signals", { client, diagramAudit: true })
+    expect(warnings).toEqual([CHAIN_WARNING])
+  })
+
+  it("stays silent for a diagram any node branches or converges in", async () => {
+    const { client } = chainClient(BRANCHED)
+    const { warnings } = await compileDocument("signals", { client, diagramAudit: true })
+    expect(warnings).toEqual([])
+  })
+
+  it("stays silent across all dispositions when the flag is off (byte-identity)", async () => {
+    for (const diagram of [CHAIN, BRANCHED, { nodes: "not an array", edges: 7 } as unknown as Record<string, unknown>]) {
+      const { client } = chainClient(diagram)
+      const { warnings } = await compileDocument("signals", { client })
+      expect(warnings).toEqual([])
+    }
+  })
+
+  it("counts a stack-nested chain and tolerates malformed payloads without crashing", async () => {
+    const stacked = {
+      title: "What is a signal",
+      blocks: [
+        { type: "text", body: "x [counts](#source-s2)." },
+        { type: "stack", blocks: [{ type: "diagram", ...CHAIN }] },
+      ],
+    }
+    const { client } = scriptedClient([
+      { match: /Design the outline/, reply: JSON.stringify(groundedOutline) },
+      { match: /Write section .*"What is a signal"/, reply: JSON.stringify(stacked) },
+      { match: /Write section .*"Reading data"/, reply: JSON.stringify(goodSection("Reading data")) },
+    ])
+    const { warnings } = await compileDocument("signals", { client, diagramAudit: true })
+    expect(warnings).toEqual([CHAIN_WARNING])
+
+    const malformed: unknown[] = [
+      { type: "diagram", nodes: "nope", edges: CHAIN.edges },
+      { type: "diagram", nodes: CHAIN.nodes, edges: "nope" },
+      { type: "diagram", nodes: ["a", null, { no: "id" }], edges: CHAIN.edges },
+      { type: "diagram", nodes: CHAIN.nodes, edges: [{ from: "a", to: "ghost" }], },
+    ]
+    for (const d of malformed) {
+      const { client: c2 } = chainClient(d as Record<string, unknown>)
+      const { warnings: w2 } = await compileDocument("signals", { client: c2, diagramAudit: true })
+      expect(w2).toEqual([])
+    }
+  })
+
+  it("does not fire on single-node or nodeless diagrams (degenerate shapes)", async () => {
+    const { client } = chainClient({ nodes: [{ id: "a", label: "A" }], edges: [] })
+    const { warnings } = await compileDocument("signals", { client, diagramAudit: true })
+    expect(warnings).toEqual([])
   })
 })

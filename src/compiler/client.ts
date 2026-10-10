@@ -34,6 +34,13 @@ export interface CompileOptions {
    *  sections for a placed quiz. Off by default — absent the flag, compiles
    *  are byte-identical to unflagged ones. */
   checks?: boolean
+  /** Diagram audit (finding 4): warn when a section's blocks place a `diagram`
+   *  whose every node has at most one edge in and out — a chain a `step-list`
+   *  renders better. Warn-only, recursing into `stack` children; never drops
+   *  or rewrites. Off by default — same shape as `checks`, because under
+   *  `failOnWarning: true` a default-on warning would throw on every host's
+   *  compile and this is a quality heuristic, not validation. */
+  diagramAudit?: boolean
   /** Host image catalog the compiler may place (image spec §4.5). Deliberately
    *  the SAME Record shape as the render-side `images` option, so one object
    *  serves both compileDocument and renderDocument without reshaping, and the

@@ -46,6 +46,15 @@ describe("section prompts", () => {
     }
   })
 
+  // Finding 4 (2026-10-10 review): the chain→step-list guidance was prose-first
+  // ("every element playing the same role"), which the run-5 mrna page beat —
+  // DNA→mRNA→Ribosome→Protein shipped as a diagram. Re-anchor the rule in what
+  // actually makes a chain a chain: the degrees.
+  it("states the diagram chain rule by node degree, not by role", () => {
+    expect(sectionSystemPrompt()).toContain("a node with two or more edges entering or leaving it")
+    expect(sectionSystemPrompt()).toContain("A chain where every node has at most one edge in and one out is a step-list")
+  })
+
   it("teaches the link inline form", () => {
     expect(sectionSystemPrompt()).toContain("[text](url)")
   })

@@ -592,6 +592,19 @@ absent the flag, compiles are byte-identical to unflagged ones. Quiz
 citations participate in the grounding audit like any other block, and a quiz
 nested in a `stack` still satisfies its declaration.
 
+### Diagram chain audit
+
+With `diagramAudit: true`, a `diagram` block whose every node has at most one
+edge in and one out — a *chain* — warns
+`[diagram] section N: a diagram reads as a chain (every node has at most one
+edge in and out) — consider a step-list`. A chain is the shape a `step-list`
+renders better, and real compiles emit them despite the prompt saying not to
+(the "DNA → mRNA → Ribosome → Protein" class). Warn-only, recursing into
+`stack` children, tolerant of malformed payloads: nothing is dropped or
+rewritten. Off by default like `checks` — under `failOnWarning: true` a
+default-on quality heuristic would throw on every compile, and the prompt's
+chain guidance (block-types `diagram` line) remains the first line of defense.
+
 ## Authoring prompts yourself
 
 If you prompt the LLM directly instead of using the compiler, ship the tested
