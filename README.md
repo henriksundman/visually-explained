@@ -34,6 +34,25 @@ npm install explanations
 | `explanations/themes/tokens.css` | Design tokens — required for any styling |
 | `explanations/themes/light.css` / `dark.css` | Full themes |
 
+### Consuming locally (file: install)
+
+Instead of `npm install explanations` (the package is not on a registry),
+publishing later is the plan but for now the host can point at this directory
+directly:
+
+```bash
+# from the HOST app's directory — the sibling repo, wherever it lives
+npm install ../explanations
+```
+
+npm symlinks (not copies) this directory into the host's `node_modules`, so
+imports are `explanations` as usual. The host consumes **`dist/`, the built
+package — not `src/`** — so after changing this library, run `npm run build`
+here; the host picks the new build up immediately with no reinstall. While
+iterating on both sides at once, `npx tsup --watch` in this repo keeps `dist/`
+fresh. Two things the host needs: its own `react` ≥ 18 (peer dependency), and
+the tokens CSS imported exactly once alongside the render calls.
+
 ## Pipeline 1 — render IR you already have
 
 Two shapes: a single **explanation**

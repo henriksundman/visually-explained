@@ -44,5 +44,18 @@ ignore:
   # suppressed: code payloads are capped at 20k in codeBlockSchema with a
   # render-time truncation warning (commit 003fbd1).
   - paths: ["src/primitives/chart.ts", "src/core/highlight.ts"]
+  # pathBounds' d-string tokenizer (R-EFEEF, triaged 2026-10-11): the two
+  # alternation branches start with DISJOINT character classes (command
+  # letters vs digit/sign/dot) and both leaves are plain greedy runs
+  # (\d+\.?\d*|\.\d+) — no nested quantifier, no alternation inside a
+  # quantifier, so every position matches or fails in O(1): linear scan,
+  # no quadratic or exponential backtracking. Input is bounded by
+  # construction: every figure-path.d passing through is either
+  # grammar-gated by isSafePathD (MAX_LEN 4096, authored.ts:458 — slot
+  # expansion inserts only nf(number) digits before that gate) or built by
+  # template literal from resolved finite numbers (curve/arc,
+  # authored.ts:482/508). Single call site: elementBounds figure-path case
+  # (svg.ts:508). No untrusted string reaches the regex unwrapped.
+  - paths: ["src/figures/svg.ts"]
     rules: ["security/detect-unsafe-regex"]
-    reason: "linear-shaped patterns, no ReDoS shape; the unbounded-input concern is closed by the 20k code-payload cap in codeBlockSchema"
+    reason: "same class as chart/highlight above: linear-shaped tokenizer regex, no ReDoS shape; input bounded by isSafePathD (MAX_LEN 4096) upstream in the same dataflow"
