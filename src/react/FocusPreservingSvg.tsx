@@ -63,15 +63,43 @@ export const FocusPreservingSvg: FC<{ html: string }> = ({ html }) => {
     }
   }, [])
 
-  // Runs on every commit, after React has written the new markup.
+  // Runs on every commit, after React has written the new markup. The restore
+  // itself is scheduled on the NEXT frame rather than called synchronously:
+  // calling .focus() from inside a passive-effect flush re-fires focus/blur
+  // synchronously through useElementPopover's capture handlers (setPop) —
+  // during a per-frame sweep that chains a nested sync update every frame
+  // until React aborts with "Maximum update depth exceeded" (uncaught,
+  // boundary-blind; BUG-REPORT-sweep-focus-storm). One rAF hop puts the
+  // restore in its own task, outside React's update: it cannot reenter a
+  // flush, so no chain can form.
+  const restoreRef = useRef<number | null>(null)
+  const restoreScheduledRef = useRef(false)
   useEffect(() => {
     const id = focusedId.current
     const host = hostRef.current
     if (!id || !host) return
     const active = host.ownerDocument.activeElement
     if (active?.getAttribute?.(EL_ID) === id) return // focus already survived
-    host.querySelector<SVGElement>(`[${EL_ID}="${CSS.escape(id)}"]`)?.focus?.()
+    // At most one pending restore per commit batch (several can fire before
+    // the next frame); the callback consults the ref for the id to restore,
+    // so the last commit wins and a pending restore is never duplicated.
+    if (restoreScheduledRef.current) return
+    restoreScheduledRef.current = true
+    restoreRef.current = requestAnimationFrame(() => {
+      restoreScheduledRef.current = false
+      restoreRef.current = null
+      const want = focusedId.current
+      const el = hostRef.current?.querySelector<SVGElement>(`[${EL_ID}="${CSS.escape(want ?? "")}"]`)
+      if (!want || !el) return // focus moved elsewhere or the element is gone
+      if (hostRef.current?.ownerDocument.activeElement?.getAttribute?.(EL_ID) === want) return
+      el.focus()
+    })
   })
+
+  // Cancel a pending restore on unmount — the rAF must not fire on a dead ref.
+  useEffect(() => () => {
+    if (restoreRef.current !== null) cancelAnimationFrame(restoreRef.current)
+  }, [])
 
   return <div ref={hostRef} dangerouslySetInnerHTML={{ __html: html }} />
 }
