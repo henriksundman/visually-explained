@@ -57,6 +57,13 @@ Before deep-diving, test the failure against these recurring patterns:
   `focusin` on an injected SVG element, so a focus-driven popover never opens
   and the keyboard path looks dead when it is not. Dispatch a real Tab
   keypress (`Input.dispatchKeyEvent`) instead. See the 2026-10-05 entry.
+- **A demo-scoped locator can aim at a different figure on the same page.** The
+  `/interactive` page hosts several figures; a play-button lookup that falls
+  back to "the first match" can sweep the wrong one, and a `t` param read
+  from any `.exp-fig-param-value` still ticks merrily — from the other figure.
+  Scope every locator through the figure you actually want to probe (e.g.
+  `pen.closest(".exp-block.exp-figure")`), never page-global selectors.
+  See the 2026-10-11 entry — three contradicting probe sessions traced here.
 - **Never remove React-rendered DOM by hand to reset probe state.** Calling
   `popover.remove()` leaves React's virtual DOM believing the node is still
   mounted, so the next state update patches the *detached* node and the
@@ -190,6 +197,15 @@ Before deep-diving, test the failure against these recurring patterns:
   element rather than rendering a picture of it.
 
 ## Part 2 — Entries
+
+### 2026-10-11 — Three probe sessions of contradictions, resolved by one wrong locator
+- **Symptom:** the sweep-focus-storm report described an uncaught `Maximum update depth exceeded` storm (~8/s) during play-with-focus, but every headless probe showed 0 errors, 0 `focus()` calls, a frozen pen circle and an "alive" marker — while a later probe showed the destroy/restore cycle running fine. Sessions of "the bug isn't real / it's headless focus quirk / the sweep isn't really running" all had supporting evidence.
+- **Root cause:** the probe's play-button lookup fell back to "the first `.exp-fig-play` on the page", and `/interactive` hosts SEVERAL figures — so `btns[0]` was another figure's button and the epicycles sweep never played. The per-frame `t` ticks the probe sampled came from whichever `.exp-fig-param-value` was page-first (another figure's slider), and the pen's geometry froze because its figure was genuinely static. Incidentally: the storm abort itself does NOT reproduce headless (the sync chain nests only ~2 updates deep per frame; the host's >50 chain needs its surroundings) — but the 212-calls-in-the-flush RED probe below proves the mechanism.
+- **Fix:** scope every locator through the figure you want: `pen.closest(".exp-block.exp-figure")` for buttons, sliders, values — never page-global `querySelector` combined with a "first match" fallback. The RED→GREEN harness then worked on the first try: instrument rAF with an `__inRaf` flag, patch `SVGElement.prototype.focus` to record whether each call fired inside rAF, play the sweep with the pen focused.
+- **Rule:** when the mechanism and the evidence disagree, scope the harness
+  locator to the exact figure before suspecting either — and record what the
+  fix is *for*: the same class name on multiple sibling instances makes every
+  page-global "first match" a coin flip.
 
 ### 2026-10-10 — The probe verified the old build, twice over
 - **Symptom:** after landing five fixes for the run-5 findings, re-probing the housing page showed findings 1/2 UNCHANGED (same "31000000"+"2020" outside, same 11 quarter-label overlaps) while the same fixes' unit tests were green — and after adding the real root-cause fixes (measured char widths, tick fit checks), the probe STILL reported the run-5 numbers. Both "failures" were the probe reading stale output.

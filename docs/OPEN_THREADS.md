@@ -232,6 +232,38 @@ If the repo ever gains a DOM test environment, this is the first thing worth
 covering: the failure mode is silent and severe (a control that works exactly
 once).
 
+**Update 2026-10-11 — the restore is deferred to the next frame, and there is a
+measured reason.** During a play sweep, every frame's `innerHTML` swap destroys
+the focused node; the restore effect used to call `.focus()` synchronously
+inside the passive-effect flush, which re-fired focus/blur through
+`useElementPopover`'s capture `setPop` handlers as NESTED sync updates — on the
+Luma host this chained past 50 and React aborted with an uncaught
+`Maximum update depth exceeded` (boundary-blind; BUG-REPORT-sweep-focus-storm).
+The restore now schedules on the next `requestAnimationFrame` — one pending
+restore max, the id re-read from the ref at fire time so the last commit wins
+— putting it outside React's flush where no chain can form.
+
+Two residual facts, both measured and accepted:
+
+- **The churn is not the abort.** Even unfixed, headless reproduces the
+  destroy/restore cycle (~6 focus pairs/s, 212/212 calls in the flush) at 0
+  errors — each cycle nests only ~2 updates deep; the abort needs a host doing
+  more work per hop. The fix removes the *mechanism* (sync reentry into a
+  flush), not merely a depth coincidence.
+- **The popover still mounts/unmounts every frame during play with focus**
+  (`onFocusCapture → setPop({...})` every restore, `onBlurCapture → setPop(null)`
+  every destroy). That is render churn, not an update-chain, and it is not
+  changed by the fix; a popover that follows a moving element cannot keep a
+  stable rect identity by design. Revisit only if a host reports jank from it —
+  the coalescing option sketched in the bug report is the lever.
+
+Regression harness: the RED/GREEN probes are
+`.superpowers/probe-restore-task.mjs` / `probe-pause-rest.mjs` (git-ignored
+scratch) — instrument rAF with an `__inRaf` flag, patch
+`SVGElement.prototype.focus` to count calls inside/outside it, play the
+epicycles sweep with the pen focused via real Tab keypresses. Expected: 0
+`outsideRaf` and focus resting on the element after Pause.
+
 ## 10. Groups still cannot be dragged
 
 `group` deliberately carries no identity (`figure-id-unsupported` in
