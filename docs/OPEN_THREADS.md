@@ -4,7 +4,7 @@ Judgement calls and known-rough edges that a future session should know about
 before changing the code they touch. Everything here is shipped and working;
 these are the things that were **deliberately left open**, not bugs in progress.
 
-Last updated: 2026-10-10. **The user has PARKED the compile flow** — the
+Last updated: 2026-10-13. **The user has PARKED the compile flow** — the
 host-driven per-block render API is the product, and figure-quality chasing on
 model output stops unless a use materializes. Threads 21/23's acceptance loops
 (chain heuristic, payoff bar) are therefore accepted-as-is, not queued for
@@ -762,6 +762,15 @@ thread 21's bar, not a drive-by.
 The two geometry changes this round (back-edge base-plane invariant, figure
 breakout) are test-pinned and browser-verified; this thread exists for the
 prompt change, which is exactly the class of change the suite cannot see.
+
+## 24. The JSON-escape salvage prefers TeX integrity over in-string newline escapes
+
+**Added 2026-10-13** (host follow-up 2, after the inline-math snippet exposed it: models embed LaTeX bare inside JSON strings — `"Displacement ($\\Delta x$)"` throws on parse, `\\frac`/`\\ne`/`\\times` parse into form feeds / newline / tab). `extractJson` now runs a TeX-lead doubling pass (double every bare backslash followed by two letters) before the raw parse, because a mangled reply parses "successfully" — only content-blind advice catches it. A full-doubling pass rides in when parsing still fails.
+
+**The trade:** `"x \ne y"` (TeX less-than-or-equal, must un-mangle) and `"a\nline2"` (a JSON newline escape followed by a word) are raw-identical byte sequences. TeX wins: an in-string `\\n` whose next chars are letters is doubled, so a parsed value may carry a literal `\\n` sequence where the model meant a newline. Measured basis: real compiles write newline separators between tokens (outside strings) far more than in-string newlines, and this library's prompt surface is dominated by math payloads (derivations, inline `$…$`), so the missing-newline side loses. No test can catch a corrupted multi-line value (neither parse nor schema sees it — same family as the inline-math TeX-context blind spot, thread 2).
+
+**Revisit if** a real capture corrupts a multi-line string value: the sketch is a per-string gate on TeX markers (`$`, `\\(`, `^`, `_`) before doubling inside that string, or field-aware repair after zod (`code` vs derivation fields). Also note: the salvage is content-blind BY DESIGN; the schema cannot help because it runs post-parse.
+
 
 ## Conventions worth knowing before the next session
 
