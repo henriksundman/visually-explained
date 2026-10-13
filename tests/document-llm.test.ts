@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { documentJsonSchema, documentSystemPromptSnippet, BLOCK_TYPE_DOCS } from "../src/core/llm"
+import { MATH_RULES } from "../src/core/blockTypes"
 import { documentSchema } from "../src/core/documentSchema"
 import { registry } from "../src/core/registry"
 import "../src/core/registerAll"
@@ -23,6 +24,17 @@ describe("documentSystemPromptSnippet", () => {
 
   it("carries the shared block-type text verbatim", () => {
     expect(documentSystemPromptSnippet).toContain(BLOCK_TYPE_DOCS)
+  })
+
+  // Same family as the section-prompt pin (2026-10-04 inline-math cycle,
+  // compiler-prompts.test.ts): the rule lives in one shared constant, so
+  // asserting it here pins lockstep without duplicating the literal text.
+  it("teaches the inline math delimiters and never forbids them", () => {
+    expect(documentSystemPromptSnippet).toContain(MATH_RULES)
+    expect(documentSystemPromptSnippet).toContain("\\(...\\)")
+    expect(documentSystemPromptSnippet).toContain("left as literal text")
+    expect(documentSystemPromptSnippet).toContain("needs no escaping")
+    expect(documentSystemPromptSnippet).not.toContain("no LaTeX delimiters")
   })
 
   // Same regression as the section prompt (2026-10-07): text and code were

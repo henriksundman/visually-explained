@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { explanationSchema } from "./schema"
 import { documentSchema } from "./documentSchema"
-import { BLOCK_TYPE_DOCS } from "./blockTypes"
+import { BLOCK_TYPE_DOCS, MATH_RULES } from "./blockTypes"
 export { BLOCK_TYPE_DOCS }
 
 /** JSON Schema for structured outputs / tool calling. `io: "input"` keeps optional fields optional for the model. */
@@ -19,7 +19,7 @@ Rules:
 - Pick the most specific block type for each idea; do not repeat the same content in two blocks.
 - Group related blocks with "stack". A stack may contain a stack at most one level deep.
 - Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`, [text](url).
-- Math and expressions go in plain strings (e.g. derivation "expression"); no LaTeX delimiters.
+${MATH_RULES}
 - comparison: "items" are the columns (min 2), each dimension has one value per item, in the same order.
 - cause-effect/timeline/data-callout accept presentation?: "auto"|"text"|"figure". Default auto draws a figure when the data fits (cause-effect ≤5 links, timeline ≤12 events, data-callout with a series). Leave it as auto unless asked otherwise.
 
@@ -41,6 +41,7 @@ Rules:
 - Give a section "id" only when a stable anchor matters (cross-page links); otherwise leave it off and the renderer derives one from the title.
 - Section titles are heading-style: short, no trailing punctuation.
 - Put no HTML in any field. Inline emphasis only: **bold**, *italic*, \`code\`, [text](url).
+${MATH_RULES}
 
 Block types:
 ${BLOCK_TYPE_DOCS}

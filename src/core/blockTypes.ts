@@ -25,3 +25,18 @@ Every block is one flat object: a "type" field naming the block type, with that 
 - text: { body } — plain paragraph.
 - code: { language?, code } — a verbatim source snippet for how-tos; never contains HTML or markdown (rendered exactly as written).
 `.trim()
+
+/** Math-rule lines shared by every prompt surface (the explanation snippet,
+ *  the document snippet in llm.ts, and the compiler's section prompt in
+ *  compiler/prompts.ts), extracted verbatim from sectionSystemPrompt where the
+ *  2026-10-04 inline-math cycle left them. Sharing one constant is the drift
+ *  guard the 2026-10-07 block-discriminator lesson demands: a prompt rule
+ *  maintained in two places reached only one surface (text/code shipped to
+ *  systemPromptSnippet alone), and it hit this family again when the host
+ *  snippets kept the pre-inline-math "no LaTeX delimiters" rule while the
+ *  renderer honours \(...\) — so the model was actively taught to avoid the
+ *  spans the renderer supports (host report 2026-10-13). */
+export const MATH_RULES = `
+- Full formulas go in a derivation block's "expression"/"conclusion" as bare TeX with no delimiters.
+- A formula inside prose is inline math: \\(...\\) , or $...$ for a short expression. Prefer \\(...\\) — it is never ambiguous. A $...$ that does not look like math is left as literal text, and a dollar amount in prose needs no escaping.
+`.trim()
