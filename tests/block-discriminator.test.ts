@@ -19,8 +19,8 @@ import { sectionSystemPrompt } from "../src/compiler/prompts"
 describe("block discriminator contract", () => {
   const surfaces: Record<string, string> = {
     "BLOCK_TYPE_DOCS": BLOCK_TYPE_DOCS,
-    "systemPromptSnippet": systemPromptSnippet,
-    "documentSystemPromptSnippet": documentSystemPromptSnippet,
+    "systemPromptSnippet": systemPromptSnippet(),
+    "documentSystemPromptSnippet": documentSystemPromptSnippet(),
     "sectionSystemPrompt": sectionSystemPrompt(),
   }
 

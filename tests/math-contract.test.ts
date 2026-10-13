@@ -29,6 +29,6 @@ describe("derivation contract", () => {
   it("reaches the section system prompt", () => {
     // toContain, not toBe: systemPromptSnippet (5439 chars) wraps the block-type
     // docs (4309 chars) with additional instruction text.
-    expect(systemPromptSnippet).toContain(BLOCK_TYPE_DOCS)
+    expect(systemPromptSnippet()).toContain(BLOCK_TYPE_DOCS)
   })
 })

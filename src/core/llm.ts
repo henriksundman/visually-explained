@@ -1,15 +1,31 @@
 import { z } from "zod"
 import { explanationSchema } from "./schema"
 import { documentSchema } from "./documentSchema"
-import { BLOCK_TYPE_DOCS, MATH_RULES } from "./blockTypes"
+import { BLOCK_TYPE_DOCS, MATH_RULES, NO_IMAGE_CATALOG_RULE } from "./blockTypes"
+import { imageMenuText } from "./images"
+import type { ImageRef } from "./images"
 export { BLOCK_TYPE_DOCS }
 
 /** JSON Schema for structured outputs / tool calling. `io: "input"` keeps optional fields optional for the model. */
 export const explanationJsonSchema = z.toJSONSchema(explanationSchema, { io: "input" })
 export const documentJsonSchema = z.toJSONSchema(documentSchema, { io: "input" })
 
-/** Tested instruction block: paste into your system prompt when asking an LLM for an explanation tree. */
-export const systemPromptSnippet = `
+/** Last block-type section of both snippets: the image menu when the host has
+ *  a catalog, the no-catalog prohibition when it does not (host follow-up 3 —
+ *  BLOCK_TYPE_DOCS teaches `image` unconditionally, and the document pipeline
+ *  already gates its menu the same way, so the snippets must too: a host with
+ *  no catalog no longer invites models to invent image subjects that only
+ *  warn at render time). Empty record behaves like no record. */
+function imageSection(images?: Record<string, ImageRef>): string {
+  return images && Object.keys(images).length > 0 ? imageMenuText(images) : NO_IMAGE_CATALOG_RULE
+}
+
+/** Tested instruction block (tests/llm.test.ts): paste into your system prompt
+ *  when asking an LLM for an explanation tree. Pass the host image catalog to
+ *  get the key:subject image menu; without one the model is told never to
+ *  place images. */
+export function systemPromptSnippet(images?: Record<string, ImageRef>): string {
+  return `
 You produce explanation trees as JSON. Output ONLY the JSON object — no markdown fences, no commentary.
 
 Shape: { "version": 1, "title"?: string, "summary"?: string, "blocks": Block[] }
@@ -25,10 +41,15 @@ ${MATH_RULES}
 
 Block types:
 ${BLOCK_TYPE_DOCS}
+${imageSection(images)}
 `.trim()
+}
 
-/** Tested instruction block: paste into your system prompt when asking an LLM for a document. */
-export const documentSystemPromptSnippet = `
+/** Tested instruction block (tests/document-llm.test.ts): paste into your
+ *  system prompt when asking an LLM for a document. Same catalog gating as
+ *  systemPromptSnippet. */
+export function documentSystemPromptSnippet(images?: Record<string, ImageRef>): string {
+  return `
 You produce multi-section explanation documents as JSON. Output ONLY the JSON object — no markdown fences, no commentary.
 
 Shape: { "version": 1, "title": string, "summary"?: string, "sections": [{ "id"?: string, "title": string, "blocks": Block[] }] }
@@ -45,4 +66,6 @@ ${MATH_RULES}
 
 Block types:
 ${BLOCK_TYPE_DOCS}
+${imageSection(images)}
 `.trim()
+}

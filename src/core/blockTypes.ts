@@ -40,3 +40,15 @@ export const MATH_RULES = `
 - Full formulas go in a derivation block's "expression"/"conclusion" as bare TeX with no delimiters.
 - A formula inside prose is inline math: \\(...\\) , or $...$ for a short expression. Prefer \\(...\\) — it is never ambiguous. A $...$ that does not look like math is left as literal text, and a dollar amount in prose needs no escaping.
 `.trim()
+
+/** The no-catalog counterpart of the image menu (host follow-up 3,
+ *  BUG-REPORT-sweep-focus-storm.md): BLOCK_TYPE_DOCS teaches the `image` block
+ *  unconditionally ("one image from the host catalog"), so every prompt
+ *  surface that embeds it invited models to place image blocks for invented
+ *  subjects — validate-time passed and the miss only warned at RENDER time
+ *  ([image] no image named …), silently salvaged in prod, a render boundary
+ *  under failOnWarning. Shared like MATH_RULES so every surface that teaches
+ *  image can print the prohibition in the same breath. Land it after the
+ *  block-type docs, right where a host that HAS a catalog prints
+ *  imageMenuText (core/images) instead. */
+export const NO_IMAGE_CATALOG_RULE = `No image catalog was provided, so never emit an image block.`

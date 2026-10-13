@@ -116,6 +116,19 @@ precisely so a host can decide.
 
 ## 4. The image catalog key transits the model, and nothing stops it being a prompt-injection vector
 
+**Update 2026-10-13 (host follow-up 3):** the trade now reaches two more
+surfaces. `systemPromptSnippet` / `documentSystemPromptSnippet` take the host
+catalog and print the same `imageMenuText` menu (unified into `core/images`
+from the compiler's private menu so no surface can drift), and
+`sectionSystemPrompt` interpolates the no-catalog prohibition — so for a
+catalog-passing host, record keys cross from the snippet path too. The two
+consequences above already cover this: a key is a slug, not a secret, the
+host is trusted by definition, and `src`/`alt` still never cross. The
+no-catalog fix that made snippets take a catalog was forced the other way:
+BLOCK_TYPE_DOCS teaches `image` unconditionally, and a catalog-less host was
+earning render-time `[image] no image named …` warnings for invented
+subjects (silent salvage in prod, a render boundary under failOnWarning).
+
 A host catalog is a `Record<string, ImageRef>`, and the compiler's menu
 (`src/compiler/prompts.ts`) emits the **record key** to the model, because the
 key is exactly what the model must write into `image` and what `resolveImage`

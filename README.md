@@ -633,8 +633,11 @@ chain guidance (block-types `diagram` line) remains the first line of defense.
 If you prompt the LLM directly instead of using the compiler, ship the tested
 contract with your request:
 
-- `systemPromptSnippet` / `documentSystemPromptSnippet` — instruction blocks
-  to paste into your system prompt.
+- `systemPromptSnippet(images?)` / `documentSystemPromptSnippet(images?)` —
+  functions returning the instruction text to paste into your system prompt.
+  Without a catalog the text tells the model never to place image blocks; pass
+  your `Record<string, ImageRef>` catalog (the same object you render with) to
+  get the key:subject image menu the document pipeline prints.
 - `explanationJsonSchema` / `documentJsonSchema` — JSON Schema for
   structured-output / tool-calling modes.
 - `BLOCK_TYPE_DOCS` — the canonical block-type documentation.

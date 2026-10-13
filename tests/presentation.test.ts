@@ -98,19 +98,19 @@ describe("presentation: data-callout schema", () => {
 
 describe("systemPromptSnippet: figure guidance", () => {
   it("documents the figure block with authoring rules", () => {
-    expect(systemPromptSnippet).toContain("figure:")
-    expect(systemPromptSnippet).toContain(`kind: "path"`)
-    expect(systemPromptSnippet).toContain("360×240")
-    expect(systemPromptSnippet).toContain("tones are")
-    expect(systemPromptSnippet).toContain("≤60 elements")
+    expect(systemPromptSnippet()).toContain("figure:")
+    expect(systemPromptSnippet()).toContain(`kind: "path"`)
+    expect(systemPromptSnippet()).toContain("360×240")
+    expect(systemPromptSnippet()).toContain("tones are")
+    expect(systemPromptSnippet()).toContain("≤60 elements")
   })
 
   it("documents path expression slots", () => {
-    expect(systemPromptSnippet).toContain("{{")
-    expect(systemPromptSnippet).toContain("slots")
+    expect(systemPromptSnippet()).toContain("{{")
+    expect(systemPromptSnippet()).toContain("slots")
   })
 
   it("documents the sweep field", () => {
-    expect(systemPromptSnippet).toContain("sweep")
+    expect(systemPromptSnippet()).toContain("sweep")
   })
 })

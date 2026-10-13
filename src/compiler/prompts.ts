@@ -1,20 +1,7 @@
-import { BLOCK_TYPE_DOCS, MATH_RULES } from "../core/blockTypes"
+import { BLOCK_TYPE_DOCS, MATH_RULES, NO_IMAGE_CATALOG_RULE } from "../core/blockTypes"
+import { imageMenuText } from "../core/images"
 import type { ImageRef } from "../core/images"
 import type { SourceExcerpt } from "./client"
-
-/** Catalog menu (image spec §6): the record key + subject ONLY. The key is
- *  exactly what the model writes into `image` and what resolveImage looks up,
- *  so the prompt and the renderer cannot drift. The LLM is text-only and has
- *  never seen these pictures — no URL, no alt, just a word for what each
- *  shows. Host key order, unsorted. */
-function imageMenuBlock(images: Record<string, ImageRef>): string {
-  return [
-    "Images available (place by key where one earns its place):",
-    ...Object.entries(images).map(([key, r]) => `- ${key}: ${r.subject}`),
-    "",
-    "Place an image only to anchor an analogy or set a scene. Images never illustrate a derivation — a drawn figure does that better. Put no text in the image itself: labels belong in the caption. The explanation a picture carries goes in that same image block's body, not in a separate text block beside it.",
-  ].join("\n")
-}
 
 /** Outline-visible grounding list (spec §4): ids + titles (+ urls) only — the
  *  outline plans structure, it does not read excerpts. */
@@ -66,7 +53,7 @@ export function outlineUserPrompt(
       ? 'Checks: mark sections with "check": true where a short quiz would consolidate the learning — not every section; never the first; skip reference-style ones.'
       : "",
     sources && sources.length > 0 ? outlineSourcesBlock(sources) : "",
-    images && Object.keys(images).length > 0 ? imageMenuBlock(images) : "",
+    images && Object.keys(images).length > 0 ? imageMenuText(images) : "",
     "",
     "Design the outline. Reply with the JSON object ONLY.",
   ]
@@ -74,7 +61,13 @@ export function outlineUserPrompt(
     .join("\n")
 }
 
-export function sectionSystemPrompt(): string {
+/** Same catalog gate as the snippets (host follow-up 3): with no catalog,
+ *  the section system prompt must not leave BLOCK_TYPE_DOCS's image line
+ *  unopposed — the user prompt carries no menu to steer by. With a catalog
+ *  this stays byte-identical to the pre-gate prompt: the menu (and the
+ *  editorial placement rules) travel in the user prompt, unchanged. */
+export function sectionSystemPrompt(images?: Record<string, ImageRef>): string {
+  const noCatalog = !(images && Object.keys(images).length > 0)
   return `
 You write one section of a multi-section explanation document. Output ONLY the JSON object — no markdown fences, no commentary.
 
@@ -88,6 +81,7 @@ ${MATH_RULES}
 
 Block types:
 ${BLOCK_TYPE_DOCS}
+${noCatalog ? NO_IMAGE_CATALOG_RULE : ""}
 `.trim()
 }
 
@@ -114,7 +108,7 @@ export function sectionUserPrompt(args: {
       : "",
     args.guidance ? `Guidance: ${args.guidance}` : "",
     args.sources && args.sources.length > 0 ? sectionSourcesBlock(args.sources) : "",
-    args.images && Object.keys(args.images).length > 0 ? imageMenuBlock(args.images) : "",
+    args.images && Object.keys(args.images).length > 0 ? imageMenuText(args.images) : "",
     "",
     'Reply with the section JSON object ONLY: { "title": string, "blocks": Block[] }.',
   ]

@@ -209,3 +209,35 @@ describe("mind-map contract", () => {
     expect(p).toContain("never to every node")
   })
 })
+
+// Host follow-up 3 (BUG-REPORT-sweep-focus-storm.md): the section system
+// prompt taught the `image` block unconditionally too, so a compileDocument
+// without a catalog had the same invented-image failure shape as the snippet
+// path. With a catalog the menu still lives in the user prompt (unchanged),
+// and the system prompt must stay silent about banning images.
+describe("section prompt image gating", () => {
+  const catalog = {
+    platform: {
+      src: "https://cdn.example.com/platform.png",
+      alt: "A crowded train platform",
+      width: 800,
+      height: 600,
+      subject: "a rush-hour platform",
+    },
+  }
+
+  it("forbids image blocks when the compile has no catalog", () => {
+    expect(sectionSystemPrompt()).toContain("No image catalog was provided")
+    expect(sectionSystemPrompt()).toContain("never emit an image block")
+    expect(sectionSystemPrompt()).not.toContain("Images available")
+  })
+
+  it("says nothing about images that a catalog compile's user prompt does not already say", () => {
+    // Byte-stable with catalog: the menu is the user prompt's job, and it
+    // already carries both the menu lines and the placement rules.
+    const p = sectionSystemPrompt(catalog)
+    expect(p).not.toContain("No image catalog")
+    expect(p).not.toContain("Images available")
+    expect(p).toContain("image: { image, caption?, body? }")
+  })
+})

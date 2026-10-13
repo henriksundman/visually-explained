@@ -221,7 +221,7 @@ export async function* compileDocumentStream(
       client: opts.client,
       maxRepairs,
       stage: "section",
-      system: sectionSystemPrompt(),
+      system: sectionSystemPrompt(images),
       user: sectionUserPrompt({
         index: i,
         title: entry.title,
