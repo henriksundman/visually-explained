@@ -30,6 +30,7 @@
   ],
   "scripts": {
     "build": "tsup && mkdir -p dist/themes && cp src/themes/*.css dist/themes/",
+    "prepare": "npm run build",
     "test": "vitest run",
     "demo": "npm run build && node demo/server.mjs",
     "typecheck": "tsc --noEmit"
