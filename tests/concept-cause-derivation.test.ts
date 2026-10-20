@@ -145,3 +145,75 @@ describe("derivation", () => {
     ).toThrow(/invalid/)
   })
 })
+
+// Host follow-up 4 (BUG-REPORT-sweep-focus-storm.md, 2026-10-20): prose in
+// `derivation.conclusion` parses as VALID TeX — one <mi> per letter with every
+// space collapsed — so the whole-field-TeX path mangled it silently with zero
+// warnings ("WhereFisthe…"). The conclusion now renders through a mixed gate:
+// accepted \(…\)/$…$ spans make prose intent explicit; otherwise the shared
+// prose fingerprint (the hygiene sweep's own heuristic) separates prose from a
+// bare formula, which keeps its math render byte-identical to before.
+describe("derivation conclusion: prose with inline math", () => {
+  const fixtureConc =
+    "Where F is the gravitational force, G is the gravitational constant, m_1 and m_2 are the masses of the two objects, and r is the distance between their centers."
+
+  function withConclusion(conclusion: string, expression?: string) {
+    return renderExplanation({
+      version: 1,
+      blocks: [
+        { type: "derivation", steps: [{ expression: expression ?? String.raw`F = G \frac{m_1 m_2}{r^2}` }], conclusion },
+      ],
+    })
+  }
+
+  it("renders prose readable instead of shredded into <mi> runs", () => {
+    // Verbatim from the Luma capture trail — the recorded failure shape.
+    const { html } = withConclusion(fixtureConc)
+    expect(html).toContain("Where F is the gravitational force")
+    expect(html).toContain("the distance between their centers")
+    expect(html).not.toContain("<mi>W</mi>")
+    expect(html).not.toContain(`<code class="exp-math-literal">`)
+  })
+
+  it("renders an empty/no-span prose paragraph without warnings", () => {
+    const { warnings } = withConclusion("Mass falls when distance falls.")
+    expect(warnings.some((w) => w.startsWith("[math]"))).toBe(false)
+  })
+
+  it("renders accepted \\[…\\] spans as inline math inside prose", () => {
+    const { html } = withConclusion(
+      String.raw`where \(c^2 = a^2 + b^2\) ties the sides to the hypotenuse`,
+    )
+    expect(html).toContain(`class="exp-math-inline"`)
+    expect(html).toContain("ties the sides to the hypotenuse")
+    expect(html).not.toContain(`c^2 = a^2`) // link content is rendered math, not leftover source
+  })
+
+  it("renders $…$ spans the same way", () => {
+    const { html } = withConclusion("energy scales with $mc^2$, so mass bends light")
+    expect(html).toContain(`class="exp-math-inline"`)
+    expect(html).toContain("so mass bends light")
+  })
+
+  it("keeps a whole-field TeX conclusion on the math path, byte for body", () => {
+    const { html } = withConclusion(String.raw`c^2 = a^2 + b^2`)
+    expect(html).toContain("<msup>")
+    expect(html).toContain("<msup><mi>c</mi>")
+    expect(html).not.toContain(`exp-math-inline`)
+    expect(html).not.toContain("c^2 = a^2 + b^2") // raw TeX must not surface
+  })
+
+  it("does not flip formula-heavy TeX into prose (fingerprint control)", () => {
+    // Eight single-letter <mi>s plus pure words is the prose shape; commands
+    // like \frac are not words, so this must stay inside the math path.
+    const { html } = withConclusion(String.raw`\frac{a}{b} + \frac{c}{d} = \frac{e}{f} + \frac{g}{h}`)
+    expect(html).toContain("<mfrac>")
+    expect(html).not.toContain("exp-math-inline")
+  })
+
+  it("still degrades malformed conclusion TeX loudly", () => {
+    const { html, warnings } = withConclusion(String.raw`\frac{1`)
+    expect(html).toContain(`<code class="exp-math-literal">\\frac{1</code>`)
+    expect(warnings.some((w) => w.startsWith("[math]"))).toBe(true)
+  })
+})

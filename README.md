@@ -340,10 +340,10 @@ set scenes; they never illustrate a derivation.
 
 ### Math
 
-In a `derivation`, `expression` and `conclusion` are **TeX**, not prose. They
-compile to MathML via [temml](https://github.com/temml-org/temml) and inherit
-the surrounding font and color, so a formula themes through tokens like
-everything else and no math font files ship:
+In a `derivation`, `expression` is **TeX**, not prose. It compiles to MathML
+via [temml](https://github.com/temml-org/temml) and inherits the surrounding
+font and color, so a formula themes through tokens like everything else and no
+math font files ship:
 
 ```ts
 const ir = {
@@ -351,14 +351,22 @@ const ir = {
   blocks: [{
     type: "derivation",
     steps: [{ expression: String.raw`\frac{3}{1/2}`, note: "Split the division." }],
-    conclusion: String.raw`\frac{3}{1/2} = 6`,
+    conclusion: "Six sevenths — the division inverts.",
   }],
 }
 ```
 
-No `$` delimiters and no wrapping — the field is TeX and spans its whole line.
-`note` stays prose. Prefer a single level: `\frac{3}{1/2}` reads faster than
-`\frac{3}{\frac{1}{2}}`, and a nested fraction shrinks at every level.
+No `$` delimiters and no wrapping — the expression field is TeX and spans its
+whole line. `conclusion` is prose — a concluding sentence, with symbols inside
+it as inline math (`\(m_1\) and \(m_2\)`); the final equation itself belongs
+in the last step's expression, and a bare whole-field formula still renders as
+math for documents authored under the older contract. Prose was once mangled
+here: plain English parses as **valid** TeX (a run of letters is a run of
+variables), so a sentence rendered as `WhereFisthe…` with zero warnings.
+Prose conclusions are now fingerprinted at render time and written out
+readable. `note` stays prose. Prefer a single level:
+`\frac{3}{1/2}` reads faster than `\frac{3}{\frac{1}{2}}`, and a nested
+fraction shrinks at every level.
 
 The engine is behind one boundary (`renderMath` in `src/core/math.ts`), but it
 is deliberately **not** exported from the package: the TeX surface is what
@@ -371,11 +379,14 @@ Unparseable TeX degrades to the literal source in `<code class="exp-math-literal
 with a `[math]` warning — never a failed render. To see both engines side by
 side, run the demo and open `/math`.
 
-> **Upgrade note:** `conclusion` used to be free text and is now TeX, so a
-> document whose conclusion contains a bare `&` or an unpaired `_` will
-> **degrade visibly after upgrade** — it renders as the literal source in the
-> warning color instead of as intended math. `expression` and `note` are
-> unchanged in shape. No flag can prevent this.
+> **Upgrade note:** `conclusion` has been free text (earliest), whole-field
+> TeX, and is now prose again — with inline math. All three render
+> deliberately: free-text conclusions render as prose; whole-field-TeX
+> conclusions keep their math render byte-for-byte (the render path gates on
+> which the content is); and prose conclusions that used to mangle silently
+> into italic letter-runs now render as written. A prose conclusion holding
+> a bare `&` or an unpaired `_` renders as literal text too — readable, not
+> degraded. `expression` is unchanged in shape. No flag can prevent this.
 
 Exact payloads are documented in `BLOCK_TYPE_DOCS` — the same string the LLM
 prompts interpolate, so it never drifts:

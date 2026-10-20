@@ -321,6 +321,15 @@ decisions that survive across sessions.
   **byte-identical** to before: this cycle changes what is reported, never what
   is rendered. Spec:
   `docs/superpowers/specs/2026-10-05-react-warning-surface-design.md`.
+- **Prose-aware derivation conclusions** (2026-10-20, host follow-up 4) —
+  `derivation.conclusion` renders prose (with inline `\(…\)`/`$…$` math)
+  instead of silently mangling it into italic letter-runs: plain English parses
+  as valid TeX, so the old whole-field-TeX path rendered "Where F is the…"
+  with zero warnings. A shared prose fingerprint (promoted from the
+  derivation-tex-hygiene sweep into `core/math.ts`) gates prose from formula,
+  so bare whole-field formulas keep their math render byte-for-byte. The
+  contract line documents conclusion as prose; the prompt diff is the one
+  line, same class as every block-type contract change.
 
 ## Open threads
 

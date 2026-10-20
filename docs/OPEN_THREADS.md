@@ -784,6 +784,14 @@ prompt change, which is exactly the class of change the suite cannot see.
 
 **Revisit if** a real capture corrupts a multi-line string value: the sketch is a per-string gate on TeX markers (`$`, `\\(`, `^`, `_`) before doubling inside that string, or field-aware repair after zod (`code` vs derivation fields). Also note: the salvage is content-blind BY DESIGN; the schema cannot help because it runs post-parse.
 
+## 25. The conclusion prose gate is a fingerprint, so short prose still mangles
+
+**Added 2026-10-20** (host follow-up 4: prose in `derivation.conclusion` — plain English parses as valid TeX and rendered as "WhereFisthe…", zero warnings). The conclusion now renders through a gate: accepted `\\(…\\)`/`$…$` spans → prose with inline math; otherwise the prose fingerprint (`looksLikeProse`, promoted from the hygiene sweep into `core/math.ts`) decides prose vs formula, so bare whole-field formulas keep their math render byte-for-byte.
+
+**The trade:** the fingerprint needs ≥4 pure alphabetic words AND ≥8 single-letter `<mi>`s, so a SHORT prose conclusion — "so F grows", "mass dominates now" — stays on the math path and still renders as an italic letter-run with no warning: the old blind spot, narrowed, not eliminated. The thresholds also mean a hypothetical TeX formula carrying ≥4 pure words and ≥8 single-letter identifiers would flip to prose — none exists in the corpus, and the misconception guard is that real formulas put their content in commands, which are not words.
+
+**Revisit if** captures show short prose conclusions mangling: the sketch is a lighter prose signal (stopword scan — but `and`/`or` appear in real symbol names, so it leans on the sweep's corpus evidence), or documenting a minimum length for conclusion prose in the contract line. Note the sweep (`tests/derivation-tex-hygiene.test.ts`) now covers `expression` only — `conclusion` prose is a supported render path, so corpus prose there is no longer an offense.
+
 
 ## Conventions worth knowing before the next session
 

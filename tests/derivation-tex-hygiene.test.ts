@@ -11,20 +11,19 @@ import {
 } from "../demo/examples.js"
 
 /**
- * `derivation.expression` and `derivation.conclusion` are TeX fields. Prose
- * placed in one is **valid TeX** -- a run of letters is a run of variables --
- * so it renders as one <mi> per letter with every space collapsed, and emits
- * no warning at all. The `not TeX` degradation path cannot catch it, because
- * there is no parse error to catch.
+ * `derivation.expression` is a TeX field. Prose placed in it is **valid TeX**
+ * -- a run of letters is a run of variables -- so it renders as one <mi> per
+ * letter with every space collapsed, and emits no warning at all. The `not
+ * TeX` degradation path cannot catch it, because there is no parse error to
+ * catch.
  *
- * That shipped once: the editorial demo's `conclusion` held a full sentence
- * and rendered as "Violetscattersmorethanblue" on one overflowing line while
- * the warning list stayed clean. Nothing in the suite could see it, because the
- * render was technically successful.
- *
- * This sweep is the thing that sees it: prose in a TeX field leaves a
- * distinctive fingerprint -- many bare words AND many single-letter
- * identifiers. Real TeX has the opposite shape.
+ * That shipped twice: the editorial demo held a full sentence in a conclusion
+ * ("Violetscattersmorethanblue", overflowing line, clean warnings), and a
+ * host LLM did the same thing through `conclusion` (2026-10-10 capture). The
+ * second incident is now FIXES at render time — `conclusion` is documented
+ * prose with inline math, gated by the fingerprint below — so this sweep
+ * covers `expression` only: bare words + single-letter identifiers are right
+ * there, not a contract violation.
  */
 const FIXTURES: Record<string, unknown> = {
   editorialDocIr,
@@ -51,11 +50,12 @@ function* blocksOf(ir: unknown): Generator<Record<string, unknown>> {
 }
 
 /** Fields of a derivation block that are TeX, per math spec §3. `note` is
- *  deliberately excluded: it stays prose. */
+ *  deliberately excluded: it stays prose. So is `conclusion` since follow-up
+ *  4 (2026-10-20): it is documented prose with inline math, and prose there
+ *  renders readable instead of shredding into <mi> runs. */
 function texFields(block: Record<string, unknown>): [string, unknown][] {
   const steps = (block.steps ?? []) as Record<string, unknown>[]
-  return [...steps.map((s, i) => [`steps[${i}].expression`, s?.expression] as [string, unknown]),
-          ["conclusion", block.conclusion] as [string, unknown]]
+  return steps.map((s, i) => [`steps[${i}].expression`, s?.expression] as [string, unknown])
 }
 
 /** The prose fingerprint: bare words AND shredded single-letter identifiers. */

@@ -11,10 +11,24 @@ describe("derivation contract", () => {
     expect(line).toBeDefined()
   })
 
-  it("states that expression and conclusion are TeX", () => {
+  // Host follow-up 4 (2026-10-20): "conclusion" reads as "the concluding
+  // sentence", so models naturally write prose there — prose that parsed as
+  // valid TeX and mangled silently. The contract now documents what the field
+  // actually is: expression stays whole-field TeX, conclusion is prose with
+  // inline math.
+  it("states that expression is TeX spanning the whole field", () => {
     expect(line).toMatch(/expression/)
-    expect(line).toMatch(/conclusion/)
     expect(line).toMatch(/TeX/)
+  })
+
+  it("states that conclusion is prose with inline math", () => {
+    expect(line).toMatch(/conclusion is prose/)
+    expect(line).toMatch(/\(…\)/)
+    expect(line).toMatch(/inline math/)
+  })
+
+  it("sends the final equation to the last step's expression", () => {
+    expect(line).toMatch(/last step/)
   })
 
   it("states that note is prose", () => {
@@ -22,7 +36,7 @@ describe("derivation contract", () => {
     expect(line).toMatch(/prose/i)
   })
 
-  it("warns against $ delimiters, since the whole field is already TeX", () => {
+  it("warns against $ delimiters for the TeX field", () => {
     expect(line).toMatch(/delimiter/i)
   })
 

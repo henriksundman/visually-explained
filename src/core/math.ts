@@ -25,3 +25,21 @@ export function renderMath(tex: string): string {
 /** The parse failure `renderMath` throws, re-exported so callers can narrow
  *  without importing temml themselves. */
 export const MathParseError = temml.ParseError
+
+/** The prose fingerprint (host follow-up 4, 2026-10-20): a whole-field TeX
+ *  candidate is prose when its render leaves the distinctive shape prose
+ *  always makes — many real words in the source AND many single-letter
+ *  identifiers in the output. Promoted from tests/derivation-tex-hygiene's
+ *  `looksLikeProse` (which shipped first and only ever saw demo fixtures), so
+ *  the renderer and the sweep consult one definition and cannot disagree.
+ *
+ *  Words are PURE alphabetic tokens (optionally followed by punctuation):
+ *  `\frac{`, `m_1`, `x^2` are not words, so formula-heavy TeX can never
+ *  gather the four words it needs — the guard the first sweep's substring
+ *  regex did not need but a renderer-side decision now does. Thresholds are
+ *  the sweep's original ones: prose is verbose, formulas are not. */
+export function looksLikeProse(tex: string, rendered: string): boolean {
+  const words = tex.split(/\s+/).filter((w) => /^[A-Za-z]{3,}[.,;:!?"'“”’]*$/.test(w)).length
+  const singleLetterMi = (rendered.match(/<mi>[a-zA-Z]<\/mi>/g) ?? []).length
+  return words >= 4 && singleLetterMi >= 8
+}
