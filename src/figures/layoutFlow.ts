@@ -1,4 +1,5 @@
 import type { EdgeKind, NodeShape, Scene } from "./scene"
+import { plainMathLabel } from "./labelMath"
 
 export interface FlowNodeSpec {
   id: string
@@ -85,6 +86,11 @@ const EDGE_CHAR_W_DEFAULT = 11
 const EDGE_LABEL_KERN_PAD = 1.5
 
 export function estimateEdgeTextWidth(text: string): number {
+  // Measure the DISPLAYED text: math spans are stripped to plain text before
+  // any width/wrap decision, so estimates and wrap points agree with what the
+  // emit layer draws (a wrap that split a `\(…\)` span left half-spans that
+  // survived as literal TeX — caught on the built package).
+  text = plainMathLabel(text)
   let w = 0
   for (const ch of text) w += EDGE_CHAR_W_TABLE[ch] ?? EDGE_CHAR_W_DEFAULT
   return Math.ceil(w + EDGE_LABEL_KERN_PAD)
@@ -110,6 +116,9 @@ export function edgeLabelRect(el: { label?: string; lines?: string[]; labelX?: n
  *  gutter is hard-split — an edge label is never dropped, so it must never
  *  overflow either (figure label-overflow spec §3.1). */
 export function wrapEdgeLabel(label: string, avail: number): string[] {
+  // Strip math spans before wrapping — a hard-split word or line must never
+  // cut a `\(…\)` span mid-way (the emit layer cannot strip a half-span).
+  label = plainMathLabel(label)
   const words = label.split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let current = ""
@@ -146,12 +155,15 @@ export function wrapEdgeLabel(label: string, avail: number): string[] {
 
 /** Deterministic width estimate for a single-line label, clamped. */
 export function nodeWidth(label: string): number {
+  label = plainMathLabel(label)
   return Math.min(NODE_W_MAX, Math.max(NODE_W_MIN, Math.round(label.length * CHAR_W) + 24))
 }
 
 /** Word-wrap a label into lines that fit `w` (same 7.5px/char estimate).
  *  Hard-splits any single word wider than the line so nothing overflows. */
 function wrapLabel(label: string, w: number): string[] {
+  // See wrapEdgeLabel: spans are stripped before any wrap or hard-cut.
+  label = plainMathLabel(label)
   const maxChars = Math.max(8, Math.floor((w - 24) / CHAR_W))
   const words = label.split(/\s+/).filter(Boolean)
   const lines: string[] = []

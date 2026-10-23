@@ -90,7 +90,10 @@ const STRONG_TEX_SIGNAL = /[\\^_{}=<>]/
  *  A candidate that fails any gate is left as literal text, byte-identical to
  *  the pre-math output, so a false negative is the status quo and not a
  *  degradation. */
-function plausibleDollarMath(content: string): boolean {
+/** Exported for the SVG emit layer's $…$ handling (figures/labelMath): SVG
+ *  text has no MathML surface, so it strips plausible spans to plain text and
+ *  must consult the SAME gate — one definition, two consumers, no drift. */
+export function plausibleDollarMath(content: string): boolean {
   if (content.length === 0) return false
   // Pandoc: no whitespace adjacent to either delimiter.
   if (/^\s|\s$/.test(content)) return false

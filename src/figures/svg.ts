@@ -1,4 +1,5 @@
 import { escapeHtml } from "../core/inline"
+import { plainMathLabel } from "./labelMath"
 import { estimateEdgeTextWidth } from "./layoutFlow"
 import { FIGURE_TONE_VAR, sketchElementSvg } from "./sketch"
 import type {
@@ -96,12 +97,20 @@ function dragLabel(el: SceneElement, axes: DraggableAxes): string {
   return `Drag to vary (${axis})`
 }
 
+/** Human-readable label text for SVG emission: math spans degrade to plain
+ *  text here because SVG <text> has no MathML surface (figures/labelMath).
+ *  Every text-writer below composes through this — plain, aria, and tspan
+ *  lines pass through the same filter, so a figure cannot draw `\(x - 3 = 5\)`. */
+function labelText(text: string): string {
+  return escapeHtml(plainMathLabel(text))
+}
+
 function nodeLabel(el: NodeBoxEl): string {
   const lines = el.lines && el.lines.length > 0 ? el.lines : [el.label]
   if (lines.length <= 1) {
     return (
       `<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h / 2)}" text-anchor="middle" dominant-baseline="central" ` +
-      `class="exp-node-label">${escapeHtml(lines[0] ?? el.label)}</text>`
+      `class="exp-node-label">${labelText(lines[0] ?? el.label)}</text>`
     )
   }
   const cx = el.x + el.w / 2
@@ -110,7 +119,7 @@ function nodeLabel(el: NodeBoxEl): string {
   const tspans = lines
     .map((line, i) => {
       const y = cy - ((lines.length - 1) * pitch) / 2 + i * pitch
-      return `<tspan x="${n2(cx)}" y="${n2(y)}">${escapeHtml(line)}</tspan>`
+      return `<tspan x="${n2(cx)}" y="${n2(y)}">${labelText(line)}</tspan>`
     })
     .join("")
   return `<text text-anchor="middle" dominant-baseline="central" class="exp-node-label">${tspans}</text>`
@@ -135,7 +144,7 @@ function arrowLabel(el: ArrowEl): string {
   const lines = el.lines && el.lines.length > 0 ? el.lines : [el.label]
   // Single line: exactly the markup shipped before, so nothing downstream
   // churns (spec §2.6).
-  if (lines.length === 1) return `${open}>${escapeHtml(lines[0])}</text>`
+  if (lines.length === 1) return `${open}>${labelText(lines[0])}</text>`
   // tspan coordinates resolve INSIDE the translated group, so they are local:
   // x stays 0 (text-anchor=middle centres on the translate point) and y is the
   // offset from the block centre. Baking labelX into the tspan x as well would
@@ -144,7 +153,7 @@ function arrowLabel(el: ArrowEl): string {
   const tspans = lines
     .map((line, i) => {
       const y = -((lines.length - 1) * pitch) / 2 + i * pitch
-      return `<tspan x="0" y="${n2(y)}">${escapeHtml(line)}</tspan>`
+      return `<tspan x="0" y="${n2(y)}">${labelText(line)}</tspan>`
     })
     .join("")
   return `${open}>${tspans}</text>`
@@ -166,7 +175,7 @@ function label(el: LabelEl, i: number): string {
   const cls = el.emphasis ? "exp-fig-label exp-fig-label-emphasis" : "exp-fig-label"
   return (
     `<text class="${cls}" x="${n2(el.x)}" y="${n2(el.y)}" text-anchor="${el.anchor}" style="--draw-i:${i}">` +
-    `${escapeHtml(el.text)}</text>`
+    `${labelText(el.text)}</text>`
   )
 }
 
@@ -214,11 +223,11 @@ function figureBox(el: FigureBoxEl, i: number): string {
     const cx = el.x + el.w / 2
     const cy = el.y + el.h / 2
     if (lines.length <= 1) {
-      label = `<text x="${n2(cx)}" y="${n2(cy)}" text-anchor="middle" dominant-baseline="central" class="exp-fig-label">${escapeHtml(lines[0] ?? el.label)}</text>`
+      label = `<text x="${n2(cx)}" y="${n2(cy)}" text-anchor="middle" dominant-baseline="central" class="exp-fig-label">${labelText(lines[0] ?? el.label)}</text>`
     } else {
       const pitch = 15
       const tspans = lines
-        .map((line, li) => `<tspan x="${n2(cx)}" y="${n2(cy - ((lines.length - 1) * pitch) / 2 + li * pitch)}">${escapeHtml(line)}</tspan>`)
+        .map((line, li) => `<tspan x="${n2(cx)}" y="${n2(cy - ((lines.length - 1) * pitch) / 2 + li * pitch)}">${labelText(line)}</tspan>`)
         .join("")
       label = `<text text-anchor="middle" dominant-baseline="central" class="exp-fig-label">${tspans}</text>`
     }
@@ -248,7 +257,7 @@ function figureDot(el: FigureDotEl, i: number): string {
 function figureLabel(el: FigureLabelEl, i: number): string {
   return (
     `<text class="exp-fig-label" x="${n2(el.x)}" y="${n2(el.y)}" text-anchor="${el.anchor}" ` +
-    `style="--draw-i:${i};font-size:${n2(el.size)}px">${escapeHtml(el.text)}</text>`
+    `style="--draw-i:${i};font-size:${n2(el.size)}px">${labelText(el.text)}</text>`
   )
 }
 
@@ -580,7 +589,7 @@ export function sceneToSvg(scene: Scene, opts: SceneSvgOptions): string {
     // to overflow, not something applied in both directions at once.
     `<svg class="exp-figure" width="${n2(b.maxX - b.minX)}" height="${n2(b.maxY - b.minY)}" ` +
     `viewBox="${n2(b.minX)} ${n2(b.minY)} ${n2(b.maxX - b.minX)} ${n2(b.maxY - b.minY)}" role="img" ` +
-    `aria-label="${escapeHtml(opts.ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +
+    `aria-label="${labelText(opts.ariaLabel)}" xmlns="http://www.w3.org/2000/svg">` +
     // No <title> element: it was the same string as `aria-label`, so every
     // figure carried its accessible name twice and showed a user-agent tooltip
     // — one per FIGURE, identical for every element, which on a mind map is the

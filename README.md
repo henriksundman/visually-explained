@@ -426,6 +426,16 @@ Unparseable math degrades to its own source text — not a code chip — with a
 body size in compact style (`.exp-math-inline`), where a `derivation` step
 renders at `--exp-math-size` in display style.
 
+**In SVG-drawn text** — every `mind-map`, `diagram`, and `figure` label, plus
+each figure's accessible name — there is no MathML surface, so a math span
+degrades to readable plain text: `\(...\)` draws without the delimiters,
+commands with obvious unicode are mapped (`\times` → ×, `\le` → ≤,
+`\frac{a}{b}` → a/b, `^{}`/`_{}` flattened, unknown commands drop the
+backslash), and a `$...$` that fails the gate above stays verbatim. A label
+with no delimiters renders byte-identically to before. This is
+defense-in-depth for IRs that still carry wrapped labels — plain figure text
+remains the authoring rule.
+
 ## Figures
 
 A `figure` block draws a bespoke figure on a 360×240 canvas from Scene

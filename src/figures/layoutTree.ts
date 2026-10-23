@@ -1,4 +1,5 @@
 import type { LinePathEl, NodeBoxEl, NodeShape, Scene } from "./scene"
+import { plainMathLabel } from "./labelMath"
 
 /** One node of a containment tree. Deliberately the same shape the block's
  *  IR uses, so the layout has no translation layer to get out of sync. */
@@ -49,6 +50,11 @@ function n(v: number): string {
 }
 
 function wrap(label: string, avail: number): string[] {
+  // Math spans are stripped BEFORE wrapping: a wrap that split `\(…\)` across
+  // lines left each half with an unclosed delimiter, so the emit layer's
+  // plain-text pass passed literal TeX through (caught on the built package).
+  // Wrapping the stripped text also wraps at the displayed width.
+  label = plainMathLabel(label)
   const maxChars = Math.max(8, Math.floor((avail - NODE_PAD) / CHAR_W))
   if (label.length <= maxChars) return [label]
   const lines: string[] = []

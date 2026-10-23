@@ -5,6 +5,7 @@
  *  expressions, no groups, numeric only" is preserved. */
 
 import { evaluate } from "./expr"
+import { plainMathLabel } from "./labelMath"
 import { isSafePathD } from "./pathGrammar"
 import type {
   FigureBoxEl,
@@ -70,6 +71,10 @@ const BOX_CHAR_W = 7.5 // per-char estimate at 13px — same basis as layoutFlow
  *  Single-line results return the label unwrapped, so the renderer's existing
  *  single-line markup (and the corpus) stays byte-identical. */
 function wrapBoxLabel(label: string, w: number): string[] {
+  // Math spans are stripped before wrapping (see layoutFlow.wrapEdgeLabel): a
+  // wrap or hard-cut must never split a `\(…\)` span — the emit layer cannot
+  // strip a half-span, and it would surface as literal TeX.
+  label = plainMathLabel(label)
   const maxChars = Math.max(6, Math.floor((w - 16) / BOX_CHAR_W))
   const lines: string[] = []
   let line = ""

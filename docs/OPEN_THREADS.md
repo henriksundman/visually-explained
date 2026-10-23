@@ -793,6 +793,15 @@ prompt change, which is exactly the class of change the suite cannot see.
 **Revisit if** captures show short prose conclusions mangling: the sketch is a lighter prose signal (stopword scan — but `and`/`or` appear in real symbol names, so it leans on the sweep's corpus evidence), or documenting a minimum length for conclusion prose in the contract line. Note the sweep (`tests/derivation-tex-hygiene.test.ts`) now covers `expression` only — `conclusion` prose is a supported render path, so corpus prose there is no longer an offense.
 
 
+## 26. The SVG label mapping is lossy plain text, and the $…$ gate still leaves spaced formulas literal in figures
+
+**Added 2026-10-23** (host follow-up: mind-map labels authored as `\\(x - 3 = 5\\)` drew literal backslash TeX — SVG `<text>` has no MathML surface, and foreignObject is out of contract). SVG-drawn labels (mind-map, diagram, figure, aria-labels) now render math spans through `plainMathLabel` (figures/labelMath.ts): delimiters stripped, obvious commands mapped to unicode, `\\frac` → `a/b`, `^{}`/`_{}` flattened, unknown commands degrade to their bare name.
+
+**The trade:** the mapping is deliberately lossy and approximate — `\\sqrt{x}` reads "sqrtx", one terminator space is kept after every command name (`\\Delta t` reads "Δ t", not TeX's thin space), and the SHARED `$…$` gate means a spaced signal-less pair (`$a + b$`) stays literal in a figure exactly as it does in prose — one gate, two consumers, no drift, but a figure can still draw `$a + b$` verbatim. A label that legitimately quotes TeX (`"write \\(x\\) here"`) is also indistinguishable from math and gets stripped — same class as the prose-path trade, thread 2. Delimiter-free labels remain byte-identical (verbatim labels are load-bearing for lesson content).
+
+**Revisit if** consumer corpora show degraded mappings that hurt comprehension: per-command polish (function-application commands like `\\sqrt` → `sqrt(…)`) is a table row, not a redesign; real typesetting needs foreignObject/MathML positioning, which stays out of contract.
+
+
 ## Conventions worth knowing before the next session
 
 - **Verify by measurement, and diff rendered output against `main`.** Three

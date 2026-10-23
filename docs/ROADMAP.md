@@ -321,6 +321,14 @@ decisions that survive across sessions.
   **byte-identical** to before: this cycle changes what is reported, never what
   is rendered. Spec:
   `docs/superpowers/specs/2026-10-05-react-warning-surface-design.md`.
+- **Plain-text math labels in SVG figures** (2026-10-23, host follow-up) —
+  `\(…\)`/`$…$` spans in SVG-drawn labels (mind-map, diagram, figure, and each
+  figure's accessible name) render as readable plain text instead of literal
+  TeX: delimiters stripped, obvious commands mapped to unicode (`\times` → ×,
+  `\frac{a}{b}` → a/b), unknown commands drop the backslash, the `$…$` plausibility
+  gate is the shared one, and delimiter-free labels stay byte-identical. The
+  prose paths (renderInline, text-mode lists, popovers) keep real MathML — a
+  scope pin guards the boundary.
 - **Prose-aware derivation conclusions** (2026-10-20, host follow-up 4) —
   `derivation.conclusion` renders prose (with inline `\(…\)`/`$…$` math)
   instead of silently mangling it into italic letter-runs: plain English parses

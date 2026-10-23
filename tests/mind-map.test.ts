@@ -79,6 +79,38 @@ describe("mind-map — figure form", () => {
     expect(label).toContain("Shared cache contains In-memory")
   })
 
+  it("draws a math label in the SVG as readable plain text, not TeX", () => {
+    // The Luma bug: the same label rendered as real math in the text form and
+    // popovers, but the figure drew the literal \(…\) — because the SVG emit
+    // layer wrote labels verbatim. The emit layer now strips spans to plain
+    // text; the figure shows "2 + 3 = 5".
+    const { html } = render({ label: String.raw`\(2 + 3 = 5\)` })
+    expect(html).toContain("<svg")
+    expect(html).toContain(">2 + 3 = 5</text>")
+    expect(html).not.toContain("\\(")
+  })
+
+  it("keeps a WRAPPED math label readable — the wrap must not split a span", () => {
+    // The layout wraps labels BEFORE the emit layer, and a wrap that split a
+    // `\\(…\\)` across lines left each half unclosed, so the emit layer's
+    // strip passed literal TeX through — the Luma symptom, caught by the dist
+    // probe. The wrap therefore sees the STRIPPED text.
+    const { html } = render({
+      label: "solve",
+      children: [{ label: String.raw`therefore \(x \times 2 = 16\) and more words here` }],
+    })
+    expect(html).toContain("<svg")
+    expect(html).not.toContain("\\(")
+    expect(html).toContain("×")
+  })
+
+  it("strips the delimiters from the aria-label too", () => {
+    const { html } = render({ label: String.raw`Solve \(x - 3 = 5\)`, children: [{ label: "check" }] })
+    const label = html.match(/aria-label="([^"]*)"/)?.[1] ?? ""
+    expect(label).toContain("Solve x - 3 = 5")
+    expect(label).not.toContain("\\(")
+  })
+
   it("keeps inline markup out of the aria-label", () => {
     // The aria-label is spoken, not rendered. Sibling primitives
     // (diagram, cause-effect, timeline) all pass raw label text, and
@@ -184,6 +216,15 @@ describe("mind-map — prose integration", () => {
   it("typesets inline math in a node label in the text form", () => {
     const { html } = render({ label: "Rate \\(\\eta\\)" }, { presentation: "text" })
     expect(html).toContain("exp-math-inline")
+  })
+
+  it("keeps the text form on REAL math markup (scope pin: the SVG strip must not leak here)", () => {
+    // The text form has a MathML surface and must keep it — only the SVG
+    // path (no MathML in SVG text) degrades to plain text. If this pin
+    // fails, the emit-layer strip leaked into listHtml/renderInline.
+    const { html } = render({ label: String.raw`Rate \(\eta\)` }, { presentation: "text" })
+    expect(html).toContain("<math")
+    expect(html).toContain("<mi>η</mi>")
   })
 
   it("escapes a node label rather than emitting markup", () => {
