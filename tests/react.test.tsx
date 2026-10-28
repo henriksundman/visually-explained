@@ -322,6 +322,32 @@ describe("Quiz (react)", () => {
     expect(html).not.toContain("exp-quiz-choice")
   })
 
+  it("quiz option buttons expose the option text as an accessible name even when it renders as MathML", () => {
+    // Math-bearing option text renders as an exp-math-inline span with no text
+    // node, so the button's accessible name would otherwise be empty. The
+    // choice button carries the option's flattened plain text as an aria-label
+    // (the same math-flattening the figure-label path uses).
+    const mathQuiz = {
+      version: 1,
+      blocks: [
+        {
+          type: "quiz",
+          question: "Which distribution models counts?",
+          options: [
+            { text: "\\(2n + 1p\\)", why: "Binomial." },
+            { text: "Poisson distribution", why: "Also counts, different shape." },
+          ],
+          answer: 0,
+          explanation: "The binomial has two parameters.",
+        },
+      ],
+    }
+    const html = renderToStaticMarkup(<Explanation ir={mathQuiz} theme="none" interactive />)
+    expect(html).toContain(`aria-label="2n + 1p"`) // TeX flattened to plain text
+    // Prose options keep their visible text as the name — no double announcement.
+    expect(html).toContain(`aria-label="Poisson distribution"`)
+  })
+
   it("transitions: pick before check, lock after check", () => {
     const picked = quizPick(initialQuizState, 1)
     expect(picked).toEqual({ picked: 1, checked: false })

@@ -3,6 +3,7 @@ import { useState, type FC } from "react"
 import { quizBlockSchema, type QuizBlock } from "../core/schema"
 import { renderInline } from "../core/inline"
 import { renderBlock } from "../core/render"
+import { plainMathLabel } from "../figures/labelMath"
 
 /** Grading state machine — pure so node-env vitest can pin it (the
  *  nextSweepValue precedent; there is no DOM-event harness). */
@@ -51,6 +52,7 @@ export const Quiz: FC<{ block: unknown }> = ({ block }) => {
               className="exp-quiz-choice"
               disabled={state.checked}
               onClick={() => setState(s => quizPick(s, i))}
+              aria-label={plainMathLabel(o.text)}
             >
               <span className="exp-quiz-option-text" dangerouslySetInnerHTML={{ __html: renderInline(o.text) }} />
             </button>
